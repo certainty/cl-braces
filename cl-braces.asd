@@ -1,23 +1,25 @@
-(in-package :asdf-user)
-
-(defsystem "cl-braces"
+(asdf:defsystem  "cl-braces"
   :description "A compiler playground"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
-  :pathname "src"
   :serial t
-  :components ((:file "compiler"))
-  :in-order-to ((test-op (test-op :cl-braces/test))))
+  :components ((:module "src"
+                :components ((:file "compiler"))))
+  :in-order-to ((test-op (test-op "cl-braces/tests"))))
 
 ;; (defsystm "cl-braces/executables"
 ;;   :description "Executable for cl-braces"
 ;;   :author "David Krentzlin <david.krentzlin@gmail.com>")
 
-
-(defsystem "cl-braces/test"
+(asdf:defsystem  "cl-braces/tests"
   :description "Tests for cl-braces"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
-  :pathname "tests"
+  :depends-on (:fiveam)
   :serial t
-  :components ((:file "test"))
-  :perform (test-op (op c) (symbol-call :rove :run c)))
+  :components ((:module "tests"
+                :components ((:file "unit"))))
+
+  :perform (test-op (o c)
+                    (unless (symbol-call '#:fiveam '#:run!
+                                         :cl-braces/tests)
+                      (error "TESTS failed!"))))
