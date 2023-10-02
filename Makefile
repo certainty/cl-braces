@@ -1,14 +1,13 @@
-.PHONY: test install-deps update-deps bootstrap-dev-env
+LISP=sbcl
+CI_LISP=sbcl --noinform --no-userinit --no-sysinit --non-interactive
 
-test: install-deps
-     qlot exec ros run -e "(progn (asdf:load-system 'cl-braces) (asdf:test-system 'cl-braces))"
+test:
+	$(LISP) --non-interactive --eval '(asdf:test-system :cl-braces)'
 
-install-deps:
-	qlot install
+repl:
+	$(LISP)	--eval '(ql:quickload :cl-braces)'
 
-update-deps:
-	qlot update
+build:
+	$(LISP) --eval '(asdf:make :cl-braces)'
 
-bootstrap-dev-env:
-	ros install sbcl
-	ros install fukamachi/qlot
+.PHONY: test repl
