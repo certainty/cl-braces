@@ -19,4 +19,4 @@ jobs:
 
       - name: Run test
         run: |
-          make test RUN_LISP="ros exec sbcl --noinform --non-interactive"
+          make test RUN_LISP="ros exec sbcl-bin --noinform --non-interactive"
