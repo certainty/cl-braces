@@ -9,22 +9,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
       - name: Install Roswell
         run: |
           curl -L https://raw.githubusercontent.com/roswell/roswell/v22.12.14.113/scripts/install-for-ci.sh | sh
+          ros install sbcl-bin
+          ros use sbcl-bin
 
-      - name: Install dependencies
-        run: |
-          set -ex
-
-          ros config set dynamic-space-size 2048
-          curl -L https://qlot.tech/installer | bash
-          export PATH="/home/runner/.qlot/bin:$PATH"
-
-          qlot install
       - name: Run test
         run: |
-          make test
+          make test RUN_LISP="ros exec sbcl --noinform --non-interactive"

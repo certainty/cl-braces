@@ -1,13 +1,13 @@
-LISP=sbcl
-CI_LISP=sbcl --noinform --no-userinit --no-sysinit --non-interactive
+RUN_LISP=sbcl --noinform --non-interactive
+LISP=sbcl --noinform
 
 test:
-	$(LISP) --non-interactive --eval '(asdf:test-system :cl-braces)'
+	$(RUN_LISP) --non-interactive --eval '(asdf:test-system :cl-braces)'
 
 repl:
 	$(LISP)	--eval '(ql:quickload :cl-braces)'
 
 build:
-	$(LISP) --eval '(asdf:make :cl-braces)'
+	$(RUN_LISP) --eval '(asdf:make :cl-braces)'
 
 .PHONY: test repl
