@@ -9,14 +9,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Roswell
-        run: |
-          curl -L https://raw.githubusercontent.com/roswell/roswell/v22.12.14.113/scripts/install-for-ci.sh | sh
-          ros install sbcl-bin
-          ros use sbcl-bin
+    strategy:
+      matrix:
+        lisp:
+          - sbcl-bin
+    env:
+      LISP: ${{ matrix.lisp }}
 
-      - name: Run test
-        run: |
-          make test RUN_LISP="ros exec sbcl-bin --noinform --non-interactive"
+    steps:
+      - uses: actions/checkout@v1
+      - uses: 40ants/setup-lisp@v1
+        with:
+          asdf-system: cl-braces
+      - uses: 40ants/run-tests@v2
+        with:
+          asdf-system: cl-braces

@@ -8,4 +8,4 @@
 
 (test test-1
   "Just a test"
-  (is (= 1 1)))
+  (is (= 1 2)))
