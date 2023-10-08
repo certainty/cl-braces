@@ -1,5 +1,9 @@
-(defpackage :cl-braces/compiler
-  (:use :cl)
-  (:export :compile))
+(defun just-a-test()
+  (format t "This is my string let's see how this works"))
 
-(in-package :cl-braces/compiler)
+(defun will ()
+      (let ((format t "work"))))
+
+
+(format t "Hello world")
+

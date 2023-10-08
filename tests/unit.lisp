@@ -1,11 +1,10 @@
-(defpackage :cl-braces/tests
-  (:use #:cl #:fiveam))
+(defpackage :cl-braces/compiler/tests
+  (:use #:cl #:parachute))
 
-(in-package :cl-braces/tests)
+(in-package :cl-braces/compiler/tests)
 
-(def-suite  :cl-braces :description "All CL-BRACES tests")
-(def-suite* :cl-braces/tests :in :cl-braces)
+(define-test :cl-braces/compiler-suite)
 
-(test test-1
-  "Just a test"
-  (is (= 1 1)))
+(define-test example-test
+  :parent :cl-braces/compiler-suite
+  (is = 1 1))
