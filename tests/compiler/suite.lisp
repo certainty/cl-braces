@@ -1,10 +1,9 @@
 (defpackage :cl-braces/compiler/tests
-  (:use #:cl #:parachute))
+  (:use
+   #:cl
+   #:parachute
+   #:cl-braces/compiler/frontend))
 
 (in-package :cl-braces/compiler/tests)
 
 (define-test :cl-braces/compiler-suite)
-
-(define-test example-test
-  :parent :cl-braces/compiler-suite
-  (is = 1 1))

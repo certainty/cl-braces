@@ -1,42 +1,64 @@
 (in-package :cl-braces/compiler/frontend)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Create a source input for the scanner.
+;; The source input is a thin wrapper that combines the source code as a stream
+;; together with information about the origin of the source code.
+;;
+;; Examples:
+;;
+;; (call-with-source-input #P"foo.go" (lambda (input) ...))  ; Create a source-input from the file foo.go
+;;
+;; (call-with-source-input "package foo\n func main() { return 0 }" (lambda (input) ...)) ; Create a source-input from a string
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defclass source-origin () ()
   (:documentation "An origin for source code"))
+
+(defclass file-origin (source-origin)
+  ((path :initarg :path :reader path))
+  (:documentation "Source code originating from a file."))
+
+(defclass string-origin (source-origin)
+  ((label :initarg :label :reader label))
+  (:documentation "Source code originating from a string."))
 
 (defgeneric source-uri (origin)
   (:documentation "Return the URI of the source origin."))
 
-(defclass file-origin (source-origin)
-  ((path :initarg :path :reader path)))
-
 (defmethod source-uri ((origin file-origin))
   (format nil "file://~A" (path origin)))
-
-(defclass string-origin (source-origin)
-  ((label :initarg :label :reader label)))
 
 (defmethod source-uri ((origin string-origin))
   (format nil "string://~A" (label origin)))
 
-(defstruct source-input
-  (origin nil :type (or null source-origin))
-  (buffer "" :type (or null string)))
+(defclass source-input ()
+  ((origin :initarg :origin :reader source-input-origin :type source-origin)
+   (stream :initarg :stream :reader source-input-stream :type fundamental-character-stream)))
 
-(defgeneric create-source-input (origin)
-  (:documentation "Create a source input from a source origin."))
+(defgeneric source-input-open (origin)
+  (:documentation "Open the source input."))
 
-(defmethod create-source-input ((origin pathname))
-  (with-open-file (stream origin)
-    (make-source-input :origin (make-instance 'file-orgin :path origin)
-                       :buffer (read-file-to-string origin))))
+(defgeneric source-input-close (source-input)
+  (:documentation "Close the source input."))
 
-(defmethod create-source-input ((origin string))
-  (make-source-input :origin (make-instance 'string-origin :label "string")
-                     :buffer origin))
+(defmethod source-input-open ((file pathname))
+  (make-instance 'source-input
+                 :origin (make-instance 'file-origin :path file)
+                 :stream (open file :direction :input :element-type 'character)))
 
-(defun read-file-to-string (filename)
-  (with-open-file (stream filename :element-type 'character)
-    (let* ((length (file-length stream))
-           (buffer (make-string length)))
-      (read-sequence buffer stream)
-      buffer)))
+(defmethod source-input-open ((buffer string))
+  (make-instance 'source-input
+                 :origin (make-instance 'string-origin :label "string")
+                 :stream (make-string-input-stream buffer)))
+
+(defmethod source-input-close ((source-input source-input))
+  (close (source-input-stream source-input)))
+
+(defun call-with-source-input (origin function)
+  (let ((source-input (source-input-open origin)))
+    (unwind-protect
+         (funcall function source-input)
+      (source-input-close source-input))))

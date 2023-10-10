@@ -1,0 +1,19 @@
+
+The language that we're compiling is a subset of golang.
+It doesn't support all of go's features but it follows basic go syntax and semantic.
+The go language has been chosen because it's relatively small, yet uses
+syntax and semantics that match the needs of modern software engineers.
+
+We'll refer to our language as tinygo, going forward.
+
+The following is probably one of the simplest golang and therefor also tinygo program.
+In fact it will be the first program we'll aim to compile.
+
+#+begin_src go
+package main
+import "fmt"
+
+func main() {
+	fmt.Printf("Hello world")
+}
+#+end_src

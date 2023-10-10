@@ -10,6 +10,7 @@
   :description "A compiler playground"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
+  :depends-on (:serapeum)
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
   :pathname "src/compiler"
@@ -18,7 +19,10 @@
                 :components ((:file "package")
                              (:file "input")
                              (:file "location")
-                             (:file "scanner")))))
+                             (:file "token")
+                             (:file "scanner")))
+               (:file "package")
+               (:file "compiler")))
 
 ;; (defsystm "cl-braces/compiler/executable"
 ;;   :description "Executable for cl-braces"
@@ -29,7 +33,9 @@
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :depends-on (:parachute)
   :serial t
-  :pathname "tests"
-  :components ((:file "unit"))
+  :pathname "tests/compiler"
+  :components ((:file "suite")
+               (:module "frontend"
+                       :components ((:file "scanner_test"))))
   :perform (test-op (o c)
-                    ( uiop:symbol-call :parachute :test :cl-braces/compiler/tests)))
+                    (uiop:symbol-call :parachute :test :cl-braces/compiler/tests)))

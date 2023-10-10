@@ -1,14 +1,17 @@
 (defpackage :cl-braces/compiler/frontend
-  (:use :cl)
+  (:use #:cl #:serapeum)
   (:export
+
+   :source-location
    :source-origin
    :string-origin
    :file-origin
    :source-uri
-   :create-source-input
-   :source-location
+   :source-input-open
+   :source-input-close
+   :call-with-source-input
 
+   :scanner
    :create-scanner
    :next-token
-   :test-func
-   ))
+   :eof-p))
