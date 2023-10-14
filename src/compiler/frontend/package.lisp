@@ -14,4 +14,9 @@
    :scanner
    :create-scanner
    :next-token
-   :eof-p))
+   :eof-p
+
+   :token-keyword
+   :+token-kw-func+
+   :-token-kw-package+
+   ))

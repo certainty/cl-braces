@@ -13,9 +13,26 @@
 (defconstant +token-number+ :number "A number literal")
 (defconstant +token-string+ :string "A string literal")
 
-(defconstant +token-kw-package+ :package "The package keyword")
-(defconstant +token-kw-import+ :import "The import keyword")
-(defconstant +token-kw-func+ :func "The func keyword")
+(defvar *token-class-literal*
+  #.(dict
+     +token-string+ t
+     +token-number+ t))
+
+(defconstant +token-kw-package+ :kw-package "The package keyword")
+(defconstant +token-kw-import+ :kw-import "The import keyword")
+(defconstant +token-kw-func+ :kw-func "The func keyword")
+
+(defvar *token-class-keyword*
+  #.(dict
+     +token-kw-package+ t
+     +token-kw-import+ t
+     +token-kw-func+ t))
+
+(defvar *string-to-keyword-type*
+  #.(dict
+     "func" +token-kw-func+
+     "import" +token-kw-import+
+     "package" +token-kw-package+))
 
 (defstruct token
   (type +token-eof+ :type keyword :read-only t)
@@ -27,10 +44,9 @@
   (eql (token-type token) +token-illegal+))
 
 (-> token-eof-p (token) boolean)
-(defun literal-p (token)
-  (member (token-type token) '(:number :string)))
+(defun token-literal-p (token)
+  (not (null (gethash (token-type token) *token-class-literal*))))
 
 (-> token-eof-p (token) boolean)
-(defun keyword-p (token)
-  (member (token-type token) '(:package :import)))
-
+(defun token-keyword-p (token)
+  (not (null (gethash (token-type token) *token-class-keyword*))))

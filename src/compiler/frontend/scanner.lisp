@@ -26,6 +26,7 @@ This operation always succeeds unless a condition is raised.
 If the input isn't recognized we simply return the special failure token and add the error to the internal scanner state.
 "
   (skip-whitespaces scanner)
+
   (when (eof-p scanner)
     (return-from next-token (make-token :type +token-eof+)))
 
@@ -68,16 +69,22 @@ If the input isn't recognized we simply return the special failure token and add
 
 (-> location (scanner) source-location)
 (defun location (scanner)
+  "Return the current location in the source input"
   (with-slots (column line offset) scanner
     (make-source-location :line line :column column :offset offset)))
 
 (-> scan-identifier (scanner) token)
 (defun scan-identifier (scanner)
+  "Attempt to scan an identifier or keyword"
   (let ((consumed (scan-while scanner #'identifier-char-p))
         (loc (location scanner)))
-    (if (null consumed)
-        (make-token :type +token-illegal+)
-        (make-token :type +token-identifier+ :text (coerce consumed 'string) :location loc))))
+
+    (when (null consumed)
+      (return-from scan-identifier (make-token :type +token-illegal+)))
+
+    (let* ((identifier (coerce consumed 'string))
+           (kw (gethash identifier *string-to-keyword-type*)))
+      (make-token :type (or kw +token-identifier+) :text identifier :location loc))))
 
 (defun identifier-char-p (c)
   (or (sb-unicode:digit-value c) (sb-unicode:alphabetic-p c) (char= c #\_)))
@@ -87,6 +94,7 @@ If the input isn't recognized we simply return the special failure token and add
     (advance! scanner)))
 
 (defun scan-while (scanner predicate)
+  "Consume the input, returning the list of consumed characters, while <predicate> returns t"
   (let ((consumed '()))
     (loop
       (if (eof-p scanner)
