@@ -4,8 +4,12 @@
   ((input :initarg :input :type source-input :reader scanner-input :documentation "The input to scan")
    (errors :initform nil :type  list :accessor scanner-errors :documentation "A list of errors encountered during scanning")
    (line :initform 1 :type integer  :accessor scanner-line :documentation "The current line number")
-   (column :initform 0 :type integer :accessor scanner-column :documentation "The current column number")
-   (start :initform 0 :type integer :accessor scanner-start :documentation "The start position of the current token")))
+   (column :initform 0 :type integer :accessor scanner-column :documentation "The current column number")))
+
+(defmethod print-object ((s scanner) stream)
+  (print-unreadable-object (s stream :type t :identity t)
+    (with-slots (line column errors) s
+      (format stream "line:~a column:~a errors: ~a" line column errors))))
 
 (defgeneric create-scanner (input)
   (:documentation "Creates a new scanner for the given input"))
@@ -20,17 +24,22 @@
 This operation always succeeds unless a condition is raised.
 If the input isn't recognized we simply return the special failure token and add the error to the internal scanner state.
 "
-  (declare (ignore scanner))
+
   (make-token :type +token-illegal+))
 
 (defun eof-p (scanner)
   "Returns true if the scanner has reached the end of the input"
   (null (peek scanner)))
 
-(-> skip-whitespaces (scanner) scanner)
+(defconstant +whitespace+ (list #\Space #\Tab #\Return #\Newline))
+
 (defun skip-whitespaces (scanner)
   "Skip whitespaces and comments"
-  scanner)
+  (loop
+    (cond
+      ((eof-p scanner) (return))
+      ((member (peek scanner) +whitespace+) (advance! scanner))
+      (t (return)))))
 
 (-> advance! (scanner) (or null character))
 (defun advance! (scanner)
