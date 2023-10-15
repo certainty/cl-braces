@@ -1,11 +1,13 @@
 (in-package :cl-braces/compiler/frontend)
 
 (defclass scanner ()
-  ((input :initarg :input :type source-input :reader scanner-input :documentation "The input to scan")
-   (errors :initform (make-array 0 :fill-pointer 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *) :accessor scanner-errors :documentation "A list of errors encountered during scanning")
-   (line :initform 1 :type integer  :accessor scanner-line :documentation "The current line number")
-   (column :initform 0 :type integer :accessor scanner-column :documentation "The current column number")
-   (offset :initform 0 :type integer :accessor scanner-offset :documentation "The zero-based offset in the input to the start of the token.")))
+  ((input :initarg :input :type source-input :documentation "The input to scan")
+   (errors :initform (make-array 0 :fill-pointer 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *) :reader scanner-errors :documentation "A list of errors encountered during scanning")
+   (line :initform 1 :type integer :documentation "The current line number")
+   (column :initform 0 :type integer :documentation "The current column number")
+   (last-read-char :initform nil)
+   (last-read-column :initform nil)
+   (offset :initform 0 :type integer :documentation "The zero-based offset in the input to the start of the token.")))
 
 (defclass scan-error ()
   ((message :initarg :message :type string)
@@ -57,29 +59,51 @@ If the input isn't recognized we simply return the special failure token and add
 
 (defun skip-whitespaces (scanner)
   "Skip whitespaces and comments"
-  (loop
+  (loop for next = (peek scanner) until (eof-p scanner) do
     (cond
-      ((eof-p scanner) (return))
-      ((member (peek scanner) +whitespace+) (advance! scanner))
+      ((member next +whitespace+) (advance! scanner))
+      ((char= #\/ next)
+       (advance! scanner)
+       (unless (char= #\/ (peek scanner))
+         (retreat! scanner)
+         (return))
+       (loop for n = (advance! scanner) until (char= #\Newline n)))
       (t (return)))))
 
 (-> advance! (scanner) (or null character))
 (defun advance! (scanner)
   "Advance the scanner to the next character, adjusting internal state to keep track of location in the input stream.
    Returns the character that was advanced to or nil if the end of the input has been reached."
-  (let ((current-char (read-char (source-input-stream (scanner-input scanner)) nil)))
-    (incf (scanner-column scanner))
-    (incf (scanner-offset scanner))
-    (when (eql current-char #\Newline)
-      (incf (scanner-line scanner))
-      (setf (scanner-column scanner) 0))
-    current-char))
+  (with-slots (last-read-char last-read-column column offset line input) scanner
+    (let ((current-char (read-char (source-input-stream input) nil)))
+      (setf last-read-char current-char)
+      (setf last-read-column column)
+      (incf column)
+      (incf offset)
+      (when (eql current-char #\Newline)
+        (incf line)
+        (setf column 0))
+      current-char)))
+
+(defun retreat! (scanner)
+  "Unread the the last advanced character and rewind internal location tracking to previous location"
+  (with-slots (last-read-char last-read-column column offset line input) scanner
+    (unless (null last-read-char)
+
+      (unread-char last-read-char (source-input-stream input))
+      (setf column last-read-column)
+      (decf offset)
+      (when (char= last-read-char #\Newline)
+        (decf line))
+      (setf last-read-char nil)
+      (setf last-read-column nil))))
 
 (-> peek (scanner) (or null character))
 (defun peek (scanner)
   "Peeks at the next character in the input stream without advancing the scanner."
-  (let ((stream (source-input-stream (scanner-input scanner))))
-    (peek-char nil stream nil nil)))
+  (with-slots (input) scanner
+    (let ((stream (source-input-stream input)))
+      (peek-char nil stream nil nil))))
 
 (-> location (scanner) source-location)
 (defun location (scanner)
