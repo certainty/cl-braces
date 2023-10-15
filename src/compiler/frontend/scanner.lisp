@@ -42,6 +42,7 @@ If the input isn't recognized we simply return the special failure token and add
   (let ((next (peek scanner)))
     (cond
       ((or (alpha-char-p next) (char= #\_ next)) (scan-identifier scanner))
+      ((digit-char-p next) (scan-number scanner))
       (t (case (advance! scanner)
            (#\( (make-token :type +token-lparen+ :text "(" :location (location scanner)))
            (#\) (make-token :type +token-rparen+ :text ")" :location (location scanner)))
@@ -49,6 +50,17 @@ If the input isn't recognized we simply return the special failure token and add
            (#\} (make-token :type +token-rbrace+ :text "}" :location (location scanner)))
            (#\[ (make-token :type +token-lbracket+ :text "[" :location (location scanner)))
            (#\] (make-token :type +token-rbracket+ :text "]" :location (location scanner)))
+           (#\-
+            (advance! scanner)
+            (if (digit-char-p (peek scanner))
+                (progn (retreat! scanner) (scan-number))
+                (make-token :type +token-op-minus+ :text "-" :location (location scanner))))
+           (#\+
+            (advance! scanner)
+            (if (digit-char-p (peek scanner))
+                (progn (retreat! scanner) (scan-number))
+                (make-token :type +token-op-plus+ :text "-" :location (location scanner))))
+
            (otherwise (illegal-token scanner "unexpected token")))))))
 
 (defun eof-p (scanner)
@@ -135,6 +147,22 @@ If the input isn't recognized we simply return the special failure token and add
 (defun identifier-char-p (c)
   (and (characterp c)
        (or (sb-unicode:digit-value c) (sb-unicode:alphabetic-p c) (char= c #\_))))
+
+(-> scan-number (scanner) token)
+(defun scan-number (scanner)
+  "Attempt to scan a number literal"
+  (let ((loc (location scanner))
+        (sign (peek scanner))
+        (radix 10))
+
+    (when (and sign (or (char= sign #\+) (char= sign #\-) (digit-char-p sign radix)))
+      (advance! scanner))
+
+    (let ((digits (scan-while scanner (lambda (c) (and c (digit-char-p c radix))))))
+      (push sign digits)
+      (let* ((digit-str (coerce digits 'string))
+             (value (parse-integer digit-str :radix radix)))
+        (make-token :type +token-number+ :text digit-str :value value :location loc)))))
 
 (defun advance-if (scanner predicate)
   (when (funcall predicate (peek scanner))

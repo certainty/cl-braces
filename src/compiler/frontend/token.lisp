@@ -21,6 +21,14 @@
      +token-string+ t
      +token-number+ t))
 
+(defconstant +token-op-minus+ :op-minus "Minus operator")
+(defconstant +token-op-plus+ :op-plus "Plus operator")
+
+(defvar *token-class-operator*
+  #.(dict
+     +token-op-plus+
+     +token-op-minus+))
+
 (defconstant +token-kw-package+ :kw-package "The package keyword")
 (defconstant +token-kw-import+ :kw-import "The import keyword")
 (defconstant +token-kw-func+ :kw-func "The func keyword")
@@ -46,6 +54,7 @@
 (defstruct token
   (type +token-eof+ :type keyword :read-only t)
   (text "" :type string :read-only t)
+  (value nil :read-only t)
   (location nil :type (or null source-location) :read-only t))
 
 (-> token-illegal-p (token) boolean)
