@@ -2,10 +2,14 @@
 
 (defclass scanner ()
   ((input :initarg :input :type source-input :reader scanner-input :documentation "The input to scan")
-   (errors :initform nil :type  list :accessor scanner-errors :documentation "A list of errors encountered during scanning")
+   (errors :initform (make-array 0 :fill-pointer 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *) :accessor scanner-errors :documentation "A list of errors encountered during scanning")
    (line :initform 1 :type integer  :accessor scanner-line :documentation "The current line number")
-   (column :initform 1 :type integer :accessor scanner-column :documentation "The current column number")
-   (offset :initform 0 :type integer :accessor scanner-offset :documentation "The offset in the input")))
+   (column :initform 0 :type integer :accessor scanner-column :documentation "The current column number")
+   (offset :initform 0 :type integer :accessor scanner-offset :documentation "The zero-based offset in the input to the start of the token.")))
+
+(defclass scan-error ()
+  ((message :initarg :message :type string)
+   (location :initarg :location :type source-location)))
 
 (defmethod print-object ((s scanner) stream)
   (print-unreadable-object (s stream :type t :identity t)
@@ -36,7 +40,14 @@ If the input isn't recognized we simply return the special failure token and add
   (let ((next (peek scanner)))
     (cond
       ((or (alpha-char-p next) (char= #\_ next)) (scan-identifier scanner))
-      (t (make-token :type +token-illegal+)))))
+      (t (case (advance! scanner)
+           (#\( (make-token :type +token-lparen+ :text "(" :location (location scanner)))
+           (#\) (make-token :type +token-rparen+ :text ")" :location (location scanner)))
+           (#\{ (make-token :type +token-lbrace+ :text "{" :location (location scanner)))
+           (#\} (make-token :type +token-rbrace+ :text "}" :location (location scanner)))
+           (#\[ (make-token :type +token-lbracket+ :text "[" :location (location scanner)))
+           (#\] (make-token :type +token-rbracket+ :text "]" :location (location scanner)))
+           (otherwise (illegal-token scanner "unexpected token")))))))
 
 (defun eof-p (scanner)
   "Returns true if the scanner has reached the end of the input"
@@ -76,6 +87,14 @@ If the input isn't recognized we simply return the special failure token and add
   (with-slots (column line offset) scanner
     (make-source-location :line line :column column :offset offset)))
 
+(-> illegal-token (scanner string &optional source-location) token)
+(defun illegal-token (scanner message &optional loc)
+  (with-slots (errors) scanner
+    (let* ((effective-location (or loc (location scanner)))
+           (err (make-instance 'scan-error :message message :location effective-location)))
+      (vector-push-extend err errors)
+      (make-token :type +token-illegal+ :location effective-location))))
+
 (-> scan-identifier (scanner) token)
 (defun scan-identifier (scanner)
   "Attempt to scan an identifier or keyword"
@@ -83,7 +102,7 @@ If the input isn't recognized we simply return the special failure token and add
         (loc (location scanner)))
 
     (when (null consumed)
-      (return-from scan-identifier (make-token :type +token-illegal+)))
+      (return-from scan-identifier (illegal-token scanner "expected identifier" loc)))
 
     (let* ((identifier (coerce consumed 'string))
            (kw (gethash identifier *string-to-keyword-type*)))

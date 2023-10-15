@@ -7,6 +7,9 @@
 (defconstant +token-rparen+ :rparen "The right parenthesis )")
 (defconstant +token-lbrace+ :lbrace "The left brace {")
 (defconstant +token-rbrace+ :rbrace "The right brace }")
+(defconstant +token-lbracket+ :lbracket "The left bracket [")
+(defconstant +token-rbracket+ :rbracket "The right bracket ]")
+
 (defconstant +token-dot+ :dot "The dot .")
 
 (defconstant +token-identifier+ :identifier "Any valid identifier of tinygo")
@@ -21,18 +24,24 @@
 (defconstant +token-kw-package+ :kw-package "The package keyword")
 (defconstant +token-kw-import+ :kw-import "The import keyword")
 (defconstant +token-kw-func+ :kw-func "The func keyword")
+(defconstant +token-kw-var+ :kw-var "The var keyword")
+(defconstant +token-kw-return+ :kw-return "The return keyword")
 
 (defvar *token-class-keyword*
   #.(dict
      +token-kw-package+ t
      +token-kw-import+ t
-     +token-kw-func+ t))
+     +token-kw-func+ t
+     +token-kw-var+ t
+     +token-kw-return+ t))
 
 (defvar *string-to-keyword-type*
   #.(dict
      "func" +token-kw-func+
      "import" +token-kw-import+
-     "package" +token-kw-package+))
+     "package" +token-kw-package+
+     "var" +token-kw-var+
+     "return" +token-kw-return+))
 
 (defstruct token
   (type +token-eof+ :type keyword :read-only t)
@@ -44,9 +53,13 @@
   (eql (token-type token) +token-illegal+))
 
 (-> token-eof-p (token) boolean)
+(defun token-eof-p (token)
+  (eql (token-type token) +token-eof+))
+
+(-> token-literal-p (token) boolean)
 (defun token-literal-p (token)
   (not (null (gethash (token-type token) *token-class-literal*))))
 
-(-> token-eof-p (token) boolean)
+(-> token-keyword-p (token) boolean)
 (defun token-keyword-p (token)
   (not (null (gethash (token-type token) *token-class-keyword*))))
