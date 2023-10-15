@@ -18,5 +18,4 @@
 
    :token-keyword
    :+token-kw-func+
-   :-token-kw-package+
-   ))
+   :-token-kw-package+))

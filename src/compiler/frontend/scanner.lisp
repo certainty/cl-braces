@@ -19,6 +19,9 @@
   "Creates a new scanner for the given input"
   (make-instance 'scanner :input input))
 
+(defun string->scanner (s)
+  (create-scanner (source-input-open s)))
+
 (-> next-token (scanner) token)
 (defun next-token (scanner)
   "Scans the next token from input and return it.
@@ -87,7 +90,8 @@ If the input isn't recognized we simply return the special failure token and add
       (make-token :type (or kw +token-identifier+) :text identifier :location loc))))
 
 (defun identifier-char-p (c)
-  (or (sb-unicode:digit-value c) (sb-unicode:alphabetic-p c) (char= c #\_)))
+  (and (characterp c)
+       (or (sb-unicode:digit-value c) (sb-unicode:alphabetic-p c) (char= c #\_))))
 
 (defun advance-if (scanner predicate)
   (when (funcall predicate (peek scanner))
@@ -95,9 +99,6 @@ If the input isn't recognized we simply return the special failure token and add
 
 (defun scan-while (scanner predicate)
   "Consume the input, returning the list of consumed characters, while <predicate> returns t"
-  (let ((consumed '()))
-    (loop
-      (if (eof-p scanner)
-          (return (nreverse consumed))
-          (let ((next (advance-if scanner predicate)))
-            (if next (push next consumed) (return (nreverse consumed))))))))
+  (loop for next = (advance-if scanner predicate)
+        until (null next)
+        collect next))
