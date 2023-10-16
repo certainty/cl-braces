@@ -10,6 +10,8 @@
   :parent :cl-braces/compiler/frontend/scanner-suite
   (true (eof-p (string->scanner ""))))
 
-(define-test scan-keywords
+(define-test skip-whitespaces
   :parent :cl-braces/compiler/frontend/scanner-suite
-  (is eql +token-kw-func+ (token-keyword (next-token (string->scanner "   func")))))
+  (let ((comments (next-token (string->scanner (format nil "// foo bar~%valid"))))
+        (newlines (next-token (string->scanner (format nil "foo    ~% bar")))))
+    (is string= (token-text comments) "valid")))

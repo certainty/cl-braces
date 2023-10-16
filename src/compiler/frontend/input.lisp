@@ -14,17 +14,21 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(export '(source-origin))
 (defclass source-origin () ()
   (:documentation "An origin for source code"))
 
+(export '(file-origin path))
 (defclass file-origin (source-origin)
   ((path :initarg :path :reader path))
   (:documentation "Source code originating from a file."))
 
+(export '(string-origin label))
 (defclass string-origin (source-origin)
   ((label :initarg :label :reader label))
   (:documentation "Source code originating from a string."))
 
+(export '(source-uri))
 (defgeneric source-uri (origin)
   (:documentation "Return the URI of the source origin."))
 
@@ -34,13 +38,16 @@
 (defmethod source-uri ((origin string-origin))
   (format nil "string://~A" (label origin)))
 
+(export '(source-input source-input-origin source-input-stream))
 (defclass source-input ()
   ((origin :initarg :origin :reader source-input-origin :type source-origin)
    (stream :initarg :stream :reader source-input-stream :type fundamental-character-stream)))
 
+(export '(source-input-open))
 (defgeneric source-input-open (origin)
   (:documentation "Open the source input."))
 
+(export '(source-input-close))
 (defgeneric source-input-close (source-input)
   (:documentation "Close the source input."))
 
@@ -57,8 +64,13 @@
 (defmethod source-input-close ((source-input source-input))
   (close (source-input-stream source-input)))
 
+(export '(call-with-source-input))
 (defun call-with-source-input (origin function)
   (let ((source-input (source-input-open origin)))
     (unwind-protect
          (funcall function source-input)
       (source-input-close source-input))))
+
+(export '(with-source-input))
+(defmacro with-source-input (origin-var origin) &body
+  `(call-with-source-input origin (lambda (,origin-var) ,@body)))

@@ -1,34 +1,29 @@
 (in-package :cl-braces/compiler/frontend)
 
-(defclass scanner ()
-  ((input :initarg :input :type source-input :documentation "The input to scan")
-   (errors :initform (make-array 0 :fill-pointer 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *) :reader scanner-errors :documentation "A list of errors encountered during scanning")
-   (line :initform 1 :type integer :documentation "The current line number")
-   (column :initform 0 :type integer :documentation "The current column number")
-   (last-read-char :initform nil)
-   (last-read-column :initform nil)
-   (offset :initform 0 :type integer :documentation "The zero-based offset in the input to the start of the token.")))
+(export '(scan-state scan-errors))
+(defstruct (scan-state (:conc-name scan-))
+  (input (error "input required") :type source-input)
+  (errors (make-array 0 :fill-pointer 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *))
+  (offset 0 :type integer)
+  (line 1 :type integer)
+  (column 0 :type integer)
+  (last-read-char nil :type (or null character))
+  (last-read-column nil :type (or null integer)))
 
-(defclass scan-error ()
-  ((message :initarg :message :type string)
-   (location :initarg :location :type source-location)))
-
-(defmethod print-object ((s scanner) stream)
+(defmethod print-object ((s scan-state) stream)
   (print-unreadable-object (s stream :type t :identity t)
-    (with-slots (line column offset errors) s
-      (format stream "line:~a column:~a offset:~a errors: ~a" line column offset errors))))
+    (format stream "line:~a column:~a offset:~a errors:~a" (scan-line s) (scan-column s) (scan-offset s) (scan-errors s))))
 
-(defgeneric create-scanner (input)
-  (:documentation "Creates a new scanner for the given input"))
-
-(defmethod create-scanner ((input source-input))
-  "Creates a new scanner for the given input"
-  (make-instance 'scanner :input input))
+(export '(scan-error scan-error-message scan-error-location))
+(defstruct (scan-error (:conc-name scan-error-))
+  (message (error "no message") :type string :read-only t)
+  (location (error "no source-location") :type source-location :read-only t))
 
 (defun string->scanner (s)
-  (create-scanner (source-input-open s)))
+  (make-scan-state :input (source-input-open s)))
 
-(-> next-token (scanner) token)
+(export '(next-token))
+(-> next-token (scan-state) token)
 (defun next-token (scanner)
   "Scans the next token from input and return it.
 This operation always succeeds unless a condition is raised.
@@ -53,85 +48,82 @@ If the input isn't recognized we simply return the special failure token and add
            (#\-
             (advance! scanner)
             (if (digit-char-p (peek scanner))
-                (progn (retreat! scanner) (scan-number))
+                (progn (retreat! scanner) (scan-number scanner))
                 (make-token :type +token-op-minus+ :text "-" :location (location scanner))))
            (#\+
             (advance! scanner)
             (if (digit-char-p (peek scanner))
-                (progn (retreat! scanner) (scan-number))
+                (progn (retreat! scanner) (scan-number scanner))
                 (make-token :type +token-op-plus+ :text "-" :location (location scanner))))
-
            (otherwise (illegal-token scanner "unexpected token")))))))
 
+(export '(eof-p))
 (defun eof-p (scanner)
   "Returns true if the scanner has reached the end of the input"
   (null (peek scanner)))
 
-(defconstant +whitespace+ (list #\Space #\Tab #\Return #\Newline))
+(defconst +whitespace+ (list #\Space #\Tab #\Return #\Newline))
 
 (defun skip-whitespaces (scanner)
   "Skip whitespaces and comments"
-  (loop for next = (peek scanner) until (eof-p scanner) do
+  (loop for next = (peek scanner) until (or (eof-p scanner)) do
     (cond
       ((member next +whitespace+) (advance! scanner))
-      ((char= #\/ next)
+      ((eql #\/ next)
        (advance! scanner)
-       (unless (char= #\/ (peek scanner))
+       (unless (eql #\/ (peek scanner))
          (retreat! scanner)
          (return))
-       (loop for n = (advance! scanner) until (char= #\Newline n)))
+       (loop for n = (advance! scanner) until (eql #\Newline n)))
       (t (return)))))
 
-(-> advance! (scanner) (or null character))
+(-> advance! (scan-state) (or null character))
 (defun advance! (scanner)
   "Advance the scanner to the next character, adjusting internal state to keep track of location in the input stream.
    Returns the character that was advanced to or nil if the end of the input has been reached."
-  (with-slots (last-read-char last-read-column column offset line input) scanner
-    (let ((current-char (read-char (source-input-stream input) nil)))
-      (setf last-read-char current-char)
-      (setf last-read-column column)
-      (incf column)
-      (incf offset)
-      (when (eql current-char #\Newline)
-        (incf line)
-        (setf column 0))
-      current-char)))
+  (let ((current-char (read-char (source-input-stream (scan-input scanner)) nil))
+        (current-column (scan-column scanner)))
+    (setf (scan-last-read-char scanner) current-char)
+    (setf (scan-last-read-column scanner) current-column)
+    (incf (scan-column scanner))
+    (incf (scan-offset scanner))
+    (when (eql current-char #\Newline)
+      (incf (scan-line scanner))
+      (setf (scan-column scanner) 0))
+    current-char))
 
+(-> retreat! (scan-state))
 (defun retreat! (scanner)
   "Unread the the last advanced character and rewind internal location tracking to previous location"
-  (with-slots (last-read-char last-read-column column offset line input) scanner
-    (unless (null last-read-char)
+  (unless (null (scan-last-read-char scanner))
 
-      (unread-char last-read-char (source-input-stream input))
-      (setf column last-read-column)
-      (decf offset)
-      (when (char= last-read-char #\Newline)
-        (decf line))
-      (setf last-read-char nil)
-      (setf last-read-column nil))))
+    (unread-char (scan-last-read-char scanner) (source-input-stream (scan-input scanner)))
+    (setf (scan-column scanner) (scan-last-read-column scanner))
+    (decf (scan-offset scanner))
+    (when (char= (scan-last-read-char scanner) #\Newline)
+      (decf (scan-line scanner)))
+    (setf (scan-last-read-char scanner) nil)
+    (setf (scan-last-read-column scanner) nil)))
 
-(-> peek (scanner) (or null character))
+(-> peek (scan-state) (or null character))
 (defun peek (scanner)
   "Peeks at the next character in the input stream without advancing the scanner."
-  (with-slots (input) scanner
-    (let ((stream (source-input-stream input)))
-      (peek-char nil stream nil nil))))
+  (let ((stream (source-input-stream (scan-input scanner))))
+    (peek-char nil stream nil nil)))
 
-(-> location (scanner) source-location)
+(-> location (scan-state) source-location)
 (defun location (scanner)
   "Return the current location in the source input"
-  (with-slots (column line offset) scanner
-    (make-source-location :line line :column column :offset offset)))
+  (make-source-location :line (scan-line scanner) :column (scan-column scanner) :offset (scan-offset scanner)))
 
-(-> illegal-token (scanner string &optional source-location) token)
+(-> illegal-token (scan-state string &optional source-location) token)
 (defun illegal-token (scanner message &optional loc)
-  (with-slots (errors) scanner
-    (let* ((effective-location (or loc (location scanner)))
-           (err (make-instance 'scan-error :message message :location effective-location)))
-      (vector-push-extend err errors)
-      (make-token :type +token-illegal+ :location effective-location))))
+  (let* ((effective-location (or loc (location scanner)))
+         (err (make-scan-error :message message :location effective-location)))
+    (vector-push-extend err (scan-errors scanner))
+    (make-token :type +token-illegal+ :location effective-location)))
 
-(-> scan-identifier (scanner) token)
+(-> scan-identifier (scan-state) token)
 (defun scan-identifier (scanner)
   "Attempt to scan an identifier or keyword"
   (let ((consumed (scan-while scanner #'identifier-char-p))
@@ -148,7 +140,7 @@ If the input isn't recognized we simply return the special failure token and add
   (and (characterp c)
        (or (sb-unicode:digit-value c) (sb-unicode:alphabetic-p c) (char= c #\_))))
 
-(-> scan-number (scanner) token)
+(-> scan-number (scan-state) token)
 (defun scan-number (scanner)
   "Attempt to scan a number literal"
   (let ((loc (location scanner))
