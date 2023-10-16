@@ -1,6 +1,6 @@
 (in-package :cl-braces/compiler/frontend)
 
-(export '(scan-state scan-errors))
+(export '(scan-state make-scan-state scan-errors))
 (defstruct (scan-state (:conc-name scan-))
   (input (error "input required") :type source-input)
   (errors (make-array 0 :fill-pointer 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *))
@@ -18,6 +18,7 @@
 (defstruct (scan-error (:conc-name scan-error-))
   (message (error "no message") :type string :read-only t)
   (location (error "no source-location") :type source-location :read-only t))
+
 
 (defun string->scanner (s)
   (make-scan-state :input (source-input-open s)))

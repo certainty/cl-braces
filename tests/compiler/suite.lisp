@@ -2,7 +2,7 @@
   (:use
    #:cl
    #:parachute
-   #:cl-braces/compiler/frontend))
+   :cl-braces/compiler/frontend))
 
 (in-package :cl-braces/compiler/tests)
 
