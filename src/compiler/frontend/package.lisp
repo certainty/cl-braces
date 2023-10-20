@@ -1,5 +1,5 @@
 (defpackage #:cl-braces/compiler/frontend
-  (:use #:cl #:serapeum #:cl-braces/utils)
+  (:use #:cl #:serapeum)
   (:export
 
    #:token-literal-p

@@ -18,8 +18,6 @@
                #:closer-mop
 
                #:log4cl
-
-               #:cl-braces/utils
                )
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
@@ -33,14 +31,6 @@
                              (:file "scanner")))
                (:file "package")
                (:file "compiler")))
-
-(asdf:defsystem "cl-braces/utils"
-  :description "Compiler for cl-braces"
-  :author "David Krentzlin <david.krentzlin@gmail.com>"
-  :serial t
-  :pathname "src/utils"
-  :components ((:file "package")
-               (:file "exports")))
 
 ;; (defsystm "cl-braces/compiler/executable"
 ;;   :description "Executable for cl-braces"
