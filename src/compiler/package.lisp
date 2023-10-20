@@ -1,3 +1,3 @@
-(defpackage :cl-braces/compiler
+(defpackage #:cl-braces/compiler
   (:use #:cl #:cl-braces/compiler/frontend)
-  (:export :compile-string))
+  (:export #:compile-string))

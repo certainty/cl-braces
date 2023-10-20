@@ -3,14 +3,24 @@
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
   :serial t
-  :depends-on (:cl-braces/compiler))
+  :depends-on (#:cl-braces/compiler))
 
 (asdf:defsystem "cl-braces/compiler"
   :description "Compiler for cl-braces"
-  :description "A compiler playground"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
-  :depends-on (:serapeum)
+  :depends-on (
+               #:alexandria
+               #:serapeum
+               #:defstar
+
+               #:trivia
+               #:closer-mop
+
+               #:log4cl
+
+               #:cl-braces/utils
+               )
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
   :pathname "src/compiler"
@@ -24,6 +34,14 @@
                (:file "package")
                (:file "compiler")))
 
+(asdf:defsystem "cl-braces/utils"
+  :description "Compiler for cl-braces"
+  :author "David Krentzlin <david.krentzlin@gmail.com>"
+  :serial t
+  :pathname "src/utils"
+  :components ((:file "package")
+               (:file "exports")))
+
 ;; (defsystm "cl-braces/compiler/executable"
 ;;   :description "Executable for cl-braces"
 ;;   :author "David Krentzlin <david.krentzlin@gmail.com>")
@@ -36,6 +54,6 @@
   :pathname "tests/compiler"
   :components ((:file "suite")
                (:module "frontend"
-                       :components ((:file "scanner_test"))))
+                :components ((:file "scanner_test"))))
   :perform (test-op (o c)
                     (uiop:symbol-call :parachute :test :cl-braces/compiler/tests)))

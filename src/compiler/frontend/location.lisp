@@ -1,6 +1,5 @@
 (in-package :cl-braces/compiler/frontend)
 
-(export '(source-location location-line location-column location-offset))
 (defstruct (source-location (:conc-name location-))
   "A representation of a position some source input"
   (line   1 :type fixnum :read-only t)
