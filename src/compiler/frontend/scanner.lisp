@@ -22,7 +22,7 @@
 
 (defun scan-all (scanner)
   "consumes all tokens and returns them in a list"
-  (loop for tok = (next-token scanner) until (eof-p scanner) collect tok))
+  (loop for tok = (next-token scanner) until (token-eof-p tok) collect tok))
 
 (-> next-token (scan-state) token)
 (defun next-token (scanner)
@@ -55,7 +55,7 @@ If the input isn't recognized we simply return the special failure token and add
         (#\} (=> :tok-rbrace))
         (otherwise (illegal-token scanner "unexpected token"))))))
 
-(export '(eof-p))
+(-> eof-p (scan-state) boolean)
 (defun eof-p (scanner)
   "Returns true if the scanner has reached the end of the input"
   (null (peek scanner)))

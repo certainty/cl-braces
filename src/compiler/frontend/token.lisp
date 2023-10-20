@@ -72,25 +72,24 @@
      "for" :tok-kw-for
      "range" :tok-kw-range))
 
-
 (defstruct (token (:conc-name token-))
   (type :tok-eof :type token-tpe :read-only t)
   (text "" :type string :read-only t)
   (value nil :read-only t)
   (location nil :type (or null source-location) :read-only t))
 
-(-> token-illegal-p (token token-tpe) boolean)
+(-> token-illegal-p (token) boolean)
 (defun token-illegal-p (token)
   (eql (token-type token) :tok-illegal))
 
-(-> token-eof-p (token token-tpe) boolean)
+(-> token-eof-p (token) boolean)
 (defun token-eof-p (token)
   (eql (token-type token) :tok-eof))
 
-(-> token-literal-p (token token-tpe) boolean)
+(-> token-literal-p (token) boolean)
 (defun token-literal-p (token)
   (typep (token-type token) 'token-literal-tpe))
 
-(-> token-keyword-p (token token-tpe) boolean)
+(-> token-keyword-p (token) boolean)
 (defun token-keyword-p (token)
   (typep (token-type token) 'token-keyword-tpe))

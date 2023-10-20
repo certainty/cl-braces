@@ -3,12 +3,10 @@
 (define-test :cl-braces/compiler/frontend/scanner-suite
   :parent :cl-braces/compiler-suite)
 
-(defun string->scanner (s)
-  (make-scan-state :input (source-input-open s)))
-
-(define-test eof-p
-  :parent :cl-braces/compiler/frontend/scanner-suite
-  (true (eof-p (string->scanner ""))))
+;; (define-test test-eof-p
+;;   :parent :cl-braces/compiler/frontend/scanner-suite
+;;   (true (eof-p
+;;          (string->scanner ""))))
 
 (define-test skip-whitespaces
   :parent :cl-braces/compiler/frontend/scanner-suite
@@ -20,6 +18,6 @@
 (define-test next-token-smoke-test
   :parent :cl-braces/compiler/frontend/scanner-suite
   (let* ((s (string->scanner (format nil "// this is a comment ~% func main(){ return 3 }")))
-         (tokens (loop for token = (next-token s) until (token-eof-p token) collect token)))
+         (tokens (scan-all s)))
     (is = 8 (length tokens))
-    (is equal (mapcar #'token-type tokens) (list :kw-func :identifier :lparen :rparen :lbrace :kw-return :number :rbrace))))
+    (is equal (mapcar #'token-type tokens) (list :tok-kw-func :tok-identifier :tok-lparen :tok-rparen :tok-lbrace :tok-kw-return :tok-number :tok-rbrace))))

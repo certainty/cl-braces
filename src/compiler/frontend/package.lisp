@@ -8,6 +8,7 @@
    #:token-illegal-p
    #:token-type
    #:token-value
+   #:token-text
    #:token-location
 
    #:source-origin
@@ -35,6 +36,7 @@
    #:scan-error
    #:scan-error-message
    #:scan-error-location
+   #:eof-p
 
    #:next-token
    #:string->scanner
