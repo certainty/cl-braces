@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          ln -s $(pwd) $ROSWELL_HOME/lisp/quicklisp/local-projects/cl-braces
+          ln -s $(pwd) ~/.roswell/lisp/quicklisp/local-projects/cl-braces
           ros -e '(progn (ql:quickload :parachute) (uiop:quit))'
           ros -e '(progn (ql:quickload :cl-braces) (uiop:quit))'
 
