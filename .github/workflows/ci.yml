@@ -33,11 +33,12 @@ jobs:
         run: |
           curl -L https://raw.githubusercontent.com/roswell/roswell/v21.10.14.111/scripts/install-for-ci.sh | sh -x
 
-      - name: Load system
+      - name: Install dependencies
         shell: bash
         run: |
-          ros -e '(progn (asdf:load-system :cl-braces) (uiop:quit))'
+          ln -s $(pwd) ~/quicklisp/local-projects/
           ros -e '(progn (ql:quickload :parachute) (uiop:quit))'
+          ros -e '(progn (ql:quickload :cl-braces) (uiop:quit))'
 
       - name: Test Compiler
         shell: bash
