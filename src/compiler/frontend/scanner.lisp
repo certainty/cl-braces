@@ -30,16 +30,15 @@
 This operation always succeeds unless a condition is raised.
 If the input isn't recognized we simply return the special failure token and add the error to the internal scanner state.
 "
-  (skip-whitespaces scanner)
-  (if (eof-p scanner)
-      (make-token :type :tok-eof :location (location scanner))
-      (multiple-value-bind (c1 c2) (peek2 scanner)
-        (cond
-          ((identifier-first-char-p c1) (scan-identifier scanner))
-          ((digit-char-p c1) (scan-number scanner))
-          ((and (char= c1 #\-) (digit-char-p c2)) (scan-number scanner))
-          ((and (char= c1 #\+) (digit-char-p c2)) (scan-number scanner))
-          (t (scan-single-char-token scanner))))))
+  (skip-whitespaces! scanner)
+  (multiple-value-bind (c1 c2) (peek2 scanner)
+    (cond
+      ((eof-p scanner) (make-token :type :tok-eof :location (location scanner)))
+      ((identifier-first-char-p c1) (scan-identifier scanner))
+      ((digit-char-p c1) (scan-number scanner))
+      ((and (char= c1 #\-) (digit-char-p c2)) (scan-number scanner))
+      ((and (char= c1 #\+) (digit-char-p c2)) (scan-number scanner))
+      (t (scan-single-char-token scanner)))))
 
 (-> scan-single-char-token (scan-state) token)
 (defun scan-single-char-token (scanner)
@@ -62,9 +61,9 @@ If the input isn't recognized we simply return the special failure token and add
 
 (defconst +whitespace+ (list #\Space #\Tab #\Return #\Newline))
 
-(defun skip-whitespaces (scanner)
+(defun skip-whitespaces! (scanner)
   "Skip whitespaces and comments"
-  (loop for next = (peek scanner) until (or (eof-p scanner)) do
+  (loop for next = (peek scanner) until (eof-p scanner) do
     (cond
       ((member next +whitespace+) (advance! scanner))
       ((eql #\/ next)
@@ -72,7 +71,7 @@ If the input isn't recognized we simply return the special failure token and add
        (unless (eql #\/ (peek scanner))
          (retreat! scanner)
          (return))
-       (loop for n = (advance! scanner) until (eql #\Newline n)))
+       (loop for n = (advance! scanner) until (or (eql #\Newline n) (eof-p scanner))))
       (t (return)))))
 
 (-> advance! (scan-state) (or null character))
@@ -81,14 +80,15 @@ If the input isn't recognized we simply return the special failure token and add
    Returns the character that was advanced to or nil if the end of the input has been reached."
   (let ((current-char (read-char (source-input-stream (scan-input scanner)) nil))
         (current-column (scan-column scanner)))
-    (setf (scan-last-read-char scanner) current-char)
-    (setf (scan-last-read-column scanner) current-column)
-    (incf (scan-column scanner))
-    (incf (scan-offset scanner))
-    (when (eql current-char #\Newline)
-      (incf (scan-line scanner))
-      (setf (scan-column scanner) 0))
-    current-char))
+    (when current-char
+      (setf (scan-last-read-char scanner) current-char)
+      (setf (scan-last-read-column scanner) current-column)
+      (incf (scan-column scanner))
+      (incf (scan-offset scanner))
+      (when (eql current-char #\Newline)
+        (incf (scan-line scanner))
+        (setf (scan-column scanner) 0))
+      current-char)))
 
 (-> retreat! (scan-state))
 (defun retreat! (scanner)

@@ -1,6 +1,6 @@
 (in-package :cl-braces/compiler/frontend)
 
-(deftype token-tpe ()
+(deftype tpe-token ()
   '(member
     :tok-illegal
     :tok-eof
@@ -30,17 +30,17 @@
     :tok-kw-for
     :tok-kw-range))
 
-(deftype token-literal-tpe ()
+(deftype tpe-token-literal ()
   '(member
     :tok-number
     :tok-string))
 
-(deftype token-operator-tpe ()
+(deftype tpe-token-operator ()
   '(member
     :tok-op-minus
     :tok-op-plus))
 
-(deftype token-keyword-tpe ()
+(deftype tpe-token-keyword ()
   '(member
     :tok-kw-package
     :tok-kw-import
@@ -73,9 +73,9 @@
      "range" :tok-kw-range))
 
 (defstruct (token (:conc-name token-))
-  (type :tok-eof :type token-tpe :read-only t)
+  (type :tok-eof :type tpe-token :read-only t)
   (text "" :type string :read-only t)
-  (value nil :read-only t)
+  (value nil :type t :read-only t)
   (location nil :type (or null source-location) :read-only t))
 
 (-> token-illegal-p (token) boolean)
@@ -88,8 +88,8 @@
 
 (-> token-literal-p (token) boolean)
 (defun token-literal-p (token)
-  (typep (token-type token) 'token-literal-tpe))
+  (typep (token-type token) 'tpe-token-literal))
 
 (-> token-keyword-p (token) boolean)
 (defun token-keyword-p (token)
-  (typep (token-type token) 'token-keyword-tpe))
+  (typep (token-type token) 'tpe-token-keyword))

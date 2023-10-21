@@ -2,7 +2,7 @@ RUN_LISP=sbcl --noinform --non-interactive
 LISP=sbcl --noinform
 
 test:
-	$(RUN_LISP) --non-interactive --eval '(asdf:test-system :cl-braces/compiler)'
+	$(RUN_LISP) --eval '(progn (ql:quickload :cl-braces/compiler/tests) (asdf:test-system :cl-braces/compiler))'
 
 repl:
 	$(LISP)	--eval '(ql:quickload :cl-braces)'
@@ -10,4 +10,7 @@ repl:
 build:
 	$(RUN_LISP) --eval '(asdf:make :cl-braces)'
 
-.PHONY: test repl
+deps:
+	$(RUN_LISP) --eval '(progn (ql:quickload :cl-braces) (uiop:quit))'
+
+.PHONY: test build repl deps

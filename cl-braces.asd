@@ -3,7 +3,7 @@
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
   :serial t
-  :depends-on (#:cl-braces/compiler))
+  :depends-on (:cl-braces/compiler))
 
 (asdf:defsystem "cl-braces/compiler"
   :description "Compiler for cl-braces"
@@ -39,7 +39,7 @@
 (asdf:defsystem  "cl-braces/compiler/tests"
   :description "Tests for cl-braces compiler"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
-  :depends-on (:parachute)
+  :depends-on (:parachute :cl-braces/compiler)
   :serial t
   :pathname "tests/compiler"
   :components ((:file "suite")
