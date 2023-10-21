@@ -42,8 +42,8 @@ If the input isn't recognized we simply return the special failure token and add
 
 (-> scan-single-char-token (scan-state) token)
 (defun scan-single-char-token (scanner)
-  (let* ((loc (location scanner))
-         (c (advance! scanner)))
+  (let* ((c (advance! scanner))
+         (loc (location scanner)))
     (labels ((=> (type) (make-token :type type :text (string c) :location loc)))
       (case c
         (#\( (=> :tok-lparen))
@@ -134,17 +134,13 @@ If the input isn't recognized we simply return the special failure token and add
 (-> scan-identifier (scan-state) token)
 (defun scan-identifier (scanner)
   "Attempt to scan an identifier or keyword"
-
-  ;; TODO: check for identifier-first-char-p
-  (let ((consumed (scan-while scanner #'identifier-char-p))
-        (loc (location scanner)))
-
-    (when (null consumed)
-      (return-from scan-identifier (illegal-token scanner "expected identifier" loc)))
-
-    (let* ((identifier (coerce consumed 'string))
-           (kw (gethash identifier *string-to-keyword-type*)))
-      (make-token :type (or kw :tok-identifier) :text identifier :location loc))))
+  (let* ((first-char (advance-when! scanner #'identifier-first-char-p))
+         (rest-chars (scan-while scanner #'identifier-char-p)))
+    (if (null first-char)
+        (illegal-token scanner "Expected legal identifier character")
+        (let* ((identifier (coerce (cons first-char rest-chars) 'string))
+               (kw (gethash identifier *string-to-keyword-type*)))
+          (make-token :type (or kw :tok-identifier) :text identifier :location (location scanner))))))
 
 (defun identifier-first-char-p (c)
   (and (characterp c)
