@@ -17,10 +17,29 @@ jobs:
       LISP: ${{ matrix.lisp }}
 
     steps:
-      - uses: actions/checkout@v1
-      - uses: 40ants/setup-lisp@v1
+      - uses: actions/checkout@v2
+      - name: Cache .roswell
+        id: cache-dot-roswell
+        uses: actions/cache@v1
         with:
-          asdf-system: cl-braces
-      - uses: 40ants/run-tests@v2
-        with:
-          asdf-system: cl-braces
+          path: ~/.roswell
+          key: ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-${{ hashFiles('**/*.asd') }}
+          restore-keys: |
+            ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-
+            ${{ runner.os }}-dot-roswell-
+
+      - name: Install roswell
+        shell: bash
+        run: |
+          curl -L https://raw.githubusercontent.com/roswell/roswell/v21.10.14.111/scripts/install-for-ci.sh | sh -x
+
+      - name: Load system
+        shell: bash
+        run: |
+          ros -e '(progn (asdf:load-system :cl-braces) (uiop:quit))'
+          ros -e '(progn (ql:quickload :parachute) (uiop:quit))'
+
+      - name: Test Compiler
+        shell: bash
+        run: |
+          ros -e '(asdf:test-system :cl-braces/compiler)'
