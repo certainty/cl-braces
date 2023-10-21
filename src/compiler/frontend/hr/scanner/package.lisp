@@ -1,16 +1,6 @@
-(defpackage #:cl-braces/compiler/frontend
+(defpackage #:cl-braces/compiler/frontend/hr/scanner
   (:use #:cl #:serapeum)
   (:export
-
-   #:token-literal-p
-   #:token-keyword-p
-   #:token-eof-p
-   #:token-illegal-p
-   #:token-type
-   #:token-value
-   #:token-text
-   #:token-location
-
    #:source-origin
    #:file-origin
    #:file-origin-path
@@ -29,6 +19,16 @@
    #:location-line
    #:location-column
    #:location-offset
+
+   #:token-literal-p
+   #:token-keyword-p
+   #:token-eof-p
+   #:token-illegal-p
+   #:token-type
+   #:token-value
+   #:token-text
+   #:token-location
+
 
    #:scan-state
    #:make-scan-state

@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler/frontend)
+(in-package :cl-braces/compiler/frontend/hr/scanner)
 
 (defstruct (scan-state (:conc-name scan-))
   (input (error "input required") :type source-input)
@@ -139,7 +139,7 @@ If the input isn't recognized we simply return the special failure token and add
     (if (null first-char)
         (illegal-token scanner "Expected legal identifier character")
         (let* ((identifier (coerce (cons first-char rest-chars) 'string))
-               (kw (gethash identifier *string-to-keyword-type*)))
+               (kw (gethash identifier *string-to-keyword*)))
           (make-token :type (or kw :tok-identifier) :text identifier :location (location scanner))))))
 
 (defun identifier-first-char-p (c)

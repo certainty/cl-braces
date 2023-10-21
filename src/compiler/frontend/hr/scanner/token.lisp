@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler/frontend)
+(in-package :cl-braces/compiler/frontend/hr/scanner)
 
 (deftype tpe-token ()
   '(member
@@ -56,7 +56,7 @@
     :tok-kw-for
     :tok-kw-range))
 
-(def *string-to-keyword-type*
+(defvar *string-to-keyword*
   #.(dict
      "func" :tok-kw-func
      "import" :tok-kw-import
