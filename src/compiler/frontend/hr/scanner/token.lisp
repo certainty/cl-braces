@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler/frontend)
+(in-package :cl-braces/compiler/frontend/hr/scanner)
 
 (deftype tpe-token ()
   '(member
@@ -10,12 +10,23 @@
     :tok-rbrace
     :tok-lbracket
     :tok-rbracket
+
     :tok-dot
+    :tok-comma
+    :tok-colon
+    :tok-semicolon
+    :tok-bang
+    :tok-eql
+
     :tok-identifier
-    :tok-number
+    :tok-integer
     :tok-string
+
     :tok-op-minus
     :tok-op-plus
+    :tok-op-double-eql
+    :tok-op-bang-eql
+
     :tok-kw-package
     :tok-kw-import
     :tok-kw-func
@@ -32,13 +43,15 @@
 
 (deftype tpe-token-literal ()
   '(member
-    :tok-number
+    :tok-integer
     :tok-string))
 
 (deftype tpe-token-operator ()
   '(member
     :tok-op-minus
-    :tok-op-plus))
+    :tok-op-plus
+    :tok-op-double-eql
+    :tok-op-bang-eql))
 
 (deftype tpe-token-keyword ()
   '(member
@@ -56,7 +69,7 @@
     :tok-kw-for
     :tok-kw-range))
 
-(def *string-to-keyword-type*
+(defvar *string-to-keyword*
   #.(dict
      "func" :tok-kw-func
      "import" :tok-kw-import

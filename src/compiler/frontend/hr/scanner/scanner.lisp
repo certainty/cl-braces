@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler/frontend)
+(in-package :cl-braces/compiler/frontend/hr/scanner)
 
 (defstruct (scan-state (:conc-name scan-))
   (input (error "input required") :type source-input)
@@ -22,7 +22,8 @@
 
 (defun scan-all (scanner)
   "consumes all tokens and returns them in a list"
-  (loop for tok = (next-token scanner) until (token-eof-p tok) collect tok))
+  (let ((tokens  (loop for tok = (next-token scanner) until (token-eof-p tok) collect tok)))
+    (append tokens (list (make-token :type :tok-eof :location (location scanner))))))
 
 (-> next-token (scan-state) token)
 (defun next-token (scanner)
@@ -32,19 +33,28 @@ If the input isn't recognized we simply return the special failure token and add
 "
   (skip-whitespaces! scanner)
   (multiple-value-bind (c1 c2) (peek2 scanner)
-    (cond
-      ((eof-p scanner) (make-token :type :tok-eof :location (location scanner)))
-      ((identifier-first-char-p c1) (scan-identifier scanner))
-      ((digit-char-p c1) (scan-number scanner))
-      ((and (char= c1 #\-) (digit-char-p c2)) (scan-number scanner))
-      ((and (char= c1 #\+) (digit-char-p c2)) (scan-number scanner))
-      (t (scan-single-char-token scanner)))))
+    (let ((loc (location scanner)))
+      (cond
+        ((eof-p scanner) (make-token :type :tok-eof :location (location scanner)))
+        ((identifier-first-char-p c1) (scan-identifier scanner))
+        ((digit-char-p c1) (scan-number scanner))
+        ((and (eql c1 #\-) (digit-char-p c2)) (scan-number scanner))
+        ((and (eql c1 #\+) (digit-char-p c2)) (scan-number scanner))
+        ((and (eql c1 #\!) (eql c2 #\=))
+         (advance! scanner)
+         (advance! scanner)
+         (make-token :type :tok-op-bang-eql :text "!=" :location loc))
+        ((and (eql c1 #\=) (eql c2 #\=))
+         (advance! scanner)
+         (advance! scanner)
+         (make-token :type :tok-op-double-eql :text "!=" :location loc))
+        (t (scan-single-char-token scanner))))))
 
 (-> scan-single-char-token (scan-state) token)
 (defun scan-single-char-token (scanner)
   (let* ((c (advance! scanner))
          (loc (location scanner)))
-    (labels ((=> (type) (make-token :type type :text (string c) :location loc)))
+    (macrolet ((=> (type) `(make-token :type ,type :text (string c) :location loc)))
       (case c
         (#\( (=> :tok-lparen))
         (#\) (=> :tok-rparen))
@@ -52,6 +62,12 @@ If the input isn't recognized we simply return the special failure token and add
         (#\] (=> :tok-rbracket))
         (#\{ (=> :tok-lbrace))
         (#\} (=> :tok-rbrace))
+        (#\: (=> :tok-colon))
+        (#\; (=> :tok-semicolon))
+        (#\. (=> :tok-dot))
+        (#\, (=> :tok-comma))
+        (#\= (=> :tok-eql))
+        (#\! (=> :tok-bang))
         (otherwise (illegal-token scanner "unexpected token"))))))
 
 (-> eof-p (scan-state) boolean)
@@ -63,14 +79,12 @@ If the input isn't recognized we simply return the special failure token and add
 
 (defun skip-whitespaces! (scanner)
   "Skip whitespaces and comments"
-  (loop for next = (peek scanner) until (eof-p scanner) do
+  (loop for (c1 c2) = (multiple-value-list (peek2 scanner)) until (null c1) do
     (cond
-      ((member next +whitespace+) (advance! scanner))
-      ((eql #\/ next)
+      ((member c1 +whitespace+) (advance! scanner))
+      ((and (eql #\/ c1) (eql #\/ c2))
        (advance! scanner)
-       (unless (eql #\/ (peek scanner))
-         (retreat! scanner)
-         (return))
+       (advance! scanner)
        (loop for n = (advance! scanner) until (or (eql #\Newline n) (eof-p scanner))))
       (t (return)))))
 
@@ -89,19 +103,6 @@ If the input isn't recognized we simply return the special failure token and add
         (incf (scan-line scanner))
         (setf (scan-column scanner) 0))
       current-char)))
-
-(-> retreat! (scan-state))
-(defun retreat! (scanner)
-  "Unread the the last advanced character and rewind internal location tracking to previous location"
-  (unless (null (scan-last-read-char scanner))
-
-    (unread-char (scan-last-read-char scanner) (source-input-stream (scan-input scanner)))
-    (setf (scan-column scanner) (scan-last-read-column scanner))
-    (decf (scan-offset scanner))
-    (when (char= (scan-last-read-char scanner) #\Newline)
-      (decf (scan-line scanner)))
-    (setf (scan-last-read-char scanner) nil)
-    (setf (scan-last-read-column scanner) nil)))
 
 (-> peek (scan-state) (or null character))
 (defun peek (scanner)
@@ -139,7 +140,7 @@ If the input isn't recognized we simply return the special failure token and add
     (if (null first-char)
         (illegal-token scanner "Expected legal identifier character")
         (let* ((identifier (coerce (cons first-char rest-chars) 'string))
-               (kw (gethash identifier *string-to-keyword-type*)))
+               (kw (gethash identifier *string-to-keyword*)))
           (make-token :type (or kw :tok-identifier) :text identifier :location (location scanner))))))
 
 (defun identifier-first-char-p (c)
@@ -148,7 +149,7 @@ If the input isn't recognized we simply return the special failure token and add
 
 (defun identifier-char-p (c)
   (and (characterp c)
-       (or (sb-unicode:digit-value c) (sb-unicode:alphabetic-p c) (char= c #\_))))
+       (or (alphanumericp c) (char= c #\_))))
 
 (-> scan-number (scan-state) token)
 (defun scan-number (scanner)
@@ -164,7 +165,7 @@ If the input isn't recognized we simply return the special failure token and add
       (push sign digits)
       (let* ((digit-str (coerce digits 'string))
              (value (parse-integer digit-str :radix radix)))
-        (make-token :type :tok-number :text digit-str :value value :location loc)))))
+        (make-token :type :tok-integer :text digit-str :value value :location loc)))))
 
 (defun advance-when! (scanner predicate)
   (when (funcall predicate (peek scanner))

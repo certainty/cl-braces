@@ -24,11 +24,18 @@
   :pathname "src/compiler"
   :components ((:module
                 "frontend"
-                :components ((:file "package")
-                             (:file "input")
-                             (:file "location")
-                             (:file "token")
-                             (:file "scanner")))
+                :components
+                ((:file "hr/scanner/package")
+                 (:file "hr/scanner/scanner")
+                 (:file "hr/scanner/input")
+                 (:file "hr/scanner/location")
+                 (:file "hr/scanner/token")
+
+                 (:file "hr/parser/package")
+                 (:file "package")
+                 ))
+
+
                (:file "package")
                (:file "compiler")))
 
@@ -44,6 +51,6 @@
   :pathname "tests/compiler"
   :components ((:file "suite")
                (:module "frontend"
-                :components ((:file "scanner_test"))))
+                :components ((:file "hr/scanner/scanner_test"))))
   :perform (test-op (o c)
                     (uiop:symbol-call :parachute :test :cl-braces/compiler/tests)))
