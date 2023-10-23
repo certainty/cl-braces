@@ -10,12 +10,23 @@
     :tok-rbrace
     :tok-lbracket
     :tok-rbracket
+
     :tok-dot
+    :tok-comma
+    :tok-colon
+    :tok-semicolon
+    :tok-bang
+    :tok-eql
+
     :tok-identifier
     :tok-integer
     :tok-string
+
     :tok-op-minus
     :tok-op-plus
+    :tok-op-double-eql
+    :tok-op-bang-eql
+
     :tok-kw-package
     :tok-kw-import
     :tok-kw-func
@@ -38,7 +49,9 @@
 (deftype tpe-token-operator ()
   '(member
     :tok-op-minus
-    :tok-op-plus))
+    :tok-op-plus
+    :tok-op-double-eql
+    :tok-op-bang-eql))
 
 (deftype tpe-token-keyword ()
   '(member
