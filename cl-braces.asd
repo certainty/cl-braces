@@ -25,17 +25,14 @@
   :components ((:module
                 "frontend"
                 :components
-                ((:file "package")
-
-                 (:file "hr/scanner/package")
+                ((:file "hr/scanner/package")
                  (:file "hr/scanner/scanner")
                  (:file "hr/scanner/input")
                  (:file "hr/scanner/location")
                  (:file "hr/scanner/token")
 
-
                  (:file "hr/parser/package")
-
+                 (:file "package")
                  ))
 
 
