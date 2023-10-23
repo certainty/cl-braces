@@ -12,7 +12,7 @@
     :tok-rbracket
     :tok-dot
     :tok-identifier
-    :tok-number
+    :tok-integer
     :tok-string
     :tok-op-minus
     :tok-op-plus
@@ -32,7 +32,7 @@
 
 (deftype tpe-token-literal ()
   '(member
-    :tok-number
+    :tok-integer
     :tok-string))
 
 (deftype tpe-token-operator ()

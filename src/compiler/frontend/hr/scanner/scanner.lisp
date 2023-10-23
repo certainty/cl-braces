@@ -22,7 +22,8 @@
 
 (defun scan-all (scanner)
   "consumes all tokens and returns them in a list"
-  (loop for tok = (next-token scanner) until (token-eof-p tok) collect tok))
+  (let ((tokens  (loop for tok = (next-token scanner) until (token-eof-p tok) collect tok)))
+    (append tokens (list (make-token :type :tok-eof :location (location scanner))))))
 
 (-> next-token (scan-state) token)
 (defun next-token (scanner)
@@ -63,14 +64,12 @@ If the input isn't recognized we simply return the special failure token and add
 
 (defun skip-whitespaces! (scanner)
   "Skip whitespaces and comments"
-  (loop for next = (peek scanner) until (eof-p scanner) do
+  (loop for (c1 c2) = (multiple-value-list (peek2 scanner)) until (null c1) do
     (cond
-      ((member next +whitespace+) (advance! scanner))
-      ((eql #\/ next)
+      ((member c1 +whitespace+) (advance! scanner))
+      ((and (eql #\/ c1) (eql #\/ c2))
        (advance! scanner)
-       (unless (eql #\/ (peek scanner))
-         (retreat! scanner)
-         (return))
+       (advance! scanner)
        (loop for n = (advance! scanner) until (or (eql #\Newline n) (eof-p scanner))))
       (t (return)))))
 
@@ -144,7 +143,7 @@ If the input isn't recognized we simply return the special failure token and add
 
 (defun identifier-first-char-p (c)
   (and (characterp c)
-       (or (alpha-char-p c) (char= c #\_))))
+       (or (sb-unicode:alphabetic-p c) (char= c #\_))))
 
 (defun identifier-char-p (c)
   (and (characterp c)
@@ -164,7 +163,7 @@ If the input isn't recognized we simply return the special failure token and add
       (push sign digits)
       (let* ((digit-str (coerce digits 'string))
              (value (parse-integer digit-str :radix radix)))
-        (make-token :type :tok-number :text digit-str :value value :location loc)))))
+        (make-token :type :tok-integer :text digit-str :value value :location loc)))))
 
 (defun advance-when! (scanner predicate)
   (when (funcall predicate (peek scanner))
