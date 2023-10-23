@@ -54,7 +54,7 @@ If the input isn't recognized we simply return the special failure token and add
 (defun scan-single-char-token (scanner)
   (let* ((c (advance! scanner))
          (loc (location scanner)))
-    (labels ((=> (type) (make-token :type type :text (string c) :location loc)))
+    (macrolet ((=> (type) `(make-token :type ,type :text (string c) :location loc)))
       (case c
         (#\( (=> :tok-lparen))
         (#\) (=> :tok-rparen))
