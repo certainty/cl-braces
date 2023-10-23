@@ -3,7 +3,7 @@
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
   :serial t
-  :depends-on (:cl-braces/compiler))
+  :depends-on (:cl-braces/compiler :cl-braces/vm))
 
 (asdf:defsystem "cl-braces/compiler"
   :description "Compiler for cl-braces"
@@ -38,6 +38,26 @@
 
                (:file "package")
                (:file "compiler")))
+
+(asdf:defsystem "cl-braces/vm"
+  :description "vm for cl-braces"
+  :author "David Krentzlin <david.krentzlin@gmail.com>"
+  :source-control (:git "https://github.com/certainty/cl-braces.git")
+  :depends-on (
+               #:alexandria
+               #:serapeum
+               #:defstar
+
+               #:trivia
+               #:closer-mop
+
+               #:log4cl
+               )
+  :serial t
+  :pathname "src/vm"
+  :components ((:file "package")
+               (:file "machine")))
+
 
 ;; (defsystm "cl-braces/compiler/executable"
 ;;   :description "Executable for cl-braces"
