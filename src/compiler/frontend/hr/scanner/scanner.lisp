@@ -89,19 +89,6 @@ If the input isn't recognized we simply return the special failure token and add
         (setf (scan-column scanner) 0))
       current-char)))
 
-(-> retreat! (scan-state))
-(defun retreat! (scanner)
-  "Unread the the last advanced character and rewind internal location tracking to previous location"
-  (unless (null (scan-last-read-char scanner))
-
-    (unread-char (scan-last-read-char scanner) (source-input-stream (scan-input scanner)))
-    (setf (scan-column scanner) (scan-last-read-column scanner))
-    (decf (scan-offset scanner))
-    (when (char= (scan-last-read-char scanner) #\Newline)
-      (decf (scan-line scanner)))
-    (setf (scan-last-read-char scanner) nil)
-    (setf (scan-last-read-column scanner) nil)))
-
 (-> peek (scan-state) (or null character))
 (defun peek (scanner)
   "Peeks at the next character in the input stream without advancing the scanner."
@@ -143,11 +130,11 @@ If the input isn't recognized we simply return the special failure token and add
 
 (defun identifier-first-char-p (c)
   (and (characterp c)
-       (or (sb-unicode:alphabetic-p c) (char= c #\_))))
+       (or (alpha-char-p c) (char= c #\_))))
 
 (defun identifier-char-p (c)
   (and (characterp c)
-       (or (sb-unicode:digit-value c) (sb-unicode:alphabetic-p c) (char= c #\_))))
+       (or (alphanumericp c) (char= c #\_))))
 
 (-> scan-number (scan-state) token)
 (defun scan-number (scanner)
