@@ -18,6 +18,8 @@
                #:closer-mop
 
                #:log4cl
+
+               #:cl-braces/isa
                )
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
@@ -52,11 +54,26 @@
                #:closer-mop
 
                #:log4cl
+
+               #:cl-braces/isa
                )
   :serial t
   :pathname "src/vm"
   :components ((:file "package")
                (:file "machine")))
+
+(asdf:defsystem "cl-braces/isa"
+  :description "Shared code between VM and Compiler for cl-braces"
+  :author "David Krentzlin <david.krentzlin@gmail.com>"
+  :source-control (:git "https://github.com/certainty/cl-braces.git")
+  :depends-on (#:alexandria
+               #:serapeum)
+  :serial t
+  :pathname "src/isa"
+  :components ((:file "packages")
+               (:file "instructions")
+               (:file "value")
+               (:file "chunk")))
 
 
 ;; (defsystm "cl-braces/compiler/executable"
