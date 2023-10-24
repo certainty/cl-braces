@@ -41,8 +41,8 @@
 (defstruct (ast-declaration (:include ast-node)))
 
 (defstruct (ast-const-declaration (:conc-name ast-const-decl-) (:include ast-declaration))
-  (name (error "must provide name") :type string :read-only t)
-  (initializer (error "must provide initializer") :type ast-expression :read-only t))
+  (name (error "must provide name") :type ast-identifier :read-only t)
+  (initializer (error "must provide initializer") :type ast-literal-expression :read-only t))
 
 (defstruct (ast-bad-declaration (:include ast-declaration)))
 
@@ -57,58 +57,65 @@
 
 (-> parse (parse-state) (values (or null ast-source) list))
 (defun parse (parser)
+  (setf *ast-node-id-counter* 1)
   (parse-source parser))
 
 (-> parse-source (parse-state) (values (or null ast-source) list))
 (defun parse-source (parser)
   "Parse the input and return the AST"
   (advance! parser)
-
-  (let ((decls
-          (loop for decl = (parse-declaration parser)
-                until (or (and *fail-fast* (parser-had-error-p parser)) (parser-eof-p parser))
-                collect decl)))
-
+  (let ((decls (loop for decl = (parse-declaration parser)
+                     collect decl
+                     until (or (and *fail-fast* (parser-had-error-p parser)) (parser-eof-p parser)))))
     (if (parser-had-error-p parser)
         (values nil (parser-errors parser))
-        (values (make-ast-source :location (make-source-location) :declarations decls) nil))))
+        (values (make-ast-source :location (make-source-location) :declarations  decls) nil))))
 
 (defun parse-declaration (parser)
   ;; TODO: replace with ecase-of
-  (case (token-type (parser-cur-token parser))
-    (:tok-kw-const (parse-const-declaration parser))
-    (otherwise (error-at-current parser "Expected declaration"))))
+  (let ((loc (token-location (parser-cur-token parser))))
+    (case (token-type (parser-cur-token parser))
+      (:tok-kw-const (parse-const-declaration parser))
+      (otherwise
+       (make-ast-bad-declaration :location loc)))))
 
 (defun parse-const-declaration (parser)
   (let* ((loc (token-location (parser-cur-token parser)))
-         (_  (consume! parser :tok-kw-const "Expected 'const' before constant declaration"))
-         (name (consume! parser :tok-identifier "Expected constant name"))
-         (_ (consume! parser :tok-equal "Expected '=' after constant name"))
-         (initializer (parse-expression parser)))
+         (_const  (consume! parser :tok-kw-const "Expected 'const' before constant declaration"))
+         (name (parse-identifier parser))
+         (_eql (consume! parser :tok-eql "Expected '=' after constant name"))
+         (initializer (parse-const-expression parser)))
+    (declare (ignore _const _eql))
     (if (parser-had-error-p parser)
         (make-ast-bad-declaration :location loc)
         (make-ast-const-declaration :location loc :name name :initializer initializer))))
 
-(defun parse-expression (parser)
-  ;; we only support literals for now
-  (parse-literal-expression parser))
+(defun parse-identifier (parser)
+  (let ((tok (consume! parser :tok-identifier "Expected identifier")))
+    (make-ast-identifier :location (token-location tok) :name (token-text tok))))
 
-(defun parse-literal-expression (parser)
+(defun parse-const-expression (parser)
+  ;; we only support literals for now
+  (parse-const-literal-expression parser))
+
+(defun parse-const-literal-expression (parser)
   (let* ((tok (parser-cur-token parser))
          (loc (token-location tok)))
     ;; TODO: replace with ecase-of
     (case (token-type tok)
-      (:tok-number
+      (:tok-integer
        (advance! parser)
        (make-ast-literal-expression :location loc :token tok))
-      (otherwise (error-at-current parser "Expected literal")))))
+      (otherwise (error-at-current parser "Expected constant literal")))))
 
 (defun consume! (parser expected-token-type format-string &rest args)
   "Consumes input expecting it to be of the given token type"
   (let ((cur-token (parser-cur-token parser)))
     (if (and cur-token (eql (token-type cur-token) expected-token-type))
-        (advance! parser)
-        (apply #'error-at-current parser format-string args))))
+        (prog1 cur-token
+          (advance! parser))
+        (prog1 (values nil t)
+          (apply #'error-at-current parser format-string args)))))
 
 (defun advance! (parser)
   "Read the next legal token. If illegal tokens are encountered along the way the error will be recorded and the parser will continue to advance until a legal token is found."
@@ -120,7 +127,7 @@
           else
             do (setf (parser-cur-token parser) next-tok)
                (return))
-    (parser-cur-token parser)))
+    (values (parser-cur-token parser) (parser-had-error-p parser))))
 
 (defun error-at-current (parser format-string &rest args)
   "Record an error at the current location"
