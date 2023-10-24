@@ -61,4 +61,10 @@
   (is eql :tok-eql (scans-as "="))
   (is eql :tok-bang (scans-as "!"))
   (is eql :tok-op-double-eql (scans-as "=="))
-  (is eql :tok-op-bang-eql (scans-as "!=")))
+  (is eql :tok-op-bang-eql (scans-as "!="))
+
+  (is eql :tok-op-dec (scans-as "--"))
+  (is eql :tok-op-inc (scans-as "++"))
+  (is eql :tok-op-colon-eql (scans-as ":="))
+  (is eql :tok-asterisk (scans-as "*"))
+  (is eql :tok-ampersand (scans-as "&")))

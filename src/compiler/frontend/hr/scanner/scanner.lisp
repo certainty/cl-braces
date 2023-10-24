@@ -48,6 +48,21 @@ If the input isn't recognized we simply return the special failure token and add
          (advance! scanner)
          (advance! scanner)
          (make-token :type :tok-op-double-eql :text "!=" :location loc))
+        ((and (eql c1 #\:) (eql c2 #\=))
+         (advance! scanner)
+         (advance! scanner)
+         (make-token :type :tok-op-colon-eql :text ":=" :location loc))
+
+        ((and (eql c1 #\-) (eql c2 #\-))
+         (advance! scanner)
+         (advance! scanner)
+         (make-token :type :tok-op-dec :text "--" :location loc))
+
+        ((and (eql c1 #\+) (eql c2 #\+))
+         (advance! scanner)
+         (advance! scanner)
+         (make-token :type :tok-op-inc :text "++" :location loc))
+
         (t (scan-single-char-token scanner))))))
 
 (-> scan-single-char-token (scan-state) token)
@@ -68,6 +83,8 @@ If the input isn't recognized we simply return the special failure token and add
         (#\, (=> :tok-comma))
         (#\= (=> :tok-eql))
         (#\! (=> :tok-bang))
+        (#\* (=> :tok-asterisk))
+        (#\& (=> :tok-ampersand))
         (otherwise (illegal-token scanner "unexpected token"))))))
 
 (-> eof-p (scan-state) boolean)

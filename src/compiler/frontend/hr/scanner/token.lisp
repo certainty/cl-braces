@@ -22,10 +22,16 @@
     :tok-integer
     :tok-string
 
+    :tok-asterisk
+    :tok-ampersand
+
     :tok-op-minus
+    :tok-op-dec
     :tok-op-plus
+    :tok-op-inc
     :tok-op-double-eql
     :tok-op-bang-eql
+    :tok-op-colon-eql
 
     :tok-kw-package
     :tok-kw-import
@@ -49,9 +55,13 @@
 (deftype tpe-token-operator ()
   '(member
     :tok-op-minus
+    :tok-op-inc
     :tok-op-plus
+    :tok-op-dec
     :tok-op-double-eql
-    :tok-op-bang-eql))
+    :tok-op-bang-eql
+    :tok-op-colon-eql
+    ))
 
 (deftype tpe-token-keyword ()
   '(member

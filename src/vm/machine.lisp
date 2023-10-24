@@ -70,6 +70,10 @@
 (defun halt ()
   (instr +opcode-halt+))
 
+(-> brk () instruction)
+(defun brk ()
+  (instr +opcode-brk+))
+
 (-> mov (tpe-register tpe-register) instruction)
 (defun mov (dst src)
   (instr +opcode-mov+ dst src))
@@ -82,10 +86,12 @@
 (defun loadk (dst addr)
   (instr +opcode-loadk+ dst addr))
 
-(defstruct (chunk (:conc-name chunk-) (:constructor chunk (&rest provided-instructions)))
+(defstruct (chunk (:conc-name chunk-) (:constructor chunk (provided-constants  &rest provided-instructions)))
+  (constants provided-constants :type (vector t *) :read-only t)
   (instructions (make-array (length provided-instructions) :element-type 'instruction :initial-contents provided-instructions) :type (vector instruction *) :read-only t))
 
-(defstruct (call-frame (:constructor make-call-frame (&key (allocate-registers 15))))
+(defstruct (call-frame (:constructor make-call-frame (provided-code &key (allocate-registers *allocate-registers*))))
+  (code provided-code :type chunk :read-only t)
   (registers (make-array allocate-registers :initial-element 0)))
 
 (defstruct (virtual-machine (:conc-name vm-) (:constructor make-vm (&key (stack-size *stack-size*) (allocate-registers *allocate-registers*))))
@@ -103,10 +109,12 @@
          ,@(loop for exec in executions collect `((= ,next-opcode ,(first exec)) ,@(cdr exec)))
          (t (error "VM bug"))))))
 
-(defvar *test-chunk*
+(defparameter *test-chunk*
   (chunk
+   #()
    (loadi 0 10)
    (mov 1 0)
+   (brk)
    (halt)))
 
 (defun disass (chunk)
@@ -143,9 +151,14 @@
                      (+opcode-halt+ (return-from execute-chunk))
                      (+opcode-call+ (continue))
                      (+opcode-ret+ (continue))
-                     (+opcode-move+
-                      (let* ((operands (instr-operands instruction))
-                             (dst (aref operands 0))
-                             (src (aref operands 1)))
-                        (setf (aref (vm-registers vm)  (reg-value dst)) (reg-value src))))
+                     (+opcode-brk+
+                      (break "<Breakpoint> IP: 0x~X" (vm-instruction-pointer vm)))
+                     (+opcode-mov+
+                      (let ((dst (instr-op1 instruction))
+                            (src (instr-op2 instruction)))
+                        (setf (aref (vm-registers vm) dst) src)))
+                     (+opcode-loadi+
+                      (let ((dst (instr-op1 instruction))
+                            (val (instr-op2 instruction)))
+                        (setf (aref (vm-registers vm) dst) val)))
                      (+opcode-loadk+ (continue)))))))
