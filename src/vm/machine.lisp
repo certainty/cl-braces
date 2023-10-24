@@ -29,28 +29,58 @@
 (define-opcodes
     (+opcode-nop+ "NOP" "no operation")
     (+opcode-halt+ "HALT" "halt the virtual machine")
-  (+opcode-call+ "CALL" "call r0 r1 r2 - call a function, r0 is the function, r1 is the number of arguments, r2 is the number of return values")
-  (+opcode-ret+ "RED" "ret - return from a function")
-  (+opcode-move+ "MOV" "mov dst src - move between registers")
-  (+opcode-loadk+ "LOADK" "loadk dst k - load a constant into a register "))
+  (+opcode-brk+ "BRK" "break the execution at this point and start the interactive debugger")
+  (+opcode-call+ "CALL" "r0 r1 r2 => call a function, `r0' is the function, `r1' is the number of arguments, `r2' is the number of return values. Arguments are expected to be placed in the first registers of the callframe.")
+  (+opcode-ret+ "RET" "return from a function")
+  (+opcode-mov+ "MOV" "dst src => move the value from `src' to `dst'")
+  (+opcode-loadk+ "LOADK" "dst addr => load a constant from the given address in `addr'  into the register denoted by `dst'")
+  (+opcode-loadi+ "LOADI" "dst value  => load the immediate `value' into the register `dst'"))
 
 (deftype tpe-register ()
   '(integer 0 *))
 
+(deftype tpe-address ()
+  '(integer 0 *))
+
+;; TODO: make this a go-value
 (deftype tpe-immediate () t)
 
 (deftype tpe-operand ()
-  '(or tpe-register tpe-immediate))
+  '(or tpe-register tpe-immediate tpe-address))
 
-(defmacro reg (value)
-  `(progn ,value))
-
-(defmacro imm (value)
-  `(progn ,value))
-
-(defstruct (instruction (:conc-name instr-) (:constructor instr (provided-opcode &rest provided-operands)))
+;; We use fixed amount of operands to have all packed into a single vector
+;; improving cache locality
+(defstruct (instruction (:conc-name instr-) (:constructor instr (provided-opcode &optional o1 o2 o3)))
   (opcode provided-opcode :type tpe-opcode :read-only t)
-  (operands (coerce provided-operands 'vector) :type (vector tpe-operand *) :read-only t))
+  (op1 o1  :type tpe-operand :read-only t)
+  (op2 o2 :type tpe-operand :read-only t)
+  (op3 o3 :type tpe-operand :read-only t))
+
+;; let's define a couple of convenience constructors
+;; which can be inlined easily by the compiler
+(-> nop () instruction)
+(defun nop ()
+  (instr +opcode-nop+))
+
+(-> ret () instruction)
+(defun ret ()
+  (instr +opcode-ret+))
+
+(-> halt () instruction)
+(defun halt ()
+  (instr +opcode-halt+))
+
+(-> mov (tpe-register tpe-register) instruction)
+(defun mov (dst src)
+  (instr +opcode-mov+ dst src))
+
+(-> loadi (tpe-register tpe-immediate) instruction)
+(defun loadi (dst value)
+  (instr +opcode-loadi+ dst value))
+
+(-> loadk (tpe-register tpe-address) instruction)
+(defun loadk (dst addr)
+  (instr +opcode-loadk+ dst addr))
 
 (defstruct (chunk (:conc-name chunk-) (:constructor chunk (&rest provided-instructions)))
   (instructions (make-array (length provided-instructions) :element-type 'instruction :initial-contents provided-instructions) :type (vector instruction *) :read-only t))
@@ -75,11 +105,10 @@
 
 (defvar *test-chunk*
   (chunk
-   (instr +opcode-loadk+ (reg 0) (imm 1))
-   (instr +opcode-move+  (reg 1) (reg 0))
-   (instr +opcode-halt+)))
+   (loadi 0 10)
+   (mov 1 0)
+   (halt)))
 
-(-> disass (chunk) string)
 (defun disass (chunk)
   (loop
     for addr from 0
@@ -87,8 +116,7 @@
     do (disass-instruction instruction addr)))
 
 (defun disass-instruction (instruction addr &optional (stream *standard-output*))
-  (let ((operands (loop for operand across (instr-operands instruction) collect (disass-operand operand))))
-    (format stream "~4,'0d: 0x~X ~6a ~{~a~^ ~}~%" addr (instr-opcode instruction) (aref *mnemonics* (instr-opcode instruction)) operands)))
+  (format stream "~4,'0d: 0x~X ~6a ~@[~a~] ~@[~a~] ~@[~a~] ~%" addr (instr-opcode instruction) (aref *mnemonics* (instr-opcode instruction)) (instr-op1 instruction) (instr-op2 instruction) (instr-op3 instruction)))
 
 (defun disass-operand (operand)
   ;; keep it simple for now
