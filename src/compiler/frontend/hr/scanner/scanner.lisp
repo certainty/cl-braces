@@ -25,6 +25,9 @@
   (let ((tokens  (loop for tok = (next-token scanner) until (token-eof-p tok) collect tok)))
     (append tokens (list (make-token :type :tok-eof :location (location scanner))))))
 
+(defun scan-origin (scanner)
+  (scan-input-origin (scan-input scanner)))
+
 (-> next-token (scan-state) token)
 (defun next-token (scanner)
   "Scans the next token from input and return it.

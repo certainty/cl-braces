@@ -20,6 +20,7 @@
    #:location-column
    #:location-offset
 
+   #:token
    #:token-literal-p
    #:token-keyword-p
    #:token-eof-p
@@ -29,13 +30,13 @@
    #:token-text
    #:token-location
 
-
    #:scan-state
    #:make-scan-state
    #:scan-errors
    #:scan-error
    #:scan-error-message
    #:scan-error-location
+   #:scan-origin
    #:eof-p
 
    #:next-token

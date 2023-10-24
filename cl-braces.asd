@@ -34,6 +34,7 @@
                  (:file "hr/scanner/token")
 
                  (:file "hr/parser/package")
+                 (:file "hr/parser/parser")
                  (:file "package")
                  ))
 
