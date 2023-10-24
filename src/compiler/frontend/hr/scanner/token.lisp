@@ -37,6 +37,7 @@
     :tok-kw-import
     :tok-kw-func
     :tok-kw-var
+    :tok-kw-const
     :tok-kw-return
     :tok-kw-if
     :tok-kw-else
@@ -85,6 +86,7 @@
      "import" :tok-kw-import
      "package" :tok-kw-package
      "var" :tok-kw-var
+     "const" :tok-kw-const
      "return" :tok-kw-return
      "if" :tok-kw-if
      "else" :tok-kw-else

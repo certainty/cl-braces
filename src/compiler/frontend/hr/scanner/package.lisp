@@ -15,12 +15,15 @@
    #:call-with-source-input
    #:with-source-input
 
+
    #:source-location
+   #:make-source-location
    #:location-line
    #:location-column
    #:location-offset
 
    #:token
+   #:tpe-token
    #:token-literal-p
    #:token-keyword-p
    #:token-eof-p

@@ -26,7 +26,7 @@
     (append tokens (list (make-token :type :tok-eof :location (location scanner))))))
 
 (defun scan-origin (scanner)
-  (scan-input-origin (scan-input scanner)))
+  (source-input-origin (scan-input scanner)))
 
 (-> next-token (scan-state) token)
 (defun next-token (scanner)
