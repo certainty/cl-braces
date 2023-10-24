@@ -1,14 +1,9 @@
 (in-package :cl-braces/compiler/frontend/hr/parser)
 
-(defstruct (span (:conc-name span-) (:constructor make-span (provided-from provided-to)))
-  (from provided-from :type source-location :read-only t)
-  (to provided-to :type source-location :read-only t))
-
-(defstruct (braces-parse-error (:conc-name error-) (:constructor make-parse-error (origin provided-span provided-what)))
-  (where origin :type source-origin :read-only t)
-  (span provided-span :type span :read-only t)
+(defstruct (braces-parse-error (:conc-name error-) (:constructor make-parse-error (provided-origin provided-location provided-what)))
+  (origin provide-origin :type source-origin :read-only t)
+  (location provided-location :type location :read-only t)
   (what provided-what :type string :read-only t))
-
 
 (defstruct (parse-state (:conc-name parser-) (:constructor make-parser (provided-scanner)))
   (scanner provided-scanner :type scan-state)
@@ -18,30 +13,30 @@
   (had-error nil :type boolean)
   (panic-mode-p nil :type boolean))
 
-(defclass ast-node ()
-  ((id :initform (error "must provide node-id") :initarg :node-id :accessor ast-node-id)
-   (span :initform (error "must provide span") :initarg :span :reader ast-node-span)))
+(defstruct (ast-node (:conc-name ast-node-))
+  (id (error "must provide node-id") :type symbol :read-only t)
+  (location (error "must provide location") :type source-location :read-only t))
 
-(defclass ast-expression (ast-node) ())
+(defstruct (ast-expression (:include ast-node)))
 
-(defclass ast-bad-expression (ast-expression) ())
+(defstruct (ast-bad-expression (:include ast-node)))
 
-(defclass ast-literal-expression (ast-expression)
-  ((token :initarg :token :reader ast-literal-expression-token)))
+(defstruct (ast-literal-expression (:conc-name ast-literal-exp-) (:include ast-expression))
+  (token (error "must provide token") :type token :read-only t))
 
-(defclass ast-identifier (ast-expression)
-  ((name :initarg :name :reader ast-identifier)))
+(defstruct (ast-identifier (:conc-name ast-identifier-) (:include ast-expression))
+  (name (error "must provide token") :type string :read-only t))
 
-(defclass ast-statement (ast-node) ())
+(defstruct (ast-statement (:include ast-node)))
 
-(defclass ast-bad-statement (ast-statement) ())
+(defstruct (ast-bad-statement (:include ast-statement)))
 
-(defclass ast-declaration (ast-node) ())
+(defstruct (ast-declaration (:include ast-node)))
 
-(defclass ast-bad-declaration (ast-declaration) ())
+(defstruct (ast-bad-declaration (:include ast-declaration)))
 
-(defclass ast-source (ast-node)
-  ((declarations :initarg :declarations :reader ast-source-declarations)))
+(defstruct (ast-source (:conc-name ast-source-) (:include ast-node))
+  (declarations (error "must provide declarations") :type list :read-only t))
 
 (defun string->parser (input)
   (make-parser (string->scanner input)))
@@ -83,7 +78,7 @@
   (setf (parser-panic-mode-p parser) t)
   (setf (parser-had-error parser) t)
 
-  (let* ((span (make-span (token-location token) (token-location token)))
+  (let* ((loc (token-location token))
          (origin (scan-origin (parser-scanner parser))))
-    (push (make-parse-error origin span (apply #'format nil format-string args))
+    (push (make-parse-error origin loc (apply #'format nil format-string args))
           (parser-errors parser))))
