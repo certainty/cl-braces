@@ -1,8 +1,10 @@
 (in-package :cl-braces.compiler.frontend.scanner)
 
+
 (defstruct (scan-state (:conc-name scan-))
   (input (error "input required") :type source-input)
-  (errors (make-array 0 :fill-pointer 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *))
+  ;; TODO: check if we really need this or if we can do without
+  (errors (make-array 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *))
   (offset 0 :type integer)
   (line 1 :type integer)
   (column 0 :type integer)

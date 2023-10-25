@@ -1,5 +1,8 @@
 (in-package :cl-braces.compiler.frontend.parser)
 
+;; TODO: replace current error reporting strategy to use the condition system with a restart to just collect the error and return
+;; an bad-ast-node
+
 (defstruct (braces-parse-error (:conc-name error-) (:constructor make-parse-error (provided-origin provided-location provided-what)))
   (origin provided-origin :type scanner:source-origin :read-only t)
   (location provided-location :type scanner:source-location :read-only t)
