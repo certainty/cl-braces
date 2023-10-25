@@ -51,7 +51,8 @@
 
 (defpackage :cl-braces.compiler.frontend.parser
   (:nicknames :compiler.parser :frontent.parser :parser)
-  (:use :cl :serapeum))
+  (:use :cl :serapeum)
+  (:import-from :alexandria :positive-fixnum))
 
 (defpackage :cl-braces.compiler.frontend
   (:nicknames :compiler.frontend :frontend)

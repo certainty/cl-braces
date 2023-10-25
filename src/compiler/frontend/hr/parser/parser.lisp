@@ -29,7 +29,7 @@
 (defstruct (ast-bad-expression (:include ast-node)))
 
 (defstruct (ast-literal-expression (:conc-name ast-literal-exp-) (:include ast-expression))
-  (token (error "must provide token") :type token :read-only t))
+  (token (error "must provide token") :type scanner:token :read-only t))
 
 (defstruct (ast-identifier (:conc-name ast-identifier-) (:include ast-expression))
   (name (error "must provide token") :type string :read-only t))
@@ -53,7 +53,7 @@
   (make-parser (scanner:string->scanner input)))
 
 (defun parser-eof-p (parser)
-  (token-eof-p (parser-cur-token parser)))
+  (scanner:token-eof-p (parser-cur-token parser)))
 
 (-> parse (parse-state) (values (or null ast-source) list))
 (defun parse (parser)
@@ -73,14 +73,14 @@
 
 (defun parse-declaration (parser)
   ;; TODO: replace with ecase-of
-  (let ((loc (token-location (parser-cur-token parser))))
-    (case (token-type (parser-cur-token parser))
+  (let ((loc (scanner:token-location (parser-cur-token parser))))
+    (case (scanner:token-type (parser-cur-token parser))
       (:tok-kw-const (parse-const-declaration parser))
       (otherwise
        (make-ast-bad-declaration :location loc)))))
 
 (defun parse-const-declaration (parser)
-  (let* ((loc (token-location (parser-cur-token parser)))
+  (let* ((loc (scanner:token-location (parser-cur-token parser)))
          (_const  (consume! parser :tok-kw-const "Expected 'const' before constant declaration"))
          (name (parse-identifier parser))
          (_eql (consume! parser :tok-eql "Expected '=' after constant name"))
