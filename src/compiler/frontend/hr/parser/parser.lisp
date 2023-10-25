@@ -1,5 +1,8 @@
 (in-package :cl-braces.compiler.frontend.parser)
 
+(defparameter *ast-node-id-counter* 1 "Counter for AST node IDs. This is used to assign unique IDs to AST nodes.")
+(defparameter *fail-fast* t "If true, the parser will enter the debugger on the first error. Otherwise it will continue parsing and collect all errors.")
+
 (define-condition braces-parse-error (error)
   ((origin :initarg :origin :reader parse-error-origin)
    (location :initarg :location :reader parse-error-location)
@@ -7,7 +10,8 @@
   (:report
    (lambda (condition stream)
      (let ((location (parse-error-location condition)))
-       (format stream "ParseError in ~A at Line: ~A, Column: ~A => ~A" (scanner:source-uri (parse-error-origin condition)) (scanner:location-line location) (scanner:location-column location) (parse-error-message condition))))))
+       (format stream "ParseError in ~A at Line: ~A, Column: ~A => ~A" (scanner:source-uri (parse-error-origin condition)) (scanner:location-line location) (scanner:location-column location) (parse-error-message condition)))))
+  (:documentation "A parse error."))
 
 (defstruct (parse-state (:conc-name parser-) (:constructor make-parser (provided-scanner)))
   (scanner provided-scanner :type scanner:scan-state)
@@ -16,9 +20,6 @@
   (errors nil)
   (had-error-p nil :type boolean)
   (panic-mode-p nil :type boolean))
-
-(defparameter *ast-node-id-counter* 1)
-(defparameter *fail-fast* t)
 
 (defun next-ast-node-id ()
   (prog1 *ast-node-id-counter*
@@ -61,6 +62,7 @@
 
 (-> parse (parse-state) (values (or null ast-source) list))
 (defun parse (parser)
+  "Parse the input and return two values: the AST and a list of errors."
   (setf *ast-node-id-counter* 1)
   (handler-bind ((braces-parse-error (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue))))
                  (scanner:scan-error (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
@@ -68,7 +70,7 @@
 
 (-> parse-source (parse-state) (values (or null ast-source) list))
 (defun parse-source (parser)
-  "Parse the input and return the AST"
+  "Parse a source file and return two values: the AST and a list of errors."
   (advance! parser)
   (let ((decls (loop for decl = (parse-declaration parser)
                      collect decl
@@ -128,7 +130,8 @@
 
 (defun advance! (parser)
   "Read the next legal token. If illegal tokens are encountered along the way the error will be recorded and the parser will continue to advance until a legal token is found."
-  (rotatef (parser-prev-token parser) (parser-cur-token parser))
+  (setf (parser-prev-token parser) (parser-cur-token parser))
+  (setf (parser-cur-token parser) nil)
   (let ((scanner (parser-scanner parser)))
     (loop for next-tok = (scanner:next-token scanner)
           if (scanner:token-illegal-p next-tok)
@@ -139,6 +142,8 @@
     (values (parser-cur-token parser) (parser-had-error-p parser))))
 
 (defun synchronize! (parser)
+  "Attempt to find a synchronization point in the input stream, at which we can attempt to continue parsing.
+The parse will likely generate a couple of invalid nodes."
   ;; find next legal token
   (setf (parser-panic-mode-p parser) nil)
   (loop
@@ -155,6 +160,7 @@
   (apply #'error-at parser (parser-cur-token parser) format-string args))
 
 (defun error-at (parser token format-string &rest args)
+  "Record an error at the given location. This function signals a continuable parse-error condition."
   (when (parser-panic-mode-p parser)
     (return-from error-at))
 
