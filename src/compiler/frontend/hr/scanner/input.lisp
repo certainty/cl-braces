@@ -1,4 +1,5 @@
 (in-package :cl-braces.compiler.frontend.scanner)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Create a source input for the scanner.
@@ -28,10 +29,10 @@
   (:documentation "Return the URI of the source origin."))
 
 (defmethod source-uri ((origin file-origin))
-  (format nil "file://~A" (path origin)))
+  (format nil "file://~A" (file-origin-path origin)))
 
 (defmethod source-uri ((origin string-origin))
-  (format nil "string://~A" (label origin)))
+  (format nil "string://~A" (string-origin-label origin)))
 
 (defclass source-input ()
   ((origin :initarg :origin :reader source-input-origin :type source-origin)

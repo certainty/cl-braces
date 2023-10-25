@@ -1,12 +1,13 @@
 (in-package :cl-braces.compiler.frontend.parser)
 
-;; TODO: replace current error reporting strategy to use the condition system with a restart to just collect the error and return
-;; an bad-ast-node
-
 (define-condition braces-parse-error (error)
   ((origin :initarg :origin :reader parse-error-origin)
    (location :initarg :location :reader parse-error-location)
-   (message :initarg :message :reader parse-error-message)))
+   (message :initarg :message :reader parse-error-message))
+  (:report
+   (lambda (condition stream)
+     (let ((location (parse-error-location condition)))
+       (format stream "ParseError in ~A at Line: ~A, Column: ~A => ~A" (scanner:source-uri (parse-error-origin condition)) (scanner:location-line location) (scanner:location-column location) (parse-error-message condition))))))
 
 (defstruct (parse-state (:conc-name parser-) (:constructor make-parser (provided-scanner)))
   (scanner provided-scanner :type scanner:scan-state)
@@ -165,4 +166,4 @@
          (origin (scanner:scan-origin (parser-scanner parser)))
          (parse-error (make-condition 'braces-parse-error :origin origin :location loc :message (apply #'format nil format-string args))))
     (push parse-error (parser-errors parser))
-    (cerror "Continue parsing inserting bad-ast-nodes" parse-error)))
+    (cerror "Continue parsing collecting this error" parse-error)))
