@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler/frontend/hr/scanner)
+(in-package :cl-braces.compiler.frontend.scanner)
 
 (defstruct (source-location (:conc-name location-))
   "A representation of a position some source input"

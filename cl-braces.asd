@@ -24,22 +24,17 @@
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
   :pathname "src/compiler"
-  :components ((:module
+  :components ((:file "packages")
+
+               (:module
                 "frontend"
                 :components
-                ((:file "hr/scanner/package")
-                 (:file "hr/scanner/scanner")
+                ((:file "hr/scanner/location")
                  (:file "hr/scanner/input")
-                 (:file "hr/scanner/location")
                  (:file "hr/scanner/token")
+                 (:file "hr/scanner/scanner")
+                 (:file "hr/parser/parser")))
 
-                 (:file "hr/parser/package")
-                 (:file "hr/parser/parser")
-                 (:file "package")
-                 ))
-
-
-               (:file "package")
                (:file "compiler")))
 
 (asdf:defsystem "cl-braces/vm"
@@ -60,7 +55,7 @@
                )
   :serial t
   :pathname "src/vm"
-  :components ((:file "package")
+  :components ((:file "packages")
                (:file "machine")))
 
 (asdf:defsystem "cl-braces/isa"
@@ -91,4 +86,4 @@
                (:module "frontend"
                 :components ((:file "hr/scanner/scanner_test"))))
   :perform (test-op (o c)
-                    (uiop:symbol-call :parachute :test :cl-braces/compiler/tests)))
+                    (uiop:symbol-call :parachute :test :cl-braces.compiler.tests)))

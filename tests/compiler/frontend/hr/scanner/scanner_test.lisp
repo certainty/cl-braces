@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler/tests)
+(in-package :cl-braces.compiler.tests)
 
 (define-test :cl-braces/compiler/frontend/scanner-suite
   :parent :cl-braces/compiler-suite)

@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler/frontend/hr/scanner)
+(in-package :cl-braces.compiler.frontend.scanner)
 
 (deftype tpe-token ()
   '(member

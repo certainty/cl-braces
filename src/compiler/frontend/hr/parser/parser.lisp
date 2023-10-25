@@ -1,14 +1,14 @@
-(in-package :cl-braces/compiler/frontend/hr/parser)
+(in-package :cl-braces.compiler.frontend.parser)
 
 (defstruct (braces-parse-error (:conc-name error-) (:constructor make-parse-error (provided-origin provided-location provided-what)))
-  (origin provided-origin :type source-origin :read-only t)
-  (location provided-location :type source-location :read-only t)
+  (origin provided-origin :type scanner:source-origin :read-only t)
+  (location provided-location :type scanner:source-location :read-only t)
   (what provided-what :type string :read-only t))
 
 (defstruct (parse-state (:conc-name parser-) (:constructor make-parser (provided-scanner)))
-  (scanner provided-scanner :type scan-state)
-  (prev-token nil :type (or null token))
-  (cur-token nil :type (or null token))
+  (scanner provided-scanner :type scanner:scan-state)
+  (prev-token nil :type (or null scanner:token))
+  (cur-token nil :type (or null scanner:token))
   (errors nil)
   (had-error-p nil :type boolean)
   (panic-mode-p nil :type boolean))
@@ -22,7 +22,7 @@
 
 (defstruct (ast-node (:conc-name ast-node-))
   (id (next-ast-node-id) :type positive-fixnum :read-only t)
-  (location (error "must provide location") :type source-location :read-only t))
+  (location (error "must provide location") :type scanner:source-location :read-only t))
 
 (defstruct (ast-expression (:include ast-node)))
 
@@ -50,7 +50,7 @@
   (declarations (error "must provide declarations") :type list :read-only t))
 
 (defun string->parser (input)
-  (make-parser (string->scanner input)))
+  (make-parser (scanner:string->scanner input)))
 
 (defun parser-eof-p (parser)
   (token-eof-p (parser-cur-token parser)))
@@ -69,7 +69,7 @@
                      until (or (and *fail-fast* (parser-had-error-p parser)) (parser-eof-p parser)))))
     (if (parser-had-error-p parser)
         (values nil (parser-errors parser))
-        (values (make-ast-source :location (make-source-location) :declarations  decls) nil))))
+        (values (make-ast-source :location (scanner:make-source-location) :declarations  decls) nil))))
 
 (defun parse-declaration (parser)
   ;; TODO: replace with ecase-of
@@ -92,7 +92,7 @@
 
 (defun parse-identifier (parser)
   (let ((tok (consume! parser :tok-identifier "Expected identifier")))
-    (make-ast-identifier :location (token-location tok) :name (token-text tok))))
+    (make-ast-identifier :location (scanner:token-location tok) :name (scanner:token-text tok))))
 
 (defun parse-const-expression (parser)
   ;; we only support literals for now
@@ -100,9 +100,8 @@
 
 (defun parse-const-literal-expression (parser)
   (let* ((tok (parser-cur-token parser))
-         (loc (token-location tok)))
-    ;; TODO: replace with ecase-of
-    (case (token-type tok)
+         (loc (scanner:token-location tok)))
+    (case (scanner:token-type tok)
       (:tok-integer
        (advance! parser)
        (make-ast-literal-expression :location loc :token tok))
@@ -111,7 +110,7 @@
 (defun consume! (parser expected-token-type format-string &rest args)
   "Consumes input expecting it to be of the given token type"
   (let ((cur-token (parser-cur-token parser)))
-    (if (and cur-token (eql (token-type cur-token) expected-token-type))
+    (if (and cur-token (eql (scanner:token-type cur-token) expected-token-type))
         (prog1 cur-token
           (advance! parser))
         (prog1 (values nil t)
@@ -121,8 +120,8 @@
   "Read the next legal token. If illegal tokens are encountered along the way the error will be recorded and the parser will continue to advance until a legal token is found."
   (rotatef (parser-prev-token parser) (parser-cur-token parser))
   (let ((scanner (parser-scanner parser)))
-    (loop for next-tok = (next-token scanner)
-          if (token-illegal-p next-tok)
+    (loop for next-tok = (scanner:next-token scanner)
+          if (scanner:token-illegal-p next-tok)
             do (error-at-current scanner "Illegal token ~A" next-tok)
           else
             do (setf (parser-cur-token parser) next-tok)
@@ -140,6 +139,6 @@
   (setf (parser-panic-mode-p parser) t)
   (setf (parser-had-error-p parser) t)
 
-  (let* ((loc (token-location token))
-         (origin (scan-origin (parser-scanner parser))))
+  (let* ((loc (scanner:token-location token))
+         (origin (scanner:scan-origin (parser-scanner parser))))
     (push (make-parse-error origin loc (apply #'format nil format-string args)) (parser-errors parser))))

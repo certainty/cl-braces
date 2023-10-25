@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler/frontend/hr/scanner)
+(in-package :cl-braces.compiler.frontend.scanner)
 
 (defstruct (scan-state (:conc-name scan-))
   (input (error "input required") :type source-input)

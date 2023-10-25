@@ -1,4 +1,4 @@
-(in-package :cl-braces/isa/instructions)
+(in-package :cl-braces.isa)
 
 (defmacro define-opcodes (&rest opcodes)
   (let ((counter 0)
@@ -36,6 +36,10 @@
   (+opcode-mov+ "MOV" "dst src => move the value from `src' to `dst'")
   (+opcode-loadk+ "LOADK" "dst addr => load a constant from the given address in `addr'  into the register denoted by `dst'")
   (+opcode-loadi+ "LOADI" "dst value  => load the immediate `value' into the register `dst'"))
+
+(-> opcode->mnemonic (tpe-opcode) string)
+(defun opcode->mnemonic (opcode)
+  (aref *mnemonics* opcode))
 
 (deftype tpe-register ()
   '(integer 0 *))

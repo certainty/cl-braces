@@ -1,4 +1,4 @@
-(in-package :cl-braces/compiler)
+(in-package :cl-braces.compiler)
 
 
 (defun compile-string (input)
