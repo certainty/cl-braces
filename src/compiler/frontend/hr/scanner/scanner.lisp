@@ -1,10 +1,15 @@
 (in-package :cl-braces.compiler.frontend.scanner)
 
+(define-condition scan-error (error)
+  ((message :initarg :message :reader scan-error-message)
+   (location :initarg :location :reader scan-error-location))
+  (:report (lambda (condition stream)
+             (format stream "Illegal token at ~a" (scan-error-location condition)))))
 
 (defstruct (scan-state (:conc-name scan-))
   (input (error "input required") :type source-input)
   ;; TODO: check if we really need this or if we can do without
-  (errors (make-array 0 :element-type 'scan-error :adjustable t) :type (vector scan-error *))
+  (errors (make-array 0 :element-type 'scan-error :adjustable t :fill-pointer 0) :type (vector scan-error *))
   (offset 0 :type integer)
   (line 1 :type integer)
   (column 0 :type integer)
@@ -14,10 +19,6 @@
 (defmethod print-object ((s scan-state) stream)
   (print-unreadable-object (s stream :type t :identity t)
     (format stream "line:~a column:~a offset:~a errors:~a" (scan-line s) (scan-column s) (scan-offset s) (scan-errors s))))
-
-(defstruct (scan-error (:conc-name scan-error-))
-  (message (error "no message") :type string :read-only t)
-  (location (error "no source-location") :type source-location :read-only t))
 
 (defun string->scanner (s)
   (make-scan-state :input (source-input-open s)))
@@ -150,7 +151,8 @@ If the input isn't recognized we simply return the special failure token and add
 (-> illegal-token (scan-state string &optional source-location) token)
 (defun illegal-token (scanner message &optional loc)
   (let* ((effective-location (or loc (location scanner)))
-         (err (make-scan-error :message message :location effective-location)))
+         (err (make-condition 'scan-error :message message :location effective-location)))
+    (cerror "Ignore illegal token" err)
     (vector-push-extend err (scan-errors scanner))
     (make-token :type :tok-illegal :location effective-location)))
 

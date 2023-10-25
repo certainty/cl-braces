@@ -62,7 +62,8 @@
 (-> parse (parse-state) (values (or null ast-source) list))
 (defun parse (parser)
   (setf *ast-node-id-counter* 1)
-  (handler-bind ((braces-parse-error (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
+  (handler-bind ((braces-parse-error (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue))))
+                 (scanner:scan-error (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
     (parse-source parser)))
 
 (-> parse-source (parse-state) (values (or null ast-source) list))
@@ -101,9 +102,7 @@
 
 (defun parse-identifier (parser)
   (let ((tok (consume! parser :tok-identifier "Expected identifier")))
-    (if (parser-had-error-p parser)
-        (make-ast-bad-expression :location loc)
-        (make-ast-identifier :location (scanner:token-location tok) :name (scanner:token-text tok)))))
+    (make-ast-identifier :location (scanner:token-location tok) :name (scanner:token-text tok))))
 
 (defun parse-const-expression (parser)
   ;; we only support literals for now
@@ -133,7 +132,7 @@
   (let ((scanner (parser-scanner parser)))
     (loop for next-tok = (scanner:next-token scanner)
           if (scanner:token-illegal-p next-tok)
-            do (error-at-current scanner "Illegal token ~A" next-tok)
+            do (error-at-current parser "Illegal token ~A" next-tok)
           else
             do (setf (parser-cur-token parser) next-tok)
                (return))
@@ -165,5 +164,5 @@
   (let* ((loc (scanner:token-location token))
          (origin (scanner:scan-origin (parser-scanner parser)))
          (parse-error (make-condition 'braces-parse-error :origin origin :location loc :message (apply #'format nil format-string args))))
-    (push parse-error (parser-errors parser))
-    (cerror "Continue parsing collecting this error" parse-error)))
+    (cerror "Continue parsing collecting this error" parse-error)
+    (push parse-error (parser-errors parser))))
