@@ -61,6 +61,45 @@
    :string->scanner
    :scan-all))
 
+(defpackage :cl-braces.compiler.frontend.ast
+  (:nicknames :compiler.ast :frontend.ast :ast)
+  (:use :cl :serapeum)
+  (:import-from :alexandria :positive-fixnum)
+  (:export
+
+   :*node-id-counter*
+   :node
+   :node-id
+   :node-location
+
+   :expression
+   :bad-expression
+   :make-bad-expression
+
+   :identifier
+   :make-identifier
+
+   :identifier-name
+   :literal-expression
+   :make-literal-expression
+   :literal-exp-token
+
+   :declaration
+   :bad-declaration
+   :make-bad-declaration
+   :const-declaration
+   :make-const-declaration
+   :const-decl-name
+   :const-decl-intializer
+
+   :statement
+   :bad-statement
+   :make-bad-statement
+   :source
+   :make-source
+   :source-declarations)
+  (:shadow :declaration))
+
 (defpackage :cl-braces.compiler.frontend.parser
   (:nicknames :compiler.parser :frontent.parser :parser)
   (:use :cl :serapeum)

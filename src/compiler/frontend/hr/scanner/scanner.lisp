@@ -8,7 +8,6 @@
 
 (defstruct (scan-state (:conc-name scan-))
   (input (error "input required") :type source-input)
-  ;; TODO: check if we really need this or if we can do without
   (errors (make-array 0 :element-type 'scan-error :adjustable t :fill-pointer 0) :type (vector scan-error *))
   (offset 0 :type integer)
   (line 1 :type integer)
@@ -17,7 +16,6 @@
 (defmethod print-object ((s scan-state) stream)
   (print-unreadable-object (s stream :type t :identity t)
     (format stream "line:~a column:~a offset:~a errors:~a" (scan-line s) (scan-column s) (scan-offset s) (scan-errors s))))
-
 
 (defun call-with-scanner (origin fn)
   (with-source-input (inp origin)

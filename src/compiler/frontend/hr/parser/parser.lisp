@@ -1,6 +1,5 @@
 (in-package :cl-braces.compiler.frontend.parser)
 
-(defparameter *ast-node-id-counter* 1 "Counter for AST node IDs. This is used to assign unique IDs to AST nodes.")
 (defparameter *parser-fail-fast* nil "If true the parser will signal a continuable parse-error condition when an error is encountered. If false the parser will attempt to synchronize and continue parsing automatically.")
 
 (define-condition parse-errors (error)
@@ -25,39 +24,6 @@
   (had-error-p nil :type boolean)
   (panic-mode-p nil :type boolean))
 
-(defun next-ast-node-id ()
-  (prog1 *ast-node-id-counter*
-    (incf *ast-node-id-counter*)))
-
-(defstruct (ast-node (:conc-name ast-node-))
-  (id (next-ast-node-id) :type positive-fixnum :read-only t)
-  (location (error "must provide location") :type scanner:source-location :read-only t))
-
-(defstruct (ast-expression (:include ast-node)))
-
-(defstruct (ast-bad-expression (:include ast-node)))
-
-(defstruct (ast-literal-expression (:conc-name ast-literal-exp-) (:include ast-expression))
-  (token (error "must provide token") :type scanner:token :read-only t))
-
-(defstruct (ast-identifier (:conc-name ast-identifier-) (:include ast-expression))
-  (name (error "must provide token") :type string :read-only t))
-
-(defstruct (ast-statement (:include ast-node)))
-
-(defstruct (ast-bad-statement (:include ast-statement)))
-
-(defstruct (ast-declaration (:include ast-node)))
-
-(defstruct (ast-const-declaration (:conc-name ast-const-decl-) (:include ast-declaration))
-  (name (error "must provide name") :type ast-identifier :read-only t)
-  (initializer (error "must provide initializer") :type ast-literal-expression :read-only t))
-
-(defstruct (ast-bad-declaration (:include ast-declaration)))
-
-(defstruct (ast-source (:conc-name ast-source-) (:include ast-node))
-  (declarations (error "must provide declarations") :type list :read-only t))
-
 (defun call-with-parser (origin fn)
   (scanner:with-scanner (s origin)
     (funcall fn (make-parser s))))
@@ -70,22 +36,22 @@
   (with-parser (p origin)
     (do-parse p)))
 
-(-> do-parse (parse-state) ast-source)
+(-> do-parse (parse-state) ast:source)
 (defun do-parse (parser)
   "Parse the input and return the AST. Signals parse-errors condition if there are any errors."
-  (setf *ast-node-id-counter* 1)
+  (setf ast:*node-id-counter* 1)
   (multiple-value-bind (ast errors)
       (handler-bind ((parse-error-instance (lambda (e) (if *parser-fail-fast* (invoke-debugger e) (invoke-restart 'continue))))
                      (scanner:scan-error (lambda (e) (if *parser-fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
         (parse-source parser))
-    (unless (null errors)
+    (when (consp errors)
       (error 'parse-errors :errors errors))
     ast))
 
 (defun parser-eof-p (parser)
   (scanner:token-eof-p (parser-cur-token parser)))
 
-(-> parse-source (parse-state) (values (or null ast-source) list))
+(-> parse-source (parse-state) (values (or null ast:source) list))
 (defun parse-source (parser)
   "Parse a source file and return two values: the AST and a list of errors."
   (advance! parser)
@@ -94,7 +60,7 @@
                      until (parser-eof-p parser))))
     (if (parser-had-error-p parser)
         (values nil (parser-errors parser))
-        (values (make-ast-source :location (scanner:make-source-location) :declarations  decls) nil))))
+        (values (ast:make-source :location (scanner:make-source-location) :declarations  decls) nil))))
 
 (defun parse-declaration (parser)
   ;; TODO: find an abstraction for the check-error -> synchronize -> return bad-node sequence
@@ -105,7 +71,7 @@
       (if (parser-had-error-p parser)
           (progn
             (synchronize! parser)
-            (make-ast-bad-declaration :location loc))
+            (ast:make-bad-declaration :location loc))
           decl))))
 
 (defun parse-const-declaration (parser)
@@ -116,12 +82,12 @@
          (initializer (parse-const-expression parser)))
     (declare (ignore _const _eql))
     (if (parser-had-error-p parser)
-        (make-ast-bad-declaration :location loc)
-        (make-ast-const-declaration :location loc :name name :initializer initializer))))
+        (ast:make-bad-declaration :location loc)
+        (ast:make-const-declaration :location loc :name name :initializer initializer))))
 
 (defun parse-identifier (parser)
   (let ((tok (consume! parser :tok-identifier "Expected identifier")))
-    (make-ast-identifier :location (scanner:token-location tok) :name (scanner:token-text tok))))
+    (ast:make-identifier :location (scanner:token-location tok) :name (scanner:token-text tok))))
 
 (defun parse-const-expression (parser)
   ;; we only support literals for now
@@ -133,7 +99,7 @@
     (case (scanner:token-type tok)
       (:tok-integer
        (advance! parser)
-       (make-ast-literal-expression :location loc :token tok))
+       (ast:make-literal-expression :location loc :token tok))
       (otherwise (error-at-current parser "Expected constant literal")))))
 
 (defun consume! (parser expected-token-type format-string &rest args)
