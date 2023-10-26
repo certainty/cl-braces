@@ -1,8 +1,13 @@
 (in-package :cl-braces.compiler.frontend.parser)
 
 (defparameter *ast-node-id-counter* 1 "Counter for AST node IDs. This is used to assign unique IDs to AST nodes.")
+(defparameter *parser-fail-fast* nil "If true the parser will signal a continuable parse-error condition when an error is encountered. If false the parser will attempt to synchronize and continue parsing automatically.")
 
-(define-condition braces-parse-error (error)
+(define-condition parse-errors (error)
+  ((errors :initarg :errors :reader parse-error-instances))
+  (:documentation "When parsing fails this error is raised. It contains all the parse errors that occured during parsing"))
+
+(define-condition parse-error-instance (error)
   ((origin :initarg :origin :reader parse-error-origin)
    (location :initarg :location :reader parse-error-location)
    (message :initarg :message :reader parse-error-message))
@@ -60,18 +65,22 @@
 (defmacro with-parser ((parser-var origin) &body body)
   `(call-with-parser ,origin (lambda (,parser-var) ,@body)))
 
-(defun parse (origin &key (fail-fast nil))
+(defun parse (origin)
   "Parse input coming from the provided orgigin returning two values: the AST and the list of errors if there are any"
   (with-parser (p origin)
-    (do-parse p :fail-fast fail-fast)))
+    (do-parse p)))
 
-(-> do-parse (parse-state &key (fail-fast boolean)) (values (or null ast-source) list))
-(defun do-parse (parser &key (fail-fast nil))
-  "Parse the input and return two values: the AST and a list of errors."
+(-> do-parse (parse-state) ast-source)
+(defun do-parse (parser)
+  "Parse the input and return the AST. Signals parse-errors condition if there are any errors."
   (setf *ast-node-id-counter* 1)
-  (handler-bind ((braces-parse-error (lambda (e) (if fail-fast (invoke-debugger e) (invoke-restart 'continue))))
-                 (scanner:scan-error (lambda (e) (if fail-fast (invoke-debugger e) (invoke-restart 'continue)))))
-    (parse-source parser)))
+  (multiple-value-bind (ast errors)
+      (handler-bind ((parse-error-instance (lambda (e) (if *parser-fail-fast* (invoke-debugger e) (invoke-restart 'continue))))
+                     (scanner:scan-error (lambda (e) (if *parser-fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
+        (parse-source parser))
+    (unless (null errors)
+      (error 'parse-errors :errors errors))
+    ast))
 
 (defun parser-eof-p (parser)
   (scanner:token-eof-p (parser-cur-token parser)))
@@ -142,8 +151,12 @@
   (setf (parser-cur-token parser) nil)
   (let ((scanner (parser-scanner parser)))
     (loop for next-tok = (scanner:next-token scanner)
+          do
+             (setf (parser-prev-token parser) (parser-cur-token parser))
+             (setf (parser-cur-token parser) next-tok)
           if (scanner:token-illegal-p next-tok)
-            do (error-at-current parser "Illegal token ~A" next-tok)
+            do
+               (error-at-current parser "Illegal token ~A" next-tok)
           else
             do (setf (parser-cur-token parser) next-tok)
                (return))
@@ -177,6 +190,6 @@ The parse will likely generate a couple of invalid nodes."
 
   (let* ((loc (scanner:token-location token))
          (origin (scanner:scan-origin (parser-scanner parser)))
-         (parse-error (make-condition 'braces-parse-error :origin origin :location loc :message (apply #'format nil format-string args))))
+         (parse-error (make-condition 'parse-error-instance :origin origin :location loc :message (apply #'format nil format-string args))))
     (cerror "Continue parsing collecting this error" parse-error)
     (push parse-error (parser-errors parser))))

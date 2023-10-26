@@ -2,7 +2,13 @@
 
 (defpackage :cl-braces.compiler.introspection
   (:nicknames :compiler.introspection :introspection)
-  (:use :cl))
+  (:use :cl)
+  (:export
+   :tpe-compilation-phase
+   :introspection-event
+   :enter-phase
+   :leave-phase
+   :mark-phase))
 
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :compiler.scanner :frontend.scanner :scanner)
@@ -60,9 +66,11 @@
   (:use :cl :serapeum)
   (:import-from :alexandria :positive-fixnum)
   (:export
+   :*parser-fail-fast*
    :call-with-parser
    :with-parser
-   :parse))
+   :parse
+   :ast-source))
 
 (defpackage :cl-braces.compiler.frontend
   (:nicknames :compiler.frontend :frontend)
@@ -70,5 +78,5 @@
 
 (defpackage :cl-braces.compiler
   (:nicknames :compiler)
-  (:use :cl :cl-braces.compiler.frontend)
-  (:export :compile-string))
+  (:use :cl :serapeum)
+  (:export :compile-input))

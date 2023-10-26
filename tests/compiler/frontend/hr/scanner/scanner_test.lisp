@@ -68,3 +68,8 @@
   (is eql :tok-op-colon-eql (scans-as ":="))
   (is eql :tok-asterisk (scans-as "*"))
   (is eql :tok-ampersand (scans-as "&")))
+
+(define-test scan-with-illegal-token
+  :parent :cl-braces/compiler/frontend/scanner-suite
+  (let ((all-tokens (scan-all (string->scanner "const i _< 3"))))
+    (is eql (list :tok-kw-const :tok-identifier :tok-identifier :tok-illegal :tok-integer :tok-eof) (mapcar #'token-type all-tokens))))
