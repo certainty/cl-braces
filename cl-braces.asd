@@ -25,7 +25,7 @@
   :serial t
   :pathname "src/compiler"
   :components ((:file "packages")
-
+               (:file "introspection")
                (:module
                 "frontend"
                 :components

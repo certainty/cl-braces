@@ -1,7 +1,6 @@
 (in-package :cl-braces.compiler.frontend.parser)
 
 (defparameter *ast-node-id-counter* 1 "Counter for AST node IDs. This is used to assign unique IDs to AST nodes.")
-(defparameter *fail-fast* t "If true, the parser will enter the debugger on the first error. Otherwise it will continue parsing and collect all errors.")
 
 (define-condition braces-parse-error (error)
   ((origin :initarg :origin :reader parse-error-origin)
@@ -54,19 +53,28 @@
 (defstruct (ast-source (:conc-name ast-source-) (:include ast-node))
   (declarations (error "must provide declarations") :type list :read-only t))
 
-(defun string->parser (input)
-  (make-parser (scanner:string->scanner input)))
+(defun call-with-parser (origin fn)
+  (scanner:with-scanner (s origin)
+    (funcall fn (make-parser s))))
+
+(defmacro with-parser ((parser-var origin) &body body)
+  `(call-with-parser ,origin (lambda (,parser-var) ,@body)))
+
+(defun parse (origin &key (fail-fast nil))
+  "Parse input coming from the provided orgigin returning two values: the AST and the list of errors if there are any"
+  (with-parser (p origin)
+    (do-parse p :fail-fast fail-fast)))
+
+(-> do-parse (parse-state &key (fail-fast boolean)) (values (or null ast-source) list))
+(defun do-parse (parser &key (fail-fast nil))
+  "Parse the input and return two values: the AST and a list of errors."
+  (setf *ast-node-id-counter* 1)
+  (handler-bind ((braces-parse-error (lambda (e) (if fail-fast (invoke-debugger e) (invoke-restart 'continue))))
+                 (scanner:scan-error (lambda (e) (if fail-fast (invoke-debugger e) (invoke-restart 'continue)))))
+    (parse-source parser)))
 
 (defun parser-eof-p (parser)
   (scanner:token-eof-p (parser-cur-token parser)))
-
-(-> parse (parse-state) (values (or null ast-source) list))
-(defun parse (parser)
-  "Parse the input and return two values: the AST and a list of errors."
-  (setf *ast-node-id-counter* 1)
-  (handler-bind ((braces-parse-error (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue))))
-                 (scanner:scan-error (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
-    (parse-source parser)))
 
 (-> parse-source (parse-state) (values (or null ast-source) list))
 (defun parse-source (parser)

@@ -12,13 +12,19 @@
   (errors (make-array 0 :element-type 'scan-error :adjustable t :fill-pointer 0) :type (vector scan-error *))
   (offset 0 :type integer)
   (line 1 :type integer)
-  (column 0 :type integer)
-  (last-read-char nil :type (or null character))
-  (last-read-column nil :type (or null integer)))
+  (column 0 :type integer))
 
 (defmethod print-object ((s scan-state) stream)
   (print-unreadable-object (s stream :type t :identity t)
     (format stream "line:~a column:~a offset:~a errors:~a" (scan-line s) (scan-column s) (scan-offset s) (scan-errors s))))
+
+
+(defun call-with-scanner (origin fn)
+  (with-source-input (inp origin)
+    (funcall fn (make-scan-state :input inp))))
+
+(defmacro with-scanner ((input-var origin) &body body)
+  `(call-with-scanner ,origin (lambda (,input-var) ,@body)))
 
 (defun string->scanner (s)
   (make-scan-state :input (source-input-open s)))
@@ -118,8 +124,6 @@ If the input isn't recognized we simply return the special failure token and add
   (let ((current-char (read-char (source-input-stream (scan-input scanner)) nil))
         (current-column (scan-column scanner)))
     (when current-char
-      (setf (scan-last-read-char scanner) current-char)
-      (setf (scan-last-read-column scanner) current-column)
       (incf (scan-column scanner))
       (incf (scan-offset scanner))
       (when (eql current-char #\Newline)

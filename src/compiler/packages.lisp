@@ -1,5 +1,9 @@
 (in-package :cl-user)
 
+(defpackage :cl-braces.compiler.introspection
+  (:nicknames :compiler.introspection :introspection)
+  (:use :cl))
+
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :compiler.scanner :frontend.scanner :scanner)
   (:use :cl :serapeum)
@@ -38,6 +42,8 @@
 
    :scan-state
    :make-scan-state
+   :call-with-scanner
+   :with-scanner
    :scan-errors
    :scan-error
    :scan-error-message
@@ -52,7 +58,11 @@
 (defpackage :cl-braces.compiler.frontend.parser
   (:nicknames :compiler.parser :frontent.parser :parser)
   (:use :cl :serapeum)
-  (:import-from :alexandria :positive-fixnum))
+  (:import-from :alexandria :positive-fixnum)
+  (:export
+   :call-with-parser
+   :with-parser
+   :parse))
 
 (defpackage :cl-braces.compiler.frontend
   (:nicknames :compiler.frontend :frontend)

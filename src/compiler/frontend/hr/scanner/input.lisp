@@ -57,11 +57,11 @@
 (defmethod source-input-close ((source-input source-input))
   (close (source-input-stream source-input)))
 
-(defun call-with-source-input (origin function)
+(defun call-with-source-input (origin fn)
   (let ((source-input (source-input-open origin)))
     (unwind-protect
-         (funcall function source-input)
+         (funcall fn source-input)
       (source-input-close source-input))))
 
-(defmacro with-source-input (origin-var origin) &body
-  `(call-with-source-input origin (lambda (,origin-var) ,@body)))
+(defmacro with-source-input ((origin-var origin) &body body)
+  `(call-with-source-input ,origin (lambda (,origin-var) ,@body)))
