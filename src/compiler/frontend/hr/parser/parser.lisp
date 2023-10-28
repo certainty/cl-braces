@@ -18,9 +18,10 @@
 
 (defclass state ()
   ((scanner :initform (error "No scanner provided") :initarg :scanner :type scanner:state)
+   (node-id :initform 0)
    (prev-token :initform nil :type (or null scanner:token))
    (cur-token :initform nil :type (or null scanner:token))
-   (errors :initform nil)
+   (errors :initform nil :reader :parse-errors)
    (had-error-p :initform nil :type boolean)
    (panic-mode-p :initform nil :type boolean)))
 
@@ -28,123 +29,120 @@
   (scanner:with-scanner (s origin)
     (funcall fn (make-instance 'state :scanner s))))
 
+(defun next-node-id (state)
+  (with-slots (node-id) state
+    (incf node-id)))
+
 (defmacro with-parser ((parser-var origin) &body body)
   `(call-with-parser ,origin (lambda (,parser-var) ,@body)))
 
 (defun parse (origin)
   "Parse input coming from the provided orgigin returning two values: the AST and the list of errors if there are any"
   (with-parser (p origin)
-    (%parse p)))
+    (with-slots (errors) p
+      (values (%parse p) errors))))
 
 (-> do-parse (parse-state) ast:source)
 (defun %parse (parser)
   "Parse the input and return the AST. Signals parse-errors condition if there are any errors."
-  (setf ast:*node-id-counter* 1)
   (multiple-value-bind (ast errors)
       (handler-bind ((parse-error-instance (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
-        (parse-source parser))
+        (advance! parser)
+        (parse-declaration parser))
     (when (consp errors)
       (error 'parse-errors :errors errors))
     ast))
 
-(defun parser-eof-p (parser)
+(defun eof-p (parser)
   (with-slots (cur-token) parser
     (scanner:token-eof-p cur-token)))
 
-(-> parse-source (state) (values (or null ast:source) list))
-(defun parse-source (parser had-error-p eof-p errors)
-  "Parse a source file and return two values: the AST and a list of errors."
-  (advance! parser)
-  (let ((decls (loop for decl = (parse-declaration parser)
-                     collect decl
-                     until eof-p)))
-    (if had-error-p
-        (values nil errors)
-        (values (ast:make-source :location (scanner:make-source-location) :declarations decls) nil))))
-
 (defun parse-declaration (parser)
-  ;; TODO: find an abstraction for the check-error -> synchronize -> return bad-node sequence
-  (with-slots (cur-token had-error-p) parser
-    (let ((loc (scanner:token-location cur-token)))
-      (let ((decl (case (scanner:token-type cur-token)
-                    (:tok-kw-const (parse-const-declaration parser))
-                    (otherwise (error-at-current parser "Expected declaration")))))
-        (if had-error-p
-            (progn
-              (synchronize! parser)
-              (ast:make-bad-declaration :location loc))
-            decl)))))
+  (with-slots (had-error-p) parser
+    (let ((statement (parse-statement parser)))
+      (when had-error-p
+        (synchronize! parser)
+        (return-from parse-declaration (accept parser 'ast:bad-declaration)))
+      statement)))
 
-(defun parse-const-declaration (parser)
-  (with-slots (cur-token had-error-p) parser
-    (let* ((loc (scanner:token-location cur-token))
-           (_const  (consume! parser :tok-kw-const "Expected 'const' before constant declaration"))
-           (name (parse-identifier parser))
-           (_eql (consume! parser :tok-eql "Expected '=' after constant name"))
-           (initializer (parse-const-expression parser)))
-      (declare (ignore _const _eql))
+(defun parse-statement (parser)
+  (parse-expression-statement parser))
+
+(defun parse-expression-statement (parser)
+  (with-slots (had-error-p) parser
+    (let ((expr (parse-expression parser)))
       (if had-error-p
-          (ast:make-bad-declaration :location loc)
-          (ast:make-const-declaration :location loc :name name :initializer initializer)))))
+          (accept parser 'ast:bad-statement)
+          (accept parser 'ast:expression-statement :expression expr)))))
+
+(defun parse-expression (parser)
+  (parse-number-literal parser))
+
+(defun parse-number-literal (parser)
+  (with-slots (had-error-p) parser
+    (let ((tok (consume! parser :tok-number "Expected number literal")))
+      (if had-error-p
+          (accept parser 'ast:bad-expression)
+          (accept parser 'ast:literal-expression :token tok)))))
+
+(defun accept (parser node-class &rest args)
+  (with-slots (cur-token) parser
+    (if cur-token
+        (apply #'make-instance node-class :id (next-node-id parser) :location (scanner:token-location cur-token) args)
+        (unreachable! "No current token"))))
 
 (defun parse-identifier (parser)
-  (let ((tok (consume! parser :tok-identifier "Expected identifier")))
-    (ast:make-identifier :location (scanner:token-location tok) :name (scanner:token-text tok))))
+  (multiple-value-bind (tok had-error-p) (consume! parser :tok-identifier "Expected identifier")
+    (if had-error-p
+        (accept parser 'ast:bad-expression)
+        (accept parser 'ast:identifier :name (scanner:token-value tok)))))
 
-(defun parse-const-expression (parser)
-  ;; we only support literals for now
-  (parse-const-literal-expression parser))
-
-(defun parse-const-literal-expression (parser)
-  (with-slots (cur-token) parser
-    (let* ((tok cur-token)
-           (loc (scanner:token-location tok)))
-      (case (scanner:token-type tok)
-        (:tok-integer
-         (advance! parser)
-         (ast:make-literal-expression :location loc :token tok))
-        (otherwise (error-at-current parser "Expected constant literal"))))))
-
+;; TODO: think about the invariants I want to have from consume and the internal error state
 (defun consume! (parser expected-token-type format-string &rest args)
   "Consumes input expecting it to be of the given token type"
-  (let ((cur-token (slot-value 'cur-token parser)))
-    (if (and cur-token (eql (scanner:token-type cur-token) expected-token-type))
-        (prog1 cur-token
-          (advance! parser))
-        (prog1 (values nil t)
-          (apply #'error-at-current parser format-string args)))))
+  (with-slots (cur-token had-error-p) parser
+    (unless (eql (scanner:token-type cur-token) expected-token-type)
+      (error-at-current parser format-string args))
+    (prog1 (scanner:token-illegal-p cur-token)
+      (advance! parser))))
 
 (defun advance! (parser)
-  "Read the next legal token. If illegal tokens are encountered along the way the error will be recorded and the parser will continue to advance until a legal token is found."
-  (with-slots (prev-token cur-token scanner) parser
+  "Reads the next legal token. If an illegal token has been encountered it is recorded as an error.
+Returns two values:
+1. the token
+2. had-error-p indicating an error
+"
+  (with-slots (had-error-p prev-token cur-token scanner) parser
     (setf prev-token cur-token)
-    (setf cur-token nil)
-    (loop for next-tok = (scanner:next-token scanner)
-          do
-             (setf prev-token cur-token)
-             (setf cur-token next-tok)
-          if (scanner:token-illegal-p next-tok)
-            do
-               (error-at-current parser "Illegal token ~A" next-tok)
-          else
-            do (setf cur-token next-tok)
-               (return))
-    (values (parser-cur-token parser) (parser-had-error-p parser))))
+    (setf cur-token (scanner:next-token scanner))
+    (when (scanner:token-illegal-p cur-token)
+      (error-at-current "Illegal token ~A" cur-token))
+    (values cur-token had-error-p)))
+
+(defun skip-illegal! (parser)
+  "Reads the next available legal token, skipping illegal ones as we go. Each illegal token will be recorded as an error.
+Returns two values:
+1. the next legal token (which might be the eof-token)
+2. had-error-p indicating an error
+"
+  (with-slots (cur-token had-error-p) parser
+    (loop (advance! parser) while (scanner:token-illegal-p cur-token))
+    (values cur-token had-error-p)))
 
 (defun synchronize! (parser)
   "Attempt to find a synchronization point in the input stream, at which we can attempt to continue parsing.
 The parse will likely generate a couple of invalid nodes."
   ;; find next legal token
-  (with-slots (panic-mode-p prev-token cur-token eof-p) parser
+  (with-slots (panic-mode-p prev-token cur-token) parser
     (setf panic-mode-p nil)
     (loop
-      (let ((prev-token-type (and prev-token (scanner:token-type prev-token parser)))
-            (cur-token-type (and cur-token parser (scanner:token-type cur-token parser))))
+      (let ((prev-token-type (and prev-token (scanner:token-type prev-token)))
+            (cur-token-type (and cur-token parser (scanner:token-type cur-token))))
         (cond
-          (eof-p (return))
+          ((eof-p parser) (return))
           ((eql prev-token-type :tok-semicolon) (return))
           ((member cur-token-type (list :tok-rbrace :tok-kw-func :tok-kw-if :tok-kw-for)) (return))
-          (t (advance! parser)))))))
+          (t (skip-illegal! parser)))))))
 
 (defun error-at-current (parser format-string &rest args)
   "Record an error at the current location"

@@ -1,36 +1,33 @@
 (in-package :cl-braces.compiler.frontend.ast)
 
-(defparameter *node-id-counter* 1 "Counter for AST node IDs. This is used to assign unique IDs to AST nodes.")
+(defclass node ()
+  ((id :initform (error "must provide node-id" ) :initarg :id :type positive-fixnum :reader :node-id)
+   (location :initform (error "must provide location") :initarg :location :type scanner:source-location :reader :node-location)))
 
-(defun next-node-id ()
-  (prog1 *node-id-counter*
-    (incf *node-id-counter*)))
+(defclass expression (node) ())
 
-(defstruct (node (:conc-name node-))
-  (id (next-node-id) :type positive-fixnum :read-only t)
-  (location (error "must provide location") :type scanner:source-location :read-only t))
+(defclass bad-expression (expression) ())
 
-(defstruct (expression (:include node)))
+(defclass literal-expression (expression)
+  ((token :initform (error "must provide token") :initarg :token :type scanner:token :reader :literal-expression-token)))
 
-(defstruct (bad-expression (:include expression)))
+(defclass identifier (expression)
+  ((name :initform (error "must provide token") :initarg :name :type string :reader :identifier-name)))
 
-(defstruct (literal-expression (:conc-name literal-exp-) (:include expression))
-  (token (error "must provide token") :type scanner:token :read-only t))
+(defclass statement (node) ())
 
-(defstruct (identifier (:conc-name identifier-) (:include expression))
-  (name (error "must provide token") :type string :read-only t))
+(defclass bad-statement (statement) ())
 
-(defstruct (statement (:include node)))
+(defclass expression-statement (statement)
+  ((expression :initform (error "must provide expr") :initarg :expresion :type expression :reader :expression-statement-expression)))
 
-(defstruct (bad-statement (:include statement)))
+(defclass declaration (node) ())
 
-(defstruct (declaration (:include node)))
+(defclass const-declaration (declaration)
+  ((identifier :initform (error "must provide name") :initarg :identifier :type identifier :reader :const-declaration-identifier)
+   (initializer :initform (error "must provide initializer") :initarg :initializer :type expression :reader :const-declaration-initializer)))
 
-(defstruct (const-declaration (:conc-name const-decl-) (:include declaration))
-  (name (error "must provide name") :type identifier :read-only t)
-  (initializer (error "must provide initializer") :type literal-expression :read-only t))
+(defclass bad-declaration (declaration) ())
 
-(defstruct (bad-declaration (:include declaration)))
-
-(defstruct (source (:conc-name source-) (:include node))
-  (declarations (error "must provide declarations") :type list :read-only t))
+(defclass source  (declaration)
+  ((declarations :initform (error "must provide declarations") :initarg :declarations :type list :reader :source-declarations)))

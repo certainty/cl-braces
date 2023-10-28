@@ -26,7 +26,6 @@
     (print-unreadable-object (s stream :type t :identity t)
       (format stream "line:~a column:~a offset:~a " line  column offset))))
 
-
 (defun call-with-scanner (origin fn)
   (with-source-input (inp origin)
     (funcall fn (make-instance 'state :input inp))))
