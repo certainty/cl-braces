@@ -47,8 +47,7 @@
    :token-location
 
    :*fail-fast*
-   :scan-state
-   :make-scan-state
+   :state
    :call-with-scanner
    :with-scanner
    :scan-errors
