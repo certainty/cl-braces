@@ -11,7 +11,6 @@
 (defclass state ()
   ((input :initform (error "input required") :initarg :input :type source-input)
    (input-stream :initform nil)
-   (errors :initform (make-array 0 :element-type 'scan-error :adjustable t :fill-pointer 0) :type (vector scan-error *))
    (consumed :initform (make-array 0 :element-type 'character :adjustable t :fill-pointer 0) :type (vector character *))
    (token-start :initform 0 :type integer)
    (offset :initform 0 :type integer)
@@ -25,7 +24,7 @@
 (defmethod print-object ((s state) stream)
   (with-slots (line column offset errors) s
     (print-unreadable-object (s stream :type t :identity t)
-      (format stream "line:~a column:~a offset:~a errors:~a" line  column offset errors))))
+      (format stream "line:~a column:~a offset:~a " line  column offset))))
 
 
 (defun call-with-scanner (origin fn)
@@ -72,7 +71,10 @@
            (location (location scanner)))
       (setf consumed (make-array 0 :element-type 'character :adjustable t :fill-pointer 0))
       (setf token-start offset)
-      (make-token :type token-type :text token-text :value value :location location))))
+      (let ((token (make-token :type token-type :text token-text :value value :location location)))
+        (prog1 token
+          (when (eql token-type :tok-illegal)
+            (error 'scan-error :message "Illegal token" :location location)))))))
 
 (defun scan-eof (scanner)
   (when (eof-p scanner)
