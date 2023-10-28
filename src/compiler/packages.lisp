@@ -46,6 +46,7 @@
    :token-text
    :token-location
 
+   :*fail-fast*
    :scan-state
    :make-scan-state
    :call-with-scanner
@@ -104,16 +105,13 @@
   (:nicknames :compiler.parser :frontent.parser :parser)
   (:use :cl :serapeum)
   (:import-from :alexandria :positive-fixnum)
+  (:import-from :scanner)
   (:export
-   :*parser-fail-fast*
+   :*fail-fast*
    :call-with-parser
    :with-parser
    :parse
    :ast-source))
-
-(defpackage :cl-braces.compiler.frontend
-  (:nicknames :compiler.frontend :frontend)
-  (:use :cl :cl-braces.compiler.frontend.scanner :cl-braces.compiler.frontend.parser))
 
 (defpackage :cl-braces.compiler
   (:nicknames :compiler)

@@ -1,5 +1,7 @@
 (in-package :cl-braces.compiler.frontend.scanner)
 
+(defparameter *fail-fast* nil "If true, the scanner will enter the debugger when an error is encountered")
+
 (define-condition scan-error (error)
   ((message :initarg :message :reader scan-error-message)
    (location :initarg :location :reader scan-error-location))
@@ -37,6 +39,11 @@
 
 (-> next-token (scan-state) token)
 (defun next-token (scanner)
+  (handler-bind ((scan-error (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
+    (%next-token scanner)))
+
+(-> %next-token (scan-state) token)
+(defun %next-token (scanner)
   "Scans the next token from input and return it.
 This operation always succeeds unless a condition is raised.
 If the input isn't recognized we simply return the special failure token and add the error to the internal scanner state.

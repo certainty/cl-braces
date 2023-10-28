@@ -26,16 +26,14 @@
   :pathname "src/compiler"
   :components ((:file "packages")
                (:file "introspection")
-               (:module
-                "frontend"
+
+               (:module "frontend"
                 :components
                 ((:file "hr/scanner/location")
                  (:file "hr/scanner/input")
                  (:file "hr/scanner/token")
                  (:file "hr/scanner/scanner")
-
                  (:file "hr/ast/ast")
-
                  (:file "hr/parser/parser")))
 
                (:file "compiler")))

@@ -1,6 +1,6 @@
 (in-package :cl-braces.compiler.frontend.parser)
 
-(defparameter *parser-fail-fast* nil "If true the parser will signal a continuable parse-error condition when an error is encountered. If false the parser will attempt to synchronize and continue parsing automatically.")
+(defparameter *fail-fast* nil "If true the parser will signal a continuable parse-error condition when an error is encountered. If false the parser will attempt to synchronize and continue parsing automatically.")
 
 (define-condition parse-errors (error)
   ((errors :initarg :errors :reader parse-error-instances))
@@ -41,8 +41,7 @@
   "Parse the input and return the AST. Signals parse-errors condition if there are any errors."
   (setf ast:*node-id-counter* 1)
   (multiple-value-bind (ast errors)
-      (handler-bind ((parse-error-instance (lambda (e) (if *parser-fail-fast* (invoke-debugger e) (invoke-restart 'continue))))
-                     (scanner:scan-error (lambda (e) (if *parser-fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
+      (handler-bind ((parse-error-instance (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
         (parse-source parser))
     (when (consp errors)
       (error 'parse-errors :errors errors))
