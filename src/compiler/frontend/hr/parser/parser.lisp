@@ -19,8 +19,9 @@
 (defclass state ()
   ((scanner :initform (error "No scanner provided") :initarg :scanner :type scanner:state)
    (node-id :initform 0)
-   (prev-token :initform nil :type (or null scanner:token))
    (cur-token :initform nil :type (or null scanner:token))
+   ;; one token look-ahead
+   (next-token :initform nil :type (or null scanner:token))
    (errors :initform nil :reader :parse-errors)
    (had-error-p :initform nil :type boolean)
    (panic-mode-p :initform nil :type boolean)))
@@ -69,21 +70,17 @@
   (parse-expression-statement parser))
 
 (defun parse-expression-statement (parser)
-  (with-slots (had-error-p) parser
-    (let ((expr (parse-expression parser)))
-      (if had-error-p
-          (accept parser 'ast:bad-statement)
-          (accept parser 'ast:expression-statement :expression expr)))))
+  (let ((expr (parse-expression parser)))
+    (accept parser 'ast:expression-statement :expression expr)))
 
 (defun parse-expression (parser)
   (parse-number-literal parser))
 
 (defun parse-number-literal (parser)
-  (with-slots (had-error-p) parser
-    (let ((tok (consume! parser :tok-number "Expected number literal")))
-      (if had-error-p
-          (accept parser 'ast:bad-expression)
-          (accept parser 'ast:literal-expression :token tok)))))
+  (let ((tok (consume! parser :tok-integer "Expected number literal")))
+    (if (scanner:token-illegal-p tok)
+        (accept parser 'ast:bad-expression)
+        (accept parser 'ast:literal-expression :token tok))))
 
 (defun accept (parser node-class &rest args)
   (with-slots (cur-token) parser
@@ -97,51 +94,57 @@
         (accept parser 'ast:bad-expression)
         (accept parser 'ast:identifier :name (scanner:token-value tok)))))
 
-;; TODO: think about the invariants I want to have from consume and the internal error state
+(-> consume! (state scanner:tpe-token string &rest list) scanner:token)
 (defun consume! (parser expected-token-type format-string &rest args)
   "Consumes input expecting it to be of the given token type"
-  (with-slots (cur-token had-error-p) parser
+  (with-slots (cur-token) parser
+    (assert cur-token)
     (unless (eql (scanner:token-type cur-token) expected-token-type)
       (error-at-current parser format-string args))
-    (prog1 (scanner:token-illegal-p cur-token)
+    (prog1 cur-token
       (advance! parser))))
 
 (defun advance! (parser)
-  "Reads the next legal token. If an illegal token has been encountered it is recorded as an error.
-Returns two values:
-1. the token
-2. had-error-p indicating an error
-"
-  (with-slots (had-error-p prev-token cur-token scanner) parser
-    (setf prev-token cur-token)
-    (setf cur-token (scanner:next-token scanner))
-    (when (scanner:token-illegal-p cur-token)
-      (error-at-current "Illegal token ~A" cur-token))
-    (values cur-token had-error-p)))
+  "Advance in the token screen setting the internal state of the parser accordingly."
+  (with-slots (next-token cur-token scanner) parser
+    (let ((cur (scanner:next-token scanner)))
+      (if (and cur-token next-token)
+          (rotatef cur-token next-token cur)
+          (progn
+            (setf cur-token cur)
+            (setf next-token (scanner:next-token scanner))))
+      (when (scanner:token-illegal-p cur-token)
+        (error-at-current parser "Illegal token"))
+      (values cur-token next-token))))
 
 (defun skip-illegal! (parser)
-  "Reads the next available legal token, skipping illegal ones as we go. Each illegal token will be recorded as an error.
-Returns two values:
-1. the next legal token (which might be the eof-token)
-2. had-error-p indicating an error
-"
+  "Reads the next available legal token, skipping illegal ones as we go. Each illegal token will be recorded as an error "
   (with-slots (cur-token had-error-p) parser
-    (loop (advance! parser) while (scanner:token-illegal-p cur-token))
-    (values cur-token had-error-p)))
+    (let ((had-illegal nil))
+      (loop
+        (advance! parser)
+        (cond
+          ((eof-p parser) (return))
+          ((scanner:token-illegal-p cur-token)
+           (setf had-error-p t))
+          (t (return))))
+      (values cur-token had-illegal))))
 
 (defun synchronize! (parser)
   "Attempt to find a synchronization point in the input stream, at which we can attempt to continue parsing.
 The parse will likely generate a couple of invalid nodes."
   ;; find next legal token
-  (with-slots (panic-mode-p prev-token cur-token) parser
+  (with-slots (panic-mode-p next-token cur-token) parser
     (setf panic-mode-p nil)
     (loop
-      (let ((prev-token-type (and prev-token (scanner:token-type prev-token)))
-            (cur-token-type (and cur-token parser (scanner:token-type cur-token))))
+      (let ((cur-token-type (and cur-token (scanner:token-type cur-token)))
+            (next-token-type (and next-token parser (scanner:token-type next-token))))
         (cond
           ((eof-p parser) (return))
-          ((eql prev-token-type :tok-semicolon) (return))
-          ((member cur-token-type (list :tok-rbrace :tok-kw-func :tok-kw-if :tok-kw-for)) (return))
+          ((member cur-token-type (list :tok-semicolon :tok-rbrace))
+           (advance! parser)
+           (return))
+          ((member next-token-type (list :tok-kw-func :tok-kw-if :tok-kw-for)) (return))
           (t (skip-illegal! parser)))))))
 
 (defun error-at-current (parser format-string &rest args)

@@ -93,7 +93,10 @@
    :bad-statement
    :source
    :make-source
-   :source-declarations)
+   :source-declarations
+
+   :node->sexp
+   )
   (:shadow :declaration))
 
 (defpackage :cl-braces.compiler.frontend.parser
