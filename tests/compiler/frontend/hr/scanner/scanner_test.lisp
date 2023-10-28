@@ -23,10 +23,10 @@
 
 (define-test scan-identifier
   :parent :cl-braces/compiler/frontend/scanner-suite
-  (is-values (scans-as "foo") (eql :tok-identifier) (string= "foo") (eql nil))
-  (is-values (scans-as "funcFoo") (eql :tok-identifier) (string= "funcFoo") (eql nil))
-  (is-values (scans-as "foo234_something") (eql :tok-identifier) (string= "foo234_something") (eql nil))
-  (is-values (scans-as "someSnakeCase1234") (eql :tok-identifier) (string= "someSnakeCase1234") (eql nil)))
+  (is-values (scans-as "foo") (eql :tok-identifier) (string= "foo") (string= "foo"))
+  (is-values (scans-as "funcFoo") (eql :tok-identifier) (string= "funcFoo") (string= "funcFoo"))
+  (is-values (scans-as "foo234_something") (eql :tok-identifier) (string= "foo234_something") (string= "foo234_something"))
+  (is-values (scans-as "someSnakeCase1234") (eql :tok-identifier) (string= "someSnakeCase1234") (string= "someSnakeCase1234")))
 
 (define-test scan-integer
   :parent :cl-braces/compiler/frontend/scanner-suite
@@ -60,12 +60,12 @@
   (is eql :tok-semicolon (scans-as ";"))
   (is eql :tok-eql (scans-as "="))
   (is eql :tok-bang (scans-as "!"))
-  (is eql :tok-op-double-eql (scans-as "=="))
-  (is eql :tok-op-bang-eql (scans-as "!="))
+  (is eql :tok-double-eql (scans-as "=="))
+  (is eql :tok-bang-eql (scans-as "!="))
 
-  (is eql :tok-op-dec (scans-as "--"))
-  (is eql :tok-op-inc (scans-as "++"))
-  (is eql :tok-op-colon-eql (scans-as ":="))
+  (is eql :tok-dec (scans-as "--"))
+  (is eql :tok-inc (scans-as "++"))
+  (is eql :tok-colon-eql (scans-as ":="))
   (is eql :tok-asterisk (scans-as "*"))
   (is eql :tok-ampersand (scans-as "&")))
 
@@ -73,4 +73,4 @@
   :parent :cl-braces/compiler/frontend/scanner-suite
   (let ((*fail-fast* nil))
     (let ((all-tokens (scan-all (string->scanner "const i _< 3"))))
-      (is equal (list :tok-kw-const :tok-identifier :tok-identifier :tok-illegal :tok-integer :tok-eof) (mapcar #'token-type all-tokens)))))
+      (is equal (list :tok-kw-const :tok-identifier :tok-identifier :tok-lt :tok-integer :tok-eof) (mapcar #'token-type all-tokens)))))

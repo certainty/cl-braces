@@ -1,11 +1,13 @@
-(asdf:defsystem  "cl-braces"
+(in-package :asdf-user)
+(defsystem  "cl-braces"
   :description "A compiler playground"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
+  :depends-on (:cl-braces/compiler :cl-braces/vm)
   :serial t
-  :depends-on (:cl-braces/compiler :cl-braces/vm))
+  :components ((:file "scratch")))
 
-(asdf:defsystem "cl-braces/compiler"
+(defsystem "cl-braces/compiler"
   :description "Compiler for cl-braces"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
@@ -25,6 +27,7 @@
   :serial t
   :pathname "src/compiler"
   :components ((:file "packages")
+               (:file "../utils")
                (:file "introspection")
 
                (:module "frontend"
@@ -35,10 +38,9 @@
                  (:file "hr/scanner/scanner")
                  (:file "hr/ast/ast")
                  (:file "hr/parser/parser")))
-
                (:file "compiler")))
 
-(asdf:defsystem "cl-braces/vm"
+(defsystem "cl-braces/vm"
   :description "vm for cl-braces"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
@@ -59,7 +61,7 @@
   :components ((:file "packages")
                (:file "machine")))
 
-(asdf:defsystem "cl-braces/isa"
+(defsystem "cl-braces/isa"
   :description "Shared code between VM and Compiler for cl-braces"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
@@ -68,6 +70,7 @@
   :serial t
   :pathname "src/isa"
   :components ((:file "packages")
+               (:file "../utils")
                (:file "instructions")
                (:file "value")
                (:file "chunk")))
@@ -77,7 +80,7 @@
 ;;   :description "Executable for cl-braces"
 ;;   :author "David Krentzlin <david.krentzlin@gmail.com>")
 
-(asdf:defsystem  "cl-braces/compiler/tests"
+(defsystem  "cl-braces/compiler/tests"
   :description "Tests for cl-braces compiler"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :depends-on (:parachute :cl-braces/compiler)

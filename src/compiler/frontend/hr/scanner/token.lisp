@@ -24,14 +24,33 @@
 
     :tok-asterisk
     :tok-ampersand
+    :tok-ampersand-eql
 
-    :tok-op-minus
-    :tok-op-dec
-    :tok-op-plus
-    :tok-op-inc
-    :tok-op-double-eql
-    :tok-op-bang-eql
-    :tok-op-colon-eql
+    :tok-dec
+    :tok-inc
+    :tok-plus
+    :tok-minus
+    :tok-plus-eql
+    :tok-minus-eql
+    :tok-mul-eql
+    :tok-double-eql
+    :tok-bang-eql
+    :tok-colon-eql
+    :tok-double-ampersand
+    :tok-double-pipe
+
+    :tok-carret
+    :tok-carret-eql
+    :tok-pipe
+    :tok-pipe-eql
+    :tok-shift-left
+    :tok-shift-right
+    :tok-tilde
+
+    :tok-lt
+    :tok-lt-eql
+    :tok-gt
+    :tok-gt-eql
 
     :tok-kw-package
     :tok-kw-import
@@ -55,13 +74,32 @@
 
 (deftype tpe-token-operator ()
   '(member
-    :tok-op-minus
-    :tok-op-inc
-    :tok-op-plus
-    :tok-op-dec
-    :tok-op-double-eql
-    :tok-op-bang-eql
-    :tok-op-colon-eql
+    :tok-minus
+    :tok-minus-eql
+    :tok-inc
+    :tok-plus
+    :tok-plus-eql
+    :tok-dec
+    :tok-mul-eql
+    :tok-double-eql
+    :tok-bang-eql
+    :tok-colon-eql
+    :tok-ampersand
+    :tok-ampersand-eql
+    :tok-double-ampersand
+    :tok-tilde
+    :tok-carret
+    :tok-shift-left
+    :tok-shift-right
+    :tok-carret-eql
+    :tok-pipe
+    :tok-pipe-eql
+    :tok-double-pipe
+
+    :tok-lt
+    :tok-lt-eql
+    :tok-gt
+    :tok-gt-eql
     ))
 
 (deftype tpe-token-keyword ()
