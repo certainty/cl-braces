@@ -138,8 +138,7 @@
           ((string= text "<<") (=> :tok-shift-left))
           ((string= text ">>") (=> :tok-shift-right))
           ((string= text "<=") (=> :tok-lt-eql))
-          ((string= text ">=") (=> :tok-gt-eql))
-          (t nil))))))
+          ((string= text ">=") (=> :tok-gt-eql)))))))
 
 (defun scan-punctuation (scanner)
   (let ((c (peek scanner)))
@@ -165,8 +164,7 @@
         (#\< (=> :tok-lt))
         (#\> (=> :tok-gt))
         (#\+ (=> :tok-plus))
-        (#\- (=> :tok-minus))
-        (t nil)))))
+        (#\- (=> :tok-minus))))))
 
 (-> advance! (state) (or null character))
 (defun advance! (scanner &key (skip-p nil))
