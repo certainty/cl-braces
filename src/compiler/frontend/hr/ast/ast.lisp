@@ -51,22 +51,55 @@
 (defparameter *identifiers-as-strings* t)
 (defparameter *pretty-print* nil)
 
+(defun dump-expr (expr)
+  (with-output-to-string (s)
+    (pprint (node->sexp expr) s)))
+
+(defmethod node->sexp ((src source))
+  (with-slots (declarations) src
+    `(:source :decls ,(mapcar #'node->sexp declarations))))
+
+(defmethod node->sexp ((decl bad-declaration))
+  (with-slots (id location) decl
+    `(:bad-declaration :id ,(if *include-node-ids* id nil) :location ,(if *include-node-locations* location nil))))
+
+(defmethod node->sexp ((stmt bad-statement))
+  (with-slots (id location) stmt
+    `(:bad-statement :id ,(if *include-node-ids* id nil) :location ,(if *include-node-locations* location nil))))
+
+(defmethod node->sexp ((expr bad-expression))
+  (with-slots (id location) expr
+    `(:bad-expression :id ,(if *include-node-ids* id nil) :location ,(if *include-node-locations* location nil))))
+
 (defmethod node->sexp ((expr literal-expression))
   (with-slots (token) expr
-    `(literal-expression :tok ,(token->string token))))
+    `(:literal-expression :tok ,(token->string token))))
 
 (defmethod node->sexp ((expr identifier))
   (with-slots (identifier-name) expr
-    `(identifier :name ,(format nil "~A" (if *identifiers-as-strings* identifier-name expr)))))
+    `(:identifier :name ,(format nil "~A" (if *identifiers-as-strings* identifier-name expr)))))
 
 (defmethod node->sexp ((stm expression-statement))
   (with-slots (expression) stm
-    `(expression-statement :expr ,(node->sexp expression))))
+    `(:expression-statement :expr ,(node->sexp expression))))
 
 (defmethod node->sexp ((decl const-declaration))
   (with-slots (identifier initializer) decl
-    `(const-declaration :id ,(node->sexp identifier) :init ,(node->sexp initializer))))
+    `(:const-declaration :id ,(node->sexp identifier) :init ,(node->sexp initializer))))
 
+(defmethod node->sexp ((binary-expr binary-expression))
+  (with-slots (operator left right) binary-expr
+    `(:binary-expression
+      :left ,(node->sexp left)
+      :op ,(node->sexp operator)
+      :right ,(node->sexp right))))
+
+(defmethod node->sexp ((unary-expr unary-expression))
+  (with-slots (op operand) unary-expr
+    `(:unary-expression :op ,(node->sexp op) :operand ,(node->sexp operand))))
+
+(defmethod node->sexp ((tok scanner:token))
+  (token->string tok))
 
 (defun token->string (token)
   (format nil "~A" (if *tokens-as-strings* (scanner:token-text token)  token)))
