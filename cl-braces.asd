@@ -25,6 +25,7 @@
   :pathname "src/compiler"
   :components ((:file "packages")
                (:file "introspection")
+
                (:module "frontend"
                 :components
                 ((:module "highlevel"
@@ -46,7 +47,7 @@
 
                  (:module "intermediate"
                   :components
-                  ((:file "packages")))))
+                  ((:file "ast")))))
 
                (:module "backend"
                 :components
