@@ -18,7 +18,7 @@
                :trivia
                :closer-mop
                :log4cl
-               :cl-braces/shared
+               :cl-braces/vm
                )
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
@@ -34,6 +34,12 @@
                  (:file "hr/scanner/scanner")
                  (:file "hr/ast/ast")
                  (:file "hr/parser/parser")))
+
+               (:module "backend"
+                :components
+                ((:file "packages")
+                 (:file "bytecode-generator")))
+
                (:file "compiler")))
 
 (defsystem "cl-braces/vm"
@@ -46,6 +52,17 @@
   :serial t
   :pathname "src/vm"
   :components ((:file "packages")
+
+               (:module "runtime"
+                :components
+                ((:file "value")))
+
+               (:module "bytecode"
+                :components
+                ((:file "instructions")
+                 (:file "chunk")))
+
+               (:file "disassembler")
                (:file "machine")))
 
 (defsystem "cl-braces/shared"
@@ -56,18 +73,7 @@
   :components ((:module "utils"
                 :components
                 ((:file "packages")
-                 (:file "utils")))
-
-               (:module "runtime"
-                :components
-                ((:file "packages")
-                 (:file "value")))
-
-               (:module "isa"
-                :components
-                ((:file "packages")
-                 (:file "instructions")
-                 (:file "chunk")))))
+                 (:file "utils")))))
 
 ;; (defsystm "cl-braces/compiler/executable"
 ;;   :description "Executable for cl-braces"

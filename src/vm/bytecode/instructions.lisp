@@ -1,4 +1,4 @@
-(in-package :cl-braces.isa)
+(in-package :cl-braces.vm.bytecode)
 
 (defmacro define-opcodes (&rest opcodes)
   (let ((counter 0)
