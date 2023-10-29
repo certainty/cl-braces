@@ -61,7 +61,7 @@
 (defun parse (origin)
   "Parse input coming from the provided orgigin returning two values: the AST and the list of errors if there are any"
   (with-parser (p origin)
-    (with-slots (errors had-error-p) p
+    (with-slots (errors) p
       (values (%parse p) errors))))
 
 (-> %parse (state) ast:source)
@@ -69,9 +69,10 @@
   "Parse the input and return the AST. Signals parse-errors condition if there are any errors."
   (handler-bind ((parse-error-instance (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
     (advance! parser)
-    (let ((decls (loop for decl = (parse-declaration parser)
-                       until (eof-p parser)
-                       collect decl)))
+    (let ((decls nil))
+      (loop
+        (when (eof-p parser) (return))
+        (push (parse-declaration parser) decls))
       (accept parser 'ast:source :declarations decls))))
 
 (-> eof-p (state) boolean)
