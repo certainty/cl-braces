@@ -30,6 +30,7 @@
   (scanner:with-scanner (s origin)
     (funcall fn (make-instance 'state :scanner s))))
 
+(-> next-node-id (state) integer)
 (defun next-node-id (state)
   (with-slots (node-id) state
     (incf node-id)))
@@ -37,13 +38,14 @@
 (defmacro with-parser ((parser-var origin) &body body)
   `(call-with-parser ,origin (lambda (,parser-var) ,@body)))
 
+(-> parse (t) (values ast:source list &optional))
 (defun parse (origin)
   "Parse input coming from the provided orgigin returning two values: the AST and the list of errors if there are any"
   (with-parser (p origin)
     (with-slots (errors) p
       (values (%parse p) errors))))
 
-(-> do-parse (parse-state) ast:source)
+(-> %parse (state) ast:source)
 (defun %parse (parser)
   "Parse the input and return the AST. Signals parse-errors condition if there are any errors."
   (multiple-value-bind (ast errors)
@@ -54,10 +56,12 @@
       (error 'parse-errors :errors errors))
     ast))
 
+(-> eof-p (state) boolean)
 (defun eof-p (parser)
   (with-slots (cur-token) parser
     (scanner:token-eof-p cur-token)))
 
+(-> parse-declaration (state) ast:declaration)
 (defun parse-declaration (parser)
   (with-slots (had-error-p) parser
     (let ((statement (parse-statement parser)))
@@ -66,35 +70,40 @@
         (return-from parse-declaration (accept parser 'ast:bad-declaration)))
       statement)))
 
+(-> parse-statement (state) ast:statement)
 (defun parse-statement (parser)
   (parse-expression-statement parser))
 
+(-> parse-expression-statement (state) ast:statement)
 (defun parse-expression-statement (parser)
   (let ((expr (parse-expression parser)))
     (accept parser 'ast:expression-statement :expression expr)))
 
+(-> parse-expression (state) ast:expression)
 (defun parse-expression (parser)
-  (parse-number-literal parser))
+  (or (parse-number-literal parser)
+      (accept parser 'ast:bad-expression)))
 
+(-> parse-number-literal (state) (or null ast:expression))
 (defun parse-number-literal (parser)
   (let ((tok (consume! parser :tok-integer "Expected number literal")))
-    (if (scanner:token-illegal-p tok)
-        (accept parser 'ast:bad-expression)
-        (accept parser 'ast:literal-expression :token tok))))
+    (unless (scanner:token-illegal-p tok)
+      (accept parser 'ast:literal-expression :token tok))))
 
+(-> parse-identifier (state) (or null ast:identifier))
+(defun parse-identifier (parser)
+  (multiple-value-bind (tok had-error-p) (consume! parser :tok-identifier "Expected identifier")
+    (unless had-error-p
+      (accept parser 'ast:identifier :name (scanner:token-value tok)))))
+
+(-> accept (state symbol &rest t) (values ast:node &optional))
 (defun accept (parser node-class &rest args)
   (with-slots (cur-token) parser
     (if cur-token
         (apply #'make-instance node-class :id (next-node-id parser) :location (scanner:token-location cur-token) args)
         (unreachable! "No current token"))))
 
-(defun parse-identifier (parser)
-  (multiple-value-bind (tok had-error-p) (consume! parser :tok-identifier "Expected identifier")
-    (if had-error-p
-        (accept parser 'ast:bad-expression)
-        (accept parser 'ast:identifier :name (scanner:token-value tok)))))
-
-(-> consume! (state scanner:tpe-token string &rest list) scanner:token)
+(-> consume! (state scanner:tpe-token string &rest t) scanner:token)
 (defun consume! (parser expected-token-type format-string &rest args)
   "Consumes input expecting it to be of the given token type"
   (with-slots (cur-token) parser
@@ -104,6 +113,7 @@
     (prog1 cur-token
       (advance! parser))))
 
+(-> advance! (state) (values scanner:token scanner:token))
 (defun advance! (parser)
   "Advance in the token screen setting the internal state of the parser accordingly."
   (with-slots (next-token cur-token scanner) parser
@@ -117,6 +127,7 @@
         (error-at-current parser "Illegal token"))
       (values cur-token next-token))))
 
+(-> skip-illegal! (state) (values scanner:token boolean))
 (defun skip-illegal! (parser)
   "Reads the next available legal token, skipping illegal ones as we go. Each illegal token will be recorded as an error "
   (with-slots (cur-token had-error-p) parser
@@ -130,6 +141,7 @@
           (t (return))))
       (values cur-token had-illegal))))
 
+(-> synchronize! (state) scanner:token)
 (defun synchronize! (parser)
   "Attempt to find a synchronization point in the input stream, at which we can attempt to continue parsing.
 The parse will likely generate a couple of invalid nodes."
@@ -145,7 +157,8 @@ The parse will likely generate a couple of invalid nodes."
            (advance! parser)
            (return))
           ((member next-token-type (list :tok-kw-func :tok-kw-if :tok-kw-for)) (return))
-          (t (skip-illegal! parser)))))))
+          (t (skip-illegal! parser)))))
+    cur-token))
 
 (defun error-at-current (parser format-string &rest args)
   "Record an error at the current location"
