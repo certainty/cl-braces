@@ -12,7 +12,13 @@
 
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :compiler.scanner :frontend.scanner :scanner)
-  (:use :cl :serapeum)
+  (:use :cl)
+  (:import-from
+   :serapeum
+   :->
+   :dict
+   :and-let*
+   :defconst)
   (:export
    :source-origin
    :file-origin
@@ -39,6 +45,7 @@
    :tpe-token
    :token-literal-p
    :token-keyword-p
+   :token-identifier-p
    :token-eof-p
    :token-illegal-p
    :token-type
@@ -63,11 +70,11 @@
 
 (defpackage :cl-braces.compiler.frontend.ast
   (:nicknames :compiler.ast :frontend.ast :ast)
-  (:use :cl :serapeum)
+  (:use :cl)
+  (:import-from :serapeum :-> :dict)
   (:import-from :alexandria :positive-fixnum)
   (:export
 
-   :*node-id-counter*
    :node
    :node-id
    :node-location
@@ -80,6 +87,8 @@
 
    :identifier-name
    :literal-expression
+   :unary-expression
+   :binary-expression
    :expression-statement
    :literal-exp-token
 
@@ -95,13 +104,15 @@
    :make-source
    :source-declarations
 
-   :node->sexp
-   )
+   :node->sexp)
   (:shadow :declaration))
 
 (defpackage :cl-braces.compiler.frontend.parser
   (:nicknames :compiler.parser :frontent.parser :parser)
   (:use :cl :serapeum :cl-braces.utils)
+  (:import-from :serapeum
+   :->
+   )
   (:import-from :alexandria :positive-fixnum)
   (:import-from :scanner)
   (:export

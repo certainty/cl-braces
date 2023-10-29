@@ -153,6 +153,10 @@
 (defun token-literal-p (token)
   (typep (token-type token) 'tpe-token-literal))
 
+(-> token-identifier-p (token) boolean)
+(defun token-identifier-p (token)
+  (eql (token-type token) :tok-identifier))
+
 (-> token-keyword-p (token) boolean)
 (defun token-keyword-p (token)
   (typep (token-type token) 'tpe-token-keyword))

@@ -1,4 +1,5 @@
 (in-package :asdf-user)
+
 (defsystem  "cl-braces"
   :description "A compiler playground"
   :author "David Krentzlin <david.krentzlin@gmail.com>"
@@ -12,22 +13,17 @@
   :author "David Krentzlin <david.krentzlin@gmail.com>"
   :source-control (:git "https://github.com/certainty/cl-braces.git")
   :depends-on (
-               #:alexandria
-               #:serapeum
-               #:defstar
-
-               #:trivia
-               #:closer-mop
-
-               #:log4cl
-
-               #:cl-braces/isa
+               :alexandria
+               :serapeum
+               :trivia
+               :closer-mop
+               :log4cl
+               :cl-braces/shared
                )
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
   :pathname "src/compiler"
   :components ((:file "packages")
-               (:file "../utils")
                (:file "introspection")
 
                (:module "frontend"
@@ -41,40 +37,37 @@
                (:file "compiler")))
 
 (defsystem "cl-braces/vm"
-  :description "vm for cl-braces"
-  :author "David Krentzlin <david.krentzlin@gmail.com>"
-  :source-control (:git "https://github.com/certainty/cl-braces.git")
   :depends-on (
-               #:alexandria
-               #:serapeum
-               #:defstar
-
-               #:trivia
-               #:closer-mop
-
-               #:log4cl
-
-               #:cl-braces/isa
-               )
+               :alexandria
+               :serapeum
+               :closer-mop
+               :log4cl
+               :cl-braces/shared)
   :serial t
   :pathname "src/vm"
   :components ((:file "packages")
                (:file "machine")))
 
-(defsystem "cl-braces/isa"
-  :description "Shared code between VM and Compiler for cl-braces"
-  :author "David Krentzlin <david.krentzlin@gmail.com>"
-  :source-control (:git "https://github.com/certainty/cl-braces.git")
+(defsystem "cl-braces/shared"
   :depends-on (#:alexandria
                #:serapeum)
   :serial t
-  :pathname "src/isa"
-  :components ((:file "packages")
-               (:file "../utils")
-               (:file "instructions")
-               (:file "value")
-               (:file "chunk")))
+  :pathname   "src/shared"
+  :components ((:module "utils"
+                :components
+                ((:file "packages")
+                 (:file "utils")))
 
+               (:module "runtime"
+                :components
+                ((:file "packages")
+                 (:file "value")))
+
+               (:module "isa"
+                :components
+                ((:file "packages")
+                 (:file "instructions")
+                 (:file "chunk")))))
 
 ;; (defsystm "cl-braces/compiler/executable"
 ;;   :description "Executable for cl-braces"

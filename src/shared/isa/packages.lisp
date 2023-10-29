@@ -2,7 +2,10 @@
 
 (defpackage :cl-braces.isa
   (:nicknames :isa)
-  (:use :cl :serapeum)
+  (:use :cl)
+  (:import-from
+   :serapeum
+   :->)
   (:export
    ;; instructions
    :+opcode-nop+
@@ -35,8 +38,4 @@
    ;; chunk
    :chunk
    :chunk-constants
-   :chunk-instructions
-
-   ;; value
-
-   ))
+   :chunk-instructions))

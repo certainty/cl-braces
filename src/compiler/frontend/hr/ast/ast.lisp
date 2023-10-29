@@ -17,12 +17,22 @@
 (defclass identifier (expression)
   ((name :initform (error "must provide token") :initarg :name :type string :reader :identifier-name)))
 
+(defclass binary-expression (expression)
+  ((operator :reader :binary-expression-operator :initform (error "must provide op") :initarg :operator :type scanner:token)
+   (left :reader :binary-expression-left :initform (error "must provide left") :initarg :left :type expression)
+   (right :reader :binary-expression-right :initform (error "must provide right") :initarg :right :type expression)))
+
+(defclass unary-expression (expression)
+  ((op :reader :unary-expression-op :initform (error "must provide op") :initarg :op :type scanner:token)
+   (operand :reader :unary-expression-operand :initform (error "must provide operand") :initarg :operand :type expression)))
+
 (defclass statement (node) ())
 
 (defclass bad-statement (statement) ())
 
 (defclass expression-statement (statement)
   ((expression :initform (error "must provide expr") :initarg :expression :type expression :reader :expression-statement-expression)))
+
 
 (defclass declaration (node) ())
 

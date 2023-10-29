@@ -10,7 +10,8 @@
   (format stream "~4,'0d: 0x~X ~6a ~@[~a~] ~@[~a~] ~@[~a~] ~%"
           addr
           (isa:instr-opcode instruction)
-          (isa:opcode->mnemonic (isa:instr-opcode instruction))
+          "don' know"
+                                        ;(isa:opcode->mnemonic (isa:instr-opcode instruction))
           (isa:instr-op1 instruction)
           (isa:instr-op2 instruction)
           (isa:instr-op3 instruction)))

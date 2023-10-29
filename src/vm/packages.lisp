@@ -2,4 +2,5 @@
 
 (defpackage :cl-braces.vm
   (:nicknames :vm)
-  (:use :cl :serapeum))
+  (:use :cl)
+  (:import-from :serapeum))

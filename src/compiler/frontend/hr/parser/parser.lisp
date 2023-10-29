@@ -26,6 +26,25 @@
    (had-error-p :initform nil :type boolean)
    (panic-mode-p :initform nil :type boolean)))
 
+(defconstant +prec-none+ 0)
+(defconstant +prec-assign+ 1)
+(defconstant +prec-or+ 2)
+(defconstant +prec-and+ 3)
+(defconstant +prec-eq+ 4)
+(defconstant +prec-comp+ 5)
+(defconstant +prec-term+ 6)
+(defconstant +prec-factor+ 7)
+(defconstant +prec-exponent+ 8)
+(defconstant +prec-unary+ 9)
+(defconstant +prec-call+ 10)
+(defconstant +prec-binary+ 11)
+(deftype tpe-precedence () '(integer 0 11))
+
+(defconstant +assoc-none+ :assoc-none)
+(defconstant +assoc-left+ :assoc-left)
+(defconstant +assoc-right+ :assoc-right)
+(deftype tpe-associativity () '(member :assoc-none :assoc-left :assoc-right))
+
 (defun call-with-parser (origin fn)
   (scanner:with-scanner (s origin)
     (funcall fn (make-instance 'state :scanner s))))
@@ -42,19 +61,18 @@
 (defun parse (origin)
   "Parse input coming from the provided orgigin returning two values: the AST and the list of errors if there are any"
   (with-parser (p origin)
-    (with-slots (errors) p
+    (with-slots (errors had-error-p) p
       (values (%parse p) errors))))
 
 (-> %parse (state) ast:source)
 (defun %parse (parser)
   "Parse the input and return the AST. Signals parse-errors condition if there are any errors."
-  (multiple-value-bind (ast errors)
-      (handler-bind ((parse-error-instance (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
-        (advance! parser)
-        (parse-declaration parser))
-    (when (consp errors)
-      (error 'parse-errors :errors errors))
-    ast))
+  (handler-bind ((parse-error-instance (lambda (e) (if *fail-fast* (invoke-debugger e) (invoke-restart 'continue)))))
+    (advance! parser)
+    (let ((decls (loop for decl = (parse-declaration parser)
+                       until (eof-p parser)
+                       collect decl)))
+      (accept parser 'ast:source :declarations decls))))
 
 (-> eof-p (state) boolean)
 (defun eof-p (parser)
@@ -79,10 +97,59 @@
   (let ((expr (parse-expression parser)))
     (accept parser 'ast:expression-statement :expression expr)))
 
+
 (-> parse-expression (state) ast:expression)
 (defun parse-expression (parser)
-  (or (parse-number-literal parser)
-      (accept parser 'ast:bad-expression)))
+  (parse-binary-expression parser +prec-assign+))
+
+(-> parse-binary-expression (state tpe-precedence) ast:expression)
+(defun parse-binary-expression (parser min-precedence)
+  "Parse binary expressions with precdence climbing."
+  (with-slots (cur-token) parser
+    (let ((left (parse-unary-expression parser))
+          (right nil))
+      (loop
+        (multiple-value-bind (token-precedence token-associativity) (precedence-for (scanner:token-type cur-token))
+          (when (< token-precedence min-precedence)
+            (return left))
+          (let* ((op cur-token)
+                 (next-precedence (if (eql token-associativity +assoc-left+) (1+ token-precedence) token-precedence)))
+            (advance! parser)
+            (setf right (parse-binary-expression parser next-precedence))
+            (setf left (accept parser 'ast:binary-expression :left left :operator op :right right))))))))
+
+(-> parse-unary-expression (state) ast:expression)
+(defun parse-unary-expression (parser)
+  (with-slots (cur-token) parser
+    (cond
+      ((match-any parser :tok-plus :tok-minus :tok-bang)
+       (prog1 (accept parser 'ast:unary-expression :operator cur-token :operand (parse-unary-expression parser))
+         (advance! parser)))
+
+      ((match-any parser :tok-lparen)
+       (prog1 (parse-binary-expression parser +prec-assign+)
+         (consume! parser :tok-rparen "Expected ')' after expression")))
+
+      ((scanner:token-identifier-p cur-token)
+       (todo! "Parse identifier expression"))
+
+      ((scanner:token-literal-p cur-token)
+       (prog1 (accept parser 'ast:literal-expression :token cur-token)
+         (advance! parser)))
+
+      ((match-any parser :tok-eof)
+       (error-at-current parser "Unexpected end of file")
+       (accept parser 'ast:bad-expression))
+
+      (t (error-at-current parser "Expected expression")
+         (accept parser 'ast:bad-expression)))))
+
+(-> precedence-for (scanner:tpe-token) (values tpe-precedence tpe-associativity))
+(defun precedence-for (token-type)
+  (case token-type
+    (:tok-plus (values +prec-term+ +assoc-left+))
+    (:tok-minus (values +prec-term+ +assoc-left+))
+    (otherwise (values +prec-none+ +assoc-none+))))
 
 (-> parse-number-literal (state) (or null ast:expression))
 (defun parse-number-literal (parser)
@@ -126,6 +193,16 @@
       (when (scanner:token-illegal-p cur-token)
         (error-at-current parser "Illegal token"))
       (values cur-token next-token))))
+
+(-> match-any (state scanner:tpe-token &rest scanner:tpe-token) boolean)
+(defun match-any (parser token-type &rest other-token-types)
+  "Checks if the next token matches any of the given token types. If so it consumes the token and return true, otherwise it tries the next type."
+  (with-slots (cur-token) parser
+    (let ((all-types (cons token-type other-token-types)))
+      (dolist (next-type all-types)
+        (when (eql (scanner:token-type cur-token) next-type)
+          (advance! parser)
+          (return t))))))
 
 (-> skip-illegal! (state) (values scanner:token boolean))
 (defun skip-illegal! (parser)
