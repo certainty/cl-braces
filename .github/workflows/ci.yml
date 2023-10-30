@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        lisp:
+          - sbcl-bin
+    env:
+      LISP: ${{ matrix.lisp }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache .roswell
+        id: cache-dot-roswell
+        uses: actions/cache@v1
+        with:
+          path: ~/.roswell
+          key: ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-${{ hashFiles('**/*.asd') }}
+          restore-keys: |
+            ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-
+            ${{ runner.os }}-dot-roswell-
+
+      - name: Install roswell
+        shell: bash
+        run: |
+          curl -L https://raw.githubusercontent.com/roswell/roswell/v21.10.14.111/scripts/install-for-ci.sh | sh -x
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          ln -s $(pwd) ~/.roswell/lisp/quicklisp/local-projects/cl-braces
+          ros -e '(progn (ql:register-local-projects) (uiop:quit))'
+          ros -e '(progn (ql:quickload :clunit2) (uiop:quit))'
+          ros -e '(progn (ql:quickload :cl-braces) (uiop:quit))'
+
+      - name: Test Compiler
+        shell: bash
+        run: |
+          ros -e '(asdf:test-system :cl-braces/compiler)'
