@@ -1,0 +1,64 @@
+* VM instruction set ideas
+
+- Instructions are represented as byte vectors
+- We use intel style instructions with destination first and operands after
+- We only support numeric operands which are either registers, addresses into the constant table, addresses into the instruction stream, or immediate values
+  - this way we don't have to care about encoding more complicated structures
+  - registers are 16bit unsigned
+  - address of constant table are 16bit unsigned
+  - address into instruction stream are betweend 8 and 64bit unsigned
+  - immediate value are 8 to 64 bit signed
+
+
+** Instruction encoding
+Encode instructions as 8bit unsigned using the two least significant bits to denote the arity.
+This gives us 64 opcodes for each category
+
+Unary Instructions (00):
+
+These instructions have zero or one operand.
+Example unary instruction opcodes: 0x00, 0x04, 0x08, etc.
+Binary Instructions (01):
+
+These instructions have two operands.
+Example binary instruction opcodes: 0x01, 0x05, 0x09, etc.
+Ternary Instructions (11):
+
+These instructions have three operands.
+Example ternary instruction opcodes: 0x03, 0x07, 0x0B, etc.
+
+
+** Introduce an ISA representation which can be used to decode and encode into bytecode
+ The idea here is that it provides a convenient way to describe the isa and have encode / decoder generated automatically
+ #+begin_src common lisp
+(defisa version: 1.0
+ :instruction-set
+ ((0x10 ret () "some documentation")
+  (0x11 loadk ((reg dst) (addr src) "some documentation")
+  (0x12 mov ((reg dst) (reg src)) "some documentation"))))
+
+(setf encode-1.0 (derive-encoder (isa 1.0)))
+(setf decode-1.0 (derive-decoder (isa 1.0)))
+
+(let ((opcode nil)
+       (dst nil)
+       (op1 nil)
+       (op2 ))
+
+ ;; decode-into setfs the provided bindings and this reduces consing and use of values
+ (decode-1.0 (opcode dst op1 op2) instruction-stream
+   (case opcode
+     (%ret ;;do things
+        )
+   ;; dispatch opcode
+   )))
+
+ #+end_src
+
+** Making instructions and execution efficient
+ - The maximum size of an instruction is 152 bits
+ - We decode into existing values using setq, instead of creating new binginds
+ - We do the same for the PC, the ACCU and the FLAGS register
+ - All of this should be cache friendly and well within the 64bit - 128bit cache line size
+
+ - The opcode design should minimize branch misprediction
