@@ -16,4 +16,6 @@
 
    :tpe-token-type
    :tok-eof
-   :tok-illegal))
+   :tok-illegal
+   :tok-integer
+   ))

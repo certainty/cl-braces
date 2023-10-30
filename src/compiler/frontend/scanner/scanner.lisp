@@ -50,7 +50,10 @@
     (setf input-stream (source-input-stream input))))
 
 (defun call-with-scanner (input-designator function &rest args)
-  "Calls the given function with a new scanner that is initialized with the input stream of the input designator."
+  "Calls the given function with a new scanner that is initialized with the input stream of the input designator.
+The scanner makes sure that the input stream is closed correctly on error or when the scan has finished.
+It uses `call-with-input' which inturn ensures that.
+"
   (call-with-input input-designator
                    (lambda (input)
                      (let ((state (make-instance 'state :input input)))
@@ -85,7 +88,24 @@ return a token. There are special kinds of tokens that denote `illegal input' as
     (setf token-line stream-line)
     (or
      (scan-eof state)
+     (scan-integer state)
      (scan-illegal state))))
+
+(-> scan-integer (state) (or null token))
+(defun scan-integer (state)
+  (multiple-value-bind (sign digit) (peek2 state)
+    (cond
+      ((and (or (eql #\+ sign) (eql #\- sign)) (digit-char-p digit))
+       (advance! state)
+       (scan-digits state)
+       (accept state :tok-integer #'parse-integer))
+      ((scan-digits state)
+       (accept state :tok-integer #'parse-integer)))))
+
+
+(-> scan-digits (state) (or null list))
+(defun scan-digits (state)
+  (scan-while state (lambda (c) (and c (digit-char-p c)))))
 
 (-> scan-eof (state) (or null token))
 (defun scan-eof (state)
@@ -97,6 +117,13 @@ return a token. There are special kinds of tokens that denote `illegal input' as
   (advance! state)
   (accept state :tok-illegal))
 
+(-> scan-while (state t) (or null list))
+(defun scan-while (state predicate)
+  "Consume the input, returning the list of consumed characters, while `predicate' returns t"
+  (loop for next = (advance-when! state predicate)
+        until (null next)
+        collect next))
+
 (-> eofp (state) boolean)
 (defun eofp (state)
   "Returns true if the scanner has reached the end of the input stream."
@@ -107,6 +134,15 @@ return a token. There are special kinds of tokens that denote `illegal input' as
   "Peeks at the next character in the input stream without advancing the scanner."
   (with-slots (input-stream) state
     (peek-char nil input-stream nil nil)))
+
+(-> peek2 (state) (values (or null character) (or null character)))
+(defun peek2 (state)
+  "Peeks two characters ahead in the input stream without advancing the scanner."
+  (with-slots (input-stream) state
+    (let* ((c1 (read-char input-stream nil))
+           (c2 (peek-char nil input-stream nil nil)))
+      (when c1 (unread-char c1 input-stream))
+      (values c1 c2))))
 
 (-> advance! (state) (or null character))
 (defun advance! (scanner)
@@ -123,8 +159,13 @@ return a token. There are special kinds of tokens that denote `illegal input' as
           (setf stream-column 0))
         current-char))))
 
-(-> accept (state tpe-token-type &key (to-value t)) token)
-(defun accept (scanner token-type &key (to-value #'identity))
+(-> advance-when! (state t) (or null character))
+(defun advance-when! (state predicate)
+  "Advance in the stream if `predicate' returns true when applied to the next character in stream"
+  (when (funcall predicate (peek state))
+    (advance! state)))
+
+(defun accept (scanner token-type &optional (to-value #'identity))
   "Accept the next token and return it. It the token is illegal the scate will signal a contiuabl scan-error."
   (with-slots (consumed token-offset token-column token-line) scanner
     (let* ((token-text (coerce consumed 'string))
