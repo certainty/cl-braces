@@ -1,12 +1,13 @@
 (in-package :cl-braces.compiler.tests)
 
+(defparameter *exit-on-failure* nil)
+
 (defsuite compiler-suite ())
+(defsuite frontend-suite (compiler-suite))
 
-(deftest trivially-true (compiler-suite)
-  (assert-true (= 1 1)))
-
-(defun run-all-with-exit ()
+(defun run-all ()
   (let ((result (run-suite 'compiler-suite :report-progress nil)))
     (when (or (plusp (clunit::errors result))
               (plusp (clunit::failed result)))
-      (uiop:quit 1))))
+      (when *exit-on-failure*
+        (uiop:quit 1)))))
