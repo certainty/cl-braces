@@ -1,23 +1,5 @@
 (in-package :cl-braces.compiler.frontend.scanner)
 
-(deftype tpe-token-type ()
-  "The type of a token. This is a simple enumeration of all the different kinds of tokens that can be encountered in the"
-  '(member
-    :tok-illegal
-    :tok-eof))
-
-(defclass token ()
-  ((type :reader token-type :initarg :type :initform (error "no type given") :type tpe-token-type)
-   (text :reader token-text :initarg :text :initform (error "no text given") :type string)
-   (value :reader token-value :initarg :value :initform nil :type (or null t))
-   (location :reader token-location :initarg :location :initform (error "no location given") :type source-location))
-  (:documentation "A token is a single unit of input. It is the smallest unit of input that the parser can work with."))
-
-(defmethod print-object ((token token) stream)
-  (with-slots (type text value location) token
-    (print-unreadable-object (token stream :type t :identity t)
-      (format stream "type: ~a text: ~a value: ~a location: ~a" type text value location))))
-
 (defparameter *fail-fast* nil "If true, the scanner will enter the debugger when an error is encountered")
 
 (define-condition scan-error (error)
@@ -27,23 +9,57 @@
              (format stream "Illegal token at ~a" (scan-error-location condition)))))
 
 (defclass state ()
-  ((input :reader state-input :initarg :input :initform (error "no input given") :type source-input :documentation "The input that is being scanned. Must be a character stream.")
-   (input-stream :initform nil :type (or null stream) :documentation "The input stream that is being scanned. Must be a character stream.")
+  ((input :reader
+          state-input
+          :initarg :input
+          :initform (error "no input given")
+          :type source-input
+          :documentation "The input that the scanner reads from.")
 
-   (consumed :initform (make-array 0 :element-type 'character :adjustable t :fill-pointer 0) :type (vector character) :documentation "The characters that have been consumed so far")
-   (token-offset  :initarg :start :initform 0 :type integer :documentation "The start position of the current token")
-   (token-column :initarg :column :initform 1 :type integer :documentation "The column in the input stream, where the current token starts")
-   (token-line  :initarg :line :initform 1 :type integer :documentation "The line in the input stream, where the current token starts")
+   (input-stream :initform nil
+                 :type (or null stream)
+                 :documentation "The input stream as retrieved from the input. This slot is used to cache the stream.")
 
-   (stream-line  :initarg :line :initform 1 :type integer :documentation "The line in the input stream, where the current token starts")
-   (stream-column :initarg :column :initform 1 :type integer :documentation "The column in the input stream, where the current token starts")
-   (stream-offset :initarg :offset :initform 0 :type integer :documentation "The offset in the input stream, where the current token starts"))
-  (:documentation "The state of the scanner. This is the object that is passed around to all the different functions that scan the input"))
+   (lexeme :initform (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)
+           :type (vector character)
+           :documentation "The lexeme consumed thus far. This is pure internal state for the duration of an in-progress scan.")
+
+   (token-offset  :initarg :token-offset
+                  :initform 0
+                  :type integer
+                  :documentation "The offset in the input stream of the lexeme that's currently being scanned")
+
+   (token-column :initarg
+                 :token-column
+                 :initform 1
+                 :type integer
+                 :documentation "The column in the input stream where the currently scanned lexeme started")
+
+   (token-line  :initarg :token-line
+                :initform 1
+                :type integer
+                :documentation "The line in the input stream where the currently scanned lexeme started")
+
+   (stream-offset :initarg :stream-offset
+                  :initform 0
+                  :type integer
+                  :documentation "The offset in the input stream that the scanner is currently at")
+
+   (stream-line  :initarg :stream-line
+                 :initform 1
+                 :type integer
+                 :documentation "The line in the input stream that the scanner is currently at")
+
+   (stream-column :initarg
+                  :stream-column
+                  :initform 1 :type integer
+                  :documentation "The column in the input stream that the scanner is currently at"))
+  (:documentation "The state that's used to keep track during a scan of the input stream."))
 
 (defmethod print-object ((state state) stream)
-  (with-slots (input consumed token-offset stream-line stream-column stream-offset) state
+  (with-slots (lexeme token-offset token-line token-column stream-offset) state
     (print-unreadable-object (state stream :type t :identity t)
-      (format stream "input: ~a consumed: ~a start: ~a line: ~a column: ~a offset: ~a" input consumed token-offset stream-line stream-column stream-offset))))
+      (format stream "lexeme: ~a token-offset: ~a token-line: ~a token-column: ~a stream-offset: ~a" lexeme token-offset token-line token-column stream-offset))))
 
 (defmethod initialize-instance :after ((state state) &key)
   (with-slots (input-stream input) state
@@ -69,7 +85,7 @@ It uses `call-with-input' which inturn ensures that.
     ,input-designator (lambda (,state-var) ,@body)
     ,@args))
 
-(-> next-token (state) token)
+(-> next-token (state) token:token)
 (defun next-token (state)
   "Reads the next available token from the input stream. Unless something catastrophic happens this function will always
 return a token. There are special kinds of tokens that denote `illegal input' as well as `end of input'"
@@ -80,42 +96,44 @@ return a token. There are special kinds of tokens that denote `illegal input' as
                                      (invoke-restart 'continue))))))
     (%next-token state)))
 
-(-> %next-token (state) token)
+(-> %next-token (state) token:token)
 (defun %next-token (state)
-  (with-slots (token-offset token-column token-line stream-offset stream-column stream-line) state
+  (with-slots (token-offset token-column token-line stream-offset stream-column stream-line lexeme) state
+    (setf lexeme (make-array 0 :element-type 'character :adjustable t :fill-pointer 0))
     (setf token-offset stream-offset)
     (setf token-column stream-column)
     (setf token-line stream-line)
+
     (or
      (scan-eof state)
      (scan-integer state)
      (scan-illegal state))))
 
-(-> scan-integer (state) (or null token))
+(-> scan-integer (state) (or null token:token))
 (defun scan-integer (state)
   (multiple-value-bind (sign digit) (peek2 state)
     (cond
       ((and (or (eql #\+ sign) (eql #\- sign)) (digit-char-p digit))
        (advance! state)
        (scan-digits state)
-       (accept state :tok-integer #'parse-integer))
+       (accept state :@INTEGER #'parse-integer))
       ((scan-digits state)
-       (accept state :tok-integer #'parse-integer)))))
+       (accept state :@INTEGER #'parse-integer)))))
 
 
 (-> scan-digits (state) (or null list))
 (defun scan-digits (state)
   (scan-while state (lambda (c) (and c (digit-char-p c)))))
 
-(-> scan-eof (state) (or null token))
+(-> scan-eof (state) (or null token:token))
 (defun scan-eof (state)
   (when (eofp state)
-    (accept state :tok-eof)))
+    (accept state :@EOF)))
 
-(-> scan-illegal (state)  token)
+(-> scan-illegal (state)  token:token)
 (defun scan-illegal (state)
   (advance! state)
-  (accept state :tok-illegal))
+  (accept state :@ILLEGAL))
 
 (-> scan-while (state t) (or null list))
 (defun scan-while (state predicate)
@@ -148,12 +166,12 @@ return a token. There are special kinds of tokens that denote `illegal input' as
 (defun advance! (scanner)
   "Advance the scanner to the next character, adjusting internal state to keep track of location in the input stream.
    Returns the character that was advanced to or nil if the end of the input has been reached."
-  (with-slots (input-stream stream-line stream-offset stream-column consumed) scanner
+  (with-slots (input-stream stream-line stream-offset stream-column lexeme) scanner
     (let ((current-char (read-char input-stream nil)))
       (when current-char
         (incf stream-column)
         (incf stream-offset)
-        (vector-push-extend current-char consumed)
+        (vector-push-extend current-char lexeme)
         (when (eql current-char #\Newline)
           (incf stream-line)
           (setf stream-column 0))
@@ -165,14 +183,16 @@ return a token. There are special kinds of tokens that denote `illegal input' as
   (when (funcall predicate (peek state))
     (advance! state)))
 
-(defun accept (scanner token-type &optional (to-value #'identity))
-  "Accept the next token and return it. It the token is illegal the scate will signal a contiuabl scan-error."
-  (with-slots (consumed token-offset token-column token-line) scanner
-    (let* ((token-text (coerce consumed 'string))
-           (value (funcall to-value token-text))
+(-> accept (state token:token-class &optional function) token:token)
+(defun accept (scanner token-class &optional (to-value #'identity))
+  "Accept the scanned lexeme and constructs a `token:token' from it using the provided `token-class'.
+If `to-value' is provided it must be a function of one argument that will be applied to the lexeme to produce the value of the token.
+If `token-class' is :@ILLEGAL then a `scan-error' condition is signalled."
+  (with-slots (lexeme token-offset token-column token-line) scanner
+    (let* ((token-lexeme (coerce lexeme 'string))
+           (value (funcall to-value token-lexeme))
            (location (make-instance 'source-location :line token-line :column token-column :offset token-offset)))
-      (setf consumed (make-array 0 :element-type 'character :adjustable t :fill-pointer 0))
-      (let ((token (make-instance 'token :type token-type :text token-text :value value :location location)))
+      (let ((token (make-instance 'token :class token-class :lexeme lexeme :value value :location location)))
         (prog1 token
-          (when (eql token-type :tok-illegal)
+          (when (token:class= token :@ILLEGAL)
             (cerror "Illegal token" (make-condition 'scan-error :message "Illegal token" :location location))))))))

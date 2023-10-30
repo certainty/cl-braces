@@ -2,23 +2,23 @@
 
 (defsuite scanner-suite (frontend-suite))
 
-(defmacro assert-scans-as (input token-type &key (with-value nil))
+(defmacro assert-scans-as (input token-class &key (with-value nil))
   (let ((token-var (gensym)))
     `(let ((,token-var (scanner:call-with-scanner ,input #'scanner:next-token)))
-       (assert-equality #'eql ,token-type (scanner:token-type ,token-var))
+       (assert-equality #'eql ,token-class (token:token-class ,token-var))
        ,@(when with-value
-           `((assert-equality #'eql ,with-value (scanner:token-value ,token-var)))))))
+           `((assert-equality #'eql ,with-value (token:token-value ,token-var)))))))
 
 (deftest scan-eof (scanner-suite)
-  "Make sure the scanner recognizes the end of the input"
-  (assert-scans-as "" :tok-eof))
+  "Scan the end of file"
+  (assert-scans-as "" :@EOF))
 
 (deftest scan-illegal (scanner-suite)
-  "All unknown tokens scan as illegal"
-  (assert-scans-as "#unknown#" :tok-illegal))
+  "Scan unknown characters as illegal tokens"
+  (assert-scans-as "#unknown#" :@ILLEGAL))
 
 (deftest scan-integer (scanner-suite)
-  "Scan a numeric integer literal"
-  (assert-scans-as "1234" :tok-integer :with-value 1234)
-  (assert-scans-as "+1234" :tok-integer :with-value 1234)
-  (assert-scans-as "-4231" :tok-integer :with-value -4231))
+  "Scan an integer literal"
+  (assert-scans-as "1234"  :@INTEGER :with-value 1234)
+  (assert-scans-as "+1234" :@INTEGER :with-value 1234)
+  (assert-scans-as "-4231" :@INTEGER :with-value -4231))

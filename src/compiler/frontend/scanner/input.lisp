@@ -1,20 +1,17 @@
 (in-package :cl-braces.compiler.frontend.scanner)
 
-(defclass source-location ()
-  ((line :reader location-line :initarg :line :initform (error "no line given") :type (integer 1 *) :documentation "The line in the input stream, 1 based.")
-   (column :reader location-column :initarg :column :initform (error "no column given") :type (integer 1 *) :documentation "The column in the input stream, 1 based.")
-   (offset :reader location-offset :initarg :offset :initform (error "no offset given") :type (integer 0 *) :documentation "The offset in the input stream, 0 based."))
-  (:documentation "A source location is a position in the input stream. It is used to denote the position of a token in the input stream"))
-
-(defmethod print-object ((location source-location) stream)
-  (with-slots (line column offset) location
-    (print-unreadable-object (location stream :type t :identity t)
-      (format stream "line: ~a column: ~a offset: ~a" line column offset))))
-
 (defclass source-input ()
-  ((uri :reader source-input-uri :initarg :uri :initform (error "no uri given") :type string :documentation "The uri of the input stream. This is used to identify the input stream.")
-   (stream :reader source-input-stream :initarg :stream :initform (error "no stream given") :type stream :documentation "The input stream itself. This is used to read the input stream."))
-  (:documentation "A source input is a stream of characters. It is used to read the input stream."))
+  ((uri :reader source-input-uri
+        :initarg :uri
+        :initform (error "no uri given")
+        :type string
+        :documentation "An URI for the input. It is not required that you can construct an input from that URI. It's used mostly in program output.")
+   (stream :reader source-input-stream
+           :initarg :stream
+           :initform (error "no stream given")
+           :type stream
+           :documentation "The input stream which must be a stream of characters."))
+  (:documentation "A source-input is a combination of information where the data originates from and a stream that can be used to read from that data."))
 
 (defmethod print-object ((input source-input) stream)
   (with-slots (uri) input
@@ -22,8 +19,16 @@
       (format stream "uri: ~a" uri))))
 
 (defclass string-input (source-input)
-  ((label :reader :string-input-label :initarg :label :initform "anonymous" :type string :documentation "The label of the string input. This is used to identify the string input.")
-   (string :reader :string-input-string :initarg :string :initform (error "no string given") :type string :documentation "The string that is being read."))
+  ((label :initarg :label
+          :initform "anonymous"
+          :type string
+          :documentation "The label of the string input. This is used to identify the string input.")
+   (string :reader
+           :string-input-string
+           :initarg :string
+           :initform (error "no string given")
+           :type string
+           :documentation "The string that is being read."))
   (:documentation "A string input is a source input that reads from a string."))
 
 (defmethod print-object ((input string-input) stream)
@@ -37,24 +42,31 @@
          (uri (format nil "string://~a" label)))
     (call-next-method input :uri uri :label label :string string :stream (make-string-input-stream string))))
 
-(defgeneric open-input (input-desginator &rest args))
+(defgeneric open-input (input-desginator &rest args)
+  (:documentation
+   "Opens an input stream for the given input designator.
+The call-site has to make sure that the input is properly closed again.
+For most use-cases you should use `call-with-input' or `with-input' respectively, which take care of properly closing the input again. "))
 
-(defgeneric close-input (source-input))
+(defgeneric close-input (source-input)
+  (:documentation  "Closes the given input stream."))
 
 (defmethod open-input ((input-designator string) &rest args)
   (let ((label (getf args :label)))
     (make-instance 'string-input :string input-designator :label label)))
 
-(defmethod close-input ((input string-input))
-  nil)
+(defmethod close-input ((input string-input)) nil)
 
 (defun call-with-input (input-designator function &rest open-args)
-  "Calls the given function with the input stream of the input designator. The input designator can be either a string"
+  "Constructs a `source-input' from the given input designator and calls the provided `function' with that input.
+The `input' is closed automatically after the `function' has been called."
   (let ((input (apply #'open-input input-designator open-args)))
     (unwind-protect
          (funcall function input)
       (close-input input))))
 
 (defmacro with-input ((input-var input-designator &rest args &key &allow-other-keys) &body body)
-  "Calls the given body with the input stream of the input designator."
+  "Constructs a `source-input' from the given input designator and binds it to `input-var' for the duration of `body'.
+It closes the `input' automatically after `body' has been executed.
+"
   `(apply #'call-with-input ,input-designator (lambda (,input-var) ,@body) ,@args))

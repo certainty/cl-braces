@@ -1,5 +1,22 @@
 (in-package :cl-user)
 
+(defpackage :cl-braces.compiler.frontend.token
+  (:nicknames :frontend.token :token)
+  (:use :cl)
+  (:import-from :serapeum :->)
+  (:export
+   :token
+   :token-class
+   :token-lexeme
+   :token-value
+
+   :token-class
+   :class=
+
+   :@EOF
+   :@ILLEGAL
+   :@INTEGER))
+
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :frontend.scanner :scanner)
   (:use :cl)
@@ -7,15 +24,4 @@
   (:export
    :call-with-scanner
    :with-scanner
-   :next-token
-
-   :token
-   :token-type
-   :token-value
-   :token-text
-
-   :tpe-token-type
-   :tok-eof
-   :tok-illegal
-   :tok-integer
-   ))
+   :next-token))
