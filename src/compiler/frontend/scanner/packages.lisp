@@ -13,6 +13,8 @@
    :token-class
    :class=
 
+   :location
+
    :@EOF
    :@ILLEGAL
    :@INTEGER))

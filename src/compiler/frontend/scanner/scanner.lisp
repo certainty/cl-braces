@@ -191,8 +191,8 @@ If `token-class' is :@ILLEGAL then a `scan-error' condition is signalled."
   (with-slots (lexeme token-offset token-column token-line) scanner
     (let* ((token-lexeme (coerce lexeme 'string))
            (value (funcall to-value token-lexeme))
-           (location (make-instance 'source-location :line token-line :column token-column :offset token-offset)))
-      (let ((token (make-instance 'token :class token-class :lexeme lexeme :value value :location location)))
+           (location (make-instance 'token:location :line token-line :column token-column :offset token-offset)))
+      (let ((token (make-instance 'token:token :class token-class :lexeme lexeme :value value :location location)))
         (prog1 token
           (when (token:class= token :@ILLEGAL)
             (cerror "Illegal token" (make-condition 'scan-error :message "Illegal token" :location location))))))))

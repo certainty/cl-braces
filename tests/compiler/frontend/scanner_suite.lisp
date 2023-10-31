@@ -5,9 +5,9 @@
 (defmacro assert-scans-as (input token-class &key (with-value nil))
   (let ((token-var (gensym)))
     `(let ((,token-var (scanner:call-with-scanner ,input #'scanner:next-token)))
-       (assert-equality #'eql ,token-class (token:token-class ,token-var))
+       (assert-equalp ,token-class (token:token-class ,token-var))
        ,@(when with-value
-           `((assert-equality #'eql ,with-value (token:token-value ,token-var)))))))
+           `((assert-equalp ,with-value (token:token-value ,token-var)))))))
 
 (deftest scan-eof (scanner-suite)
   "Scan the end of file"
