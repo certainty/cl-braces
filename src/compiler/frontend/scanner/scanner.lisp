@@ -1,5 +1,28 @@
 (in-package :cl-braces.compiler.frontend.scanner)
 
+;;;;
+;;;; The scanner is the first stage of the compiler. It takes a stream of characters and produces a stream of tokens.
+;;;; A token is a representation of a lexeme in the input stream bundled with some metadata about the location and the class of the lexeme.
+;;;; The token's class is used by the parser to determine how to interpret the token.
+;;;;
+;;;; The scanner is implemented as a state machine. The state is represented by the `state' class. The state is used to keep track of the input stream
+;;;; and the current lexeme that's being scanned. The state is passed around to all the functions that implement the state machine.
+;;;;
+;;;; The main API to the scanner are the following functions:
+;;;;
+;;;; * `call-with-scanner' - Calls the given function with a new scanner that is initialized with the input stream of the input designator.
+;;;; * `with-scanner' - Calls the given body with a new scanner that is initialized with the input stream of the input designator.
+;;;; * `next-token' - Reads the next available token from the input stream.
+;;;;
+;;;; Usage:
+;;;;
+;;;; ```common-lisp
+;;;; (with-scanner (state "3 * (3 - 5)")
+;;;;   (let ((all-tokens (loop for token = (next-token state) until (eofp state) collect token)))
+;;;;     (format t "~a~%" all-tokens)))
+;;;; ```
+;;;;
+
 (defparameter *fail-fast* nil "If true, the scanner will enter the debugger when an error is encountered")
 
 (define-condition scan-error (error)
@@ -88,7 +111,25 @@ It uses `call-with-input' which inturn ensures that.
 (-> next-token (state) token:token)
 (defun next-token (state)
   "Reads the next available token from the input stream. Unless something catastrophic happens this function will always
-return a token. There are special kinds of tokens that denote `illegal input' as well as `end of input'"
+return a token. There are two special token classes which are used to denote eof and illegal tokens respectively.
+
+Those are:
+ - `@:ILLEGAL' for when no token could be recognized
+ - `@:EOF' for when the end of stream has been reached
+
+You should use the `class=' predicate to test for these.
+The following example shows how to deal with these cases:
+
+```common-lisp
+(with-scanner (s \"3 +3\")
+  (loop
+    (let ((token (next-token s)))
+      (cond
+        ((token:class= token @:ILLEGAL) (print \"Illegal token\"))
+        ((token:class= token @:EOF) (return))
+        (otherwise (print token))))))
+```
+"
   (handler-bind ((scan-error (lambda (e)
                                (if *fail-fast*
                                    (invoke-debugger e)
