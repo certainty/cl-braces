@@ -15,6 +15,7 @@ jobs:
           - sbcl-bin
     env:
       LISP: ${{ matrix.lisp }}
+      CI: github
 
     steps:
       - uses: actions/checkout@v2

@@ -1,7 +1,5 @@
 (in-package :cl-braces.compiler.tests)
 
-(defparameter *exit-on-failure* nil)
-
 (defsuite compiler-suite ())
 (defsuite frontend-suite (compiler-suite))
 
@@ -9,5 +7,5 @@
   (let ((result (run-suite 'compiler-suite :report-progress nil)))
     (when (or (plusp (clunit::errors result))
               (plusp (clunit::failed result)))
-      (when *exit-on-failure*
+      (when (uiop:getenvp "CI")
         (uiop:quit 1)))))
