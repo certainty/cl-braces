@@ -183,7 +183,7 @@ return a token. There are special kinds of tokens that denote `illegal input' as
   (when (funcall predicate (peek state))
     (advance! state)))
 
-(-> accept (state token:token-class &optional function) token:token)
+(-> accept (state token:token-class-t &optional function) token:token)
 (defun accept (scanner token-class &optional (to-value #'identity))
   "Accept the scanned lexeme and constructs a `token:token' from it using the provided `token-class'.
 If `to-value' is provided it must be a function of one argument that will be applied to the lexeme to produce the value of the token.
@@ -191,7 +191,7 @@ If `token-class' is :@ILLEGAL then a `scan-error' condition is signalled."
   (with-slots (lexeme token-offset token-column token-line) scanner
     (let* ((token-lexeme (coerce lexeme 'string))
            (value (funcall to-value token-lexeme))
-           (location (make-instance 'token:location :line token-line :column token-column :offset token-offset)))
+           (location (make-instance 'token:source-location :line token-line :column token-column :offset token-offset)))
       (let ((token (make-instance 'token:token :class token-class :lexeme lexeme :value value :location location)))
         (prog1 token
           (when (token:class= token :@ILLEGAL)

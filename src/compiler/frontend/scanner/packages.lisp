@@ -6,18 +6,20 @@
   (:import-from :serapeum :->)
   (:export
    :token
-   :token-class
-   :token-lexeme
-   :token-value
-
-   :token-class
-   :class=
-
+   :class
+   :lexeme
+   :value
    :location
+
+   :class=
+   :token-class-t
+
+   :source-location
 
    :@EOF
    :@ILLEGAL
-   :@INTEGER))
+   :@INTEGER)
+  (:shadow :class))
 
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :frontend.scanner :scanner)

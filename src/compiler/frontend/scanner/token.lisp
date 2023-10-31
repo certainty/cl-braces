@@ -1,6 +1,6 @@
 (in-package :cl-braces.compiler.frontend.token)
 
-(defclass location ()
+(defclass source-location ()
   ((line :reader location-line
          :initarg :line
          :initform (error "no line given")
@@ -18,12 +18,12 @@
            :documentation "The offset in the input stream, 0 based."))
   (:documentation "A source location is a position in the input stream. It is used to denote the position of a token in the input stream"))
 
-(defmethod print-object ((location location) stream)
+(defmethod print-object ((location source-location) stream)
   (with-slots (line column offset) location
     (print-unreadable-object (location stream :type t :identity t)
       (format stream "line: ~a column: ~a offset: ~a" line column offset))))
 
-(deftype token-class ()
+(deftype token-class-t ()
   "The token's ^class is union type of all possible token classes."
   '(member
     :@ILLEGAL
@@ -31,22 +31,22 @@
     :@INTEGER))
 
 (defclass token ()
-  ((class :reader token-class
+  ((class :reader class
           :initarg :class
           :initform (error "no type given")
-          :type token-class)
-   (lexeme :reader token-lexeme
+          :type token-class-t)
+   (lexeme :reader lexeme
            :initarg :lexeme
            :initform (error "no lexeme given")
            :type string)
-   (value :reader token-value
+   (value :reader value
           :initarg :value
           :initform nil
           :type (or null t))
-   (location :reader token-location
+   (location :reader location
              :initarg :location
              :initform (error "no location given")
-             :type location))
+             :type source-location))
   (:documentation "A token is a single unit of input. It is the smallest unit of input that the parser can work with."))
 
 (defmethod print-object ((token token) stream)
@@ -54,7 +54,8 @@
     (print-unreadable-object (token stream :type t :identity t)
       (format stream "type: ~a lexeme: ~a value: ~a location: ~a" type lexeme value location))))
 
-(-> class= (token token-class) boolean)
+(-> class= (token token-class-t) boolean)
 (defun class= (token expected-class)
   "Returns true if the token's class is equal to the given `expected-class.'"
-  (eql (token-class token) expected-class))
+  (with-slots (class) token
+    (eql class expected-class)))
