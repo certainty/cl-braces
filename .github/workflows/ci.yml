@@ -32,7 +32,7 @@ jobs:
       - name: Install roswell
         shell: bash
         run: |
-          curl -L https://raw.githubusercontent.com/roswell/roswell/v21.10.14.111/scripts/install-for-ci.sh | sh -x
+          curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh
 
       - name: Install dependencies
         shell: bash
