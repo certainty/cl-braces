@@ -10,13 +10,13 @@
    :lexeme
    :value
    :location
-   :location-line
-   :location-column
-
-   :class=
    :token-class
+   :class=
 
    :source-location
+   :location-offset
+   :location-line
+   :location-column
 
    :@EOF
    :@ILLEGAL
@@ -28,8 +28,9 @@
   (:use :cl)
   (:import-from :serapeum :->)
   (:export
+   :open-scanner
+   :close-scanner
    :call-with-scanner
-   :with-scanner
    :with-input
    :next-token
    :state))

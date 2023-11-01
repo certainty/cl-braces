@@ -74,7 +74,8 @@
 
    (stream-column :initarg
                   :stream-column
-                  :initform 1 :type integer
+                  :initform 1
+                  :type integer
                   :documentation "The column in the input stream that the scanner is currently at"))
   (:documentation "The state that's used to keep track during a scan of the input stream."))
 
@@ -97,9 +98,9 @@ It uses `call-with-input' which inturn ensures that.
                      (let ((state (make-instance 'state :input input)))
                        (apply function state args)))))
 
-(defun open-scanner (input-designator &rest args)
+(defun open-scanner (input-designator)
   "Opens a new scanner that is initialized with the input stream of the input designator."
-  (make-instance 'state :input (open-input input-designator args)))
+  (make-instance 'state :input (open-input input-designator)))
 
 (-> next-token (state) token:token)
 (defun next-token (state)
@@ -132,6 +133,8 @@ The following example shows how to deal with these cases:
 
 (-> %next-token (state) token:token)
 (defun %next-token (state)
+  (skip-whitespaces! state)
+
   (with-slots (token-offset token-column token-line stream-offset stream-column stream-line lexeme) state
     (setf lexeme (make-array 0 :element-type 'character :adjustable t :fill-pointer 0))
     (setf token-offset stream-offset)
@@ -181,6 +184,19 @@ The following example shows how to deal with these cases:
   "Returns true if the scanner has reached the end of the input stream."
   (null (peek state)))
 
+(serapeum:defconst +whitespace+ (list #\Space #\Tab #\Return #\Newline))
+
+(defun skip-whitespaces! (state)
+  "Skip whitespaces and comments"
+  (loop for (c1 c2) = (multiple-value-list (peek2 state)) until (null c1) do
+    (cond
+      ((member c1 +whitespace+) (advance! state :skip-p t))
+      ((and (eql #\/ c1) (eql #\/ c2))
+       (advance! state :skip-p t)
+       (advance! state :skip-p t)
+       (loop for n = (advance! state :skip-p t) until (or (eql #\Newline n) (eofp state))))
+      (t (return)))))
+
 (-> peek (state) (or null character))
 (defun peek (state)
   "Peeks at the next character in the input stream without advancing the scanner."
@@ -196,19 +212,21 @@ The following example shows how to deal with these cases:
       (when c1 (unread-char c1 input-stream))
       (values c1 c2))))
 
-(-> advance! (state) (or null character))
-(defun advance! (scanner)
+(-> advance! (state &key (:skip-p boolean)) (or null character))
+(defun advance! (scanner &key (skip-p nil))
   "Advance the scanner to the next character, adjusting internal state to keep track of location in the input stream.
    Returns the character that was advanced to or nil if the end of the input has been reached."
-  (with-slots (input-stream stream-line stream-offset stream-column lexeme) scanner
+  (with-slots (input-stream stream-line stream-offset stream-column lexeme token-offset) scanner
     (let ((current-char (read-char input-stream nil)))
       (when current-char
         (incf stream-column)
         (incf stream-offset)
-        (vector-push-extend current-char lexeme)
+        (if skip-p
+            (setf token-offset stream-offset)
+            (vector-push-extend current-char lexeme))
         (when (eql current-char #\Newline)
           (incf stream-line)
-          (setf stream-column 0))
+          (setf stream-column 1))
         current-char))))
 
 (-> advance-when! (state t) (or null character))

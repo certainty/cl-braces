@@ -42,7 +42,7 @@
          (uri (format nil "string://~a" label)))
     (call-next-method input :uri uri :label label :string string :stream (make-string-input-stream string))))
 
-(defgeneric open-input (input-desginator &rest args)
+(defgeneric open-input (input-desginator)
   (:documentation
    "Opens an input stream for the given input designator.
 The call-site has to make sure that the input is properly closed again.
@@ -51,21 +51,19 @@ For most use-cases you should use `call-with-input' or `with-input' respectively
 (defgeneric close-input (source-input)
   (:documentation  "Closes the given input stream."))
 
-(defmethod open-input ((inp source-input) &rest args) ; specialization for when we already have ac constructed input
-  (declare (ignore args))
+(defmethod open-input ((inp source-input)) ; specialization for when we already have ac constructed input
   inp)
 
-(defmethod open-input ((input-designator string) &rest args)
-  (let ((label (getf args :label)))
-    (make-instance 'string-input :string input-designator :label label)))
+(defmethod open-input ((input-designator string))
+  (make-instance 'string-input :string input-designator))
 
 (defmethod close-input ((input string-input)) nil)
 
-(defun call-with-input (input-designator fn &rest open-args)
+(defun call-with-input (input-designator fn)
   "Constructs a `source-input' from the given input designator and calls the provided `function' with that input.
 The `input' is closed automatically after the `function' has been called."
 
-  (let ((input (apply #'open-input input-designator open-args)))
+  (let ((input (open-input input-designator)))
     (unwind-protect
          (funcall fn input)
       (close-input input))))
