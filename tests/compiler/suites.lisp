@@ -7,5 +7,5 @@
   (let ((result (run-suite 'compiler-suite :report-progress nil)))
     (when (or (plusp (clunit::errors result))
               (plusp (clunit::failed result)))
-      (when (uiop:getenvp "CI")
+      (when (uiop:getenvp "CI_ENV")
         (uiop:quit 1)))))
