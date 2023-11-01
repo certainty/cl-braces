@@ -31,8 +31,7 @@
                   :components
                   ((:file "packages")
                    (:file "ast")
-                   (:file "parser")))
-                 ))))
+                   (:file "parser")))))))
 
 (defsystem "cl-braces/compiler/tests"
   :depends-on (:clunit2 :cl-braces/compiler)

@@ -1,5 +1,10 @@
 (in-package :cl-braces.compiler.frontend.parser)
 
+;;; This implements the parser for the highlevel language.
+;;; It's a hand rolled recursive descent parser, which collects parse errors and reports them collectively at the end of the parsing process.
+;;; When a parse fails, the parse will insert a sentinel node into the AST and continue parsing.
+;;; The recovery is relatively simple and attempts to synchronize to the next statement boundary.
+
 (defparameter *fail-fast* nil "If true the parser will signal a continuable parse-error condition when an error is encountered. When continued the parser will attempt to synchronize to the next statement boundary.")
 
 (define-condition parse-errors (error)

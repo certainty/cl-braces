@@ -1,6 +1,5 @@
 (in-package :cl-braces.compiler.frontend.scanner)
 
-;;;;
 ;;;; The scanner is the first stage of the compiler. It takes a stream of characters and produces a stream of tokens.
 ;;;; A token is a representation of a lexeme in the input stream bundled with some metadata about the location and the class of the lexeme.
 ;;;; The token's class is used by the parser to determine how to interpret the token.
