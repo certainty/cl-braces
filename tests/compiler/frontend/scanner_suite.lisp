@@ -11,14 +11,14 @@
 
 (deftest scan-eof (scanner-suite)
   "Scan the end of file"
-  (assert-scans-as "" :@EOF))
+  (assert-scans-as "" token:@EOF))
 
 (deftest scan-illegal (scanner-suite)
   "Scan unknown characters as illegal tokens"
-  (assert-scans-as "#unknown#" :@ILLEGAL))
+  (assert-scans-as "#unknown#" token:@ILLEGAL))
 
 (deftest scan-integer (scanner-suite)
   "Scan an integer literal"
-  (assert-scans-as "1234"  :@INTEGER :with-value 1234)
-  (assert-scans-as "+1234" :@INTEGER :with-value 1234)
-  (assert-scans-as "-4231" :@INTEGER :with-value -4231))
+  (assert-scans-as "1234"  token:@INTEGER :with-value 1234)
+  (assert-scans-as "+1234" token:@INTEGER :with-value 1234)
+  (assert-scans-as "-4231" token:@INTEGER :with-value -4231))

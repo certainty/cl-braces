@@ -17,14 +17,22 @@
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
   :pathname "src/compiler"
-  :components ((:module "frontend"
+  :components ((:file "../development")
+               (:module "frontend"
                 :components
                 ((:module "scanner"
                   :components
                   ((:file "packages")
                    (:file "input")
                    (:file "token")
-                   (:file "scanner")))))))
+                   (:file "scanner")))
+
+                 (:module "parser"
+                  :components
+                  ((:file "packages")
+                   (:file "ast")
+                   (:file "parser")))
+                 ))))
 
 (defsystem "cl-braces/compiler/tests"
   :depends-on (:clunit2 :cl-braces/compiler)
@@ -35,7 +43,8 @@
    (:file "suites")
    (:module "frontend"
     :components
-    ((:file "scanner_suite"))))
+    ((:file "scanner_suite")
+     (:file "parser_suite"))))
   :perform (test-op (o c)
                     (declare (ignore o c))
                     (uiop:symbol-call :cl-braces.compiler.tests :run-all)))

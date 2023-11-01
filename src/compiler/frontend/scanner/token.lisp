@@ -23,18 +23,16 @@
     (print-unreadable-object (location stream :type t :identity t)
       (format stream "line: ~a column: ~a offset: ~a" line column offset))))
 
-(deftype token-class-t ()
-  "The token's ^class is union type of all possible token classes."
-  '(member
-    :@ILLEGAL
-    :@EOF
-    :@INTEGER))
+(serapeum:defunion token-class
+  @ILLEGAL
+  @EOF
+  @INTEGER)
 
 (defclass token ()
   ((class :reader class
           :initarg :class
           :initform (error "no type given")
-          :type token-class-t)
+          :type token-class)
    (lexeme :reader lexeme
            :initarg :lexeme
            :initform (error "no lexeme given")
@@ -50,11 +48,11 @@
   (:documentation "A token is a single unit of input. It is the smallest unit of input that the parser can work with."))
 
 (defmethod print-object ((token token) stream)
-  (with-slots (type lexeme value location) token
+  (with-slots (class lexeme value location) token
     (print-unreadable-object (token stream :type t :identity t)
-      (format stream "type: ~a lexeme: ~a value: ~a location: ~a" type lexeme value location))))
+      (format stream "class: ~a lexeme: ~a value: ~a location: ~a" class lexeme value location))))
 
-(-> class= (token token-class-t) boolean)
+(-> class= (token token-class) boolean)
 (defun class= (token expected-class)
   "Returns true if the token's class is equal to the given `expected-class.'"
   (with-slots (class) token

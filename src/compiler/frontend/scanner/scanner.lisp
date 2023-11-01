@@ -21,7 +21,6 @@
 ;;;;   (let ((all-tokens (loop for token = (next-token state) until (eofp state) collect token)))
 ;;;;     (format t "~a~%" all-tokens)))
 ;;;; ```
-;;;;
 
 (defparameter *fail-fast* nil "If true, the scanner will enter the debugger when an error is encountered")
 
@@ -104,9 +103,7 @@ It uses `call-with-input' which inturn ensures that.
 
 (defmacro with-scanner ((state-var input-designator &rest args) &body body)
   "Calls the given body with a new scanner that is initialized with the input stream of the input designator."
-  `(apply #'call-with-scanner
-    ,input-designator (lambda (,state-var) ,@body)
-    ,@args))
+  `(call-with-scanner ,input-designator (lambda (,state-var) ,@body) ,@args))
 
 (-> next-token (state) token:token)
 (defun next-token (state)
@@ -114,19 +111,19 @@ It uses `call-with-input' which inturn ensures that.
 return a token. There are two special token classes which are used to denote eof and illegal tokens respectively.
 
 Those are:
- - `@:ILLEGAL' for when no token could be recognized
- - `@:EOF' for when the end of stream has been reached
+ - `@ILLEGAL' for when no token could be recognized
+ - `@EOF' for when the end of stream has been reached
 
 You should use the `class=' predicate to test for these.
 The following example shows how to deal with these cases:
 
 ```common-lisp
-(with-scanner (s \"3 +3\")
+(scanner:with-scanner (s \"3 +3\")
   (loop
-    (let ((token (next-token s)))
+    (let ((token (scanner:next-token s)))
       (cond
-        ((token:class= token @:ILLEGAL) (print \"Illegal token\"))
-        ((token:class= token @:EOF) (return))
+        ((token:class= token token:@ILLEGAL) (print \"Illegal token\"))
+        ((token:class= token token:@EOF) (return))
         (otherwise (print token))))))
 ```
 "
@@ -157,9 +154,9 @@ The following example shows how to deal with these cases:
       ((and (or (eql #\+ sign) (eql #\- sign)) (digit-char-p digit))
        (advance! state)
        (scan-digits state)
-       (accept state :@INTEGER #'parse-integer))
+       (accept state token:@INTEGER #'parse-integer))
       ((scan-digits state)
-       (accept state :@INTEGER #'parse-integer)))))
+       (accept state token:@INTEGER #'parse-integer)))))
 
 
 (-> scan-digits (state) (or null list))
@@ -169,12 +166,12 @@ The following example shows how to deal with these cases:
 (-> scan-eof (state) (or null token:token))
 (defun scan-eof (state)
   (when (eofp state)
-    (accept state :@EOF)))
+    (accept state token:@EOF)))
 
 (-> scan-illegal (state)  token:token)
 (defun scan-illegal (state)
   (advance! state)
-  (accept state :@ILLEGAL))
+  (accept state token:@ILLEGAL))
 
 (-> scan-while (state t) (or null list))
 (defun scan-while (state predicate)
@@ -224,16 +221,16 @@ The following example shows how to deal with these cases:
   (when (funcall predicate (peek state))
     (advance! state)))
 
-(-> accept (state token:token-class-t &optional function) token:token)
+(-> accept (state token:token-class &optional function) token:token)
 (defun accept (scanner token-class &optional (to-value #'identity))
   "Accept the scanned lexeme and constructs a `token:token' from it using the provided `token-class'.
 If `to-value' is provided it must be a function of one argument that will be applied to the lexeme to produce the value of the token.
-If `token-class' is :@ILLEGAL then a `scan-error' condition is signalled."
+If `token-class' is token:@ILLEGAL then a `scan-error' condition is signalled."
   (with-slots (lexeme token-offset token-column token-line) scanner
     (let* ((token-lexeme (coerce lexeme 'string))
            (value (funcall to-value token-lexeme))
            (location (make-instance 'token:source-location :line token-line :column token-column :offset token-offset)))
       (let ((token (make-instance 'token:token :class token-class :lexeme lexeme :value value :location location)))
         (prog1 token
-          (when (token:class= token :@ILLEGAL)
+          (when (token:class= token token:@ILLEGAL)
             (cerror "Illegal token" (make-condition 'scan-error :message "Illegal token" :location location))))))))

@@ -57,16 +57,17 @@ For most use-cases you should use `call-with-input' or `with-input' respectively
 
 (defmethod close-input ((input string-input)) nil)
 
-(defun call-with-input (input-designator function &rest open-args)
+(defun call-with-input (input-designator fn &rest open-args)
   "Constructs a `source-input' from the given input designator and calls the provided `function' with that input.
 The `input' is closed automatically after the `function' has been called."
+
   (let ((input (apply #'open-input input-designator open-args)))
     (unwind-protect
-         (funcall function input)
+         (funcall fn input)
       (close-input input))))
 
-(defmacro with-input ((input-var input-designator &rest args &key &allow-other-keys) &body body)
+(defmacro with-input ((input-var input-designator &rest args) &body body)
   "Constructs a `source-input' from the given input designator and binds it to `input-var' for the duration of `body'.
 It closes the `input' automatically after `body' has been executed.
 "
-  `(apply #'call-with-input ,input-designator (lambda (,input-var) ,@body) ,@args))
+  `(call-with-input ,input-designator (lambda (,input-var) ,@body) ,@args))

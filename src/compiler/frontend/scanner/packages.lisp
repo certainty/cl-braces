@@ -10,9 +10,11 @@
    :lexeme
    :value
    :location
+   :location-line
+   :location-column
 
    :class=
-   :token-class-t
+   :token-class
 
    :source-location
 
@@ -24,8 +26,10 @@
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :frontend.scanner :scanner)
   (:use :cl)
-  (:import-from :serapeum :->)
+  (:import-from :serapeum :-> :defunion :defunit)
   (:export
    :call-with-scanner
    :with-scanner
-   :next-token))
+   :with-input
+   :next-token
+   :state))
