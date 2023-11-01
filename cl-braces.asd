@@ -13,12 +13,25 @@
 
 (defsystem "cl-braces/compiler"
   :description "Compiler for cl-braces the minimal go-like programming language"
-  :depends-on (:alexandria
-               :serapeum)
+  :depends-on (:alexandria :serapeum)
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
   :pathname "src/compiler"
-  :components ((:file "packages")))
+  :components ((:file "../development")
+               (:module "frontend"
+                :components
+                ((:module "scanner"
+                  :components
+                  ((:file "packages")
+                   (:file "input")
+                   (:file "token")
+                   (:file "scanner")))
+
+                 (:module "parser"
+                  :components
+                  ((:file "packages")
+                   (:file "ast")
+                   (:file "parser")))))))
 
 (defsystem "cl-braces/compiler/tests"
   :depends-on (:clunit2 :cl-braces/compiler)
@@ -26,7 +39,11 @@
   :pathname "tests/compiler"
   :components
   ((:file "packages")
-   (:file "suites"))
+   (:file "suites")
+   (:module "frontend"
+    :components
+    ((:file "scanner_suite")
+     (:file "parser_suite"))))
   :perform (test-op (o c)
                     (declare (ignore o c))
-                    (uiop:symbol-call :cl-braces.compiler.tests :run-all-with-exit)))
+                    (uiop:symbol-call :cl-braces.compiler.tests :run-all)))
