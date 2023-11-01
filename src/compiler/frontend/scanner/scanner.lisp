@@ -101,10 +101,6 @@ It uses `call-with-input' which inturn ensures that.
   "Opens a new scanner that is initialized with the input stream of the input designator."
   (make-instance 'state :input (open-input input-designator args)))
 
-(defmacro with-scanner ((state-var input-designator &rest args) &body body)
-  "Calls the given body with a new scanner that is initialized with the input stream of the input designator."
-  `(call-with-scanner ,input-designator (lambda (,state-var) ,@body) ,@args))
-
 (-> next-token (state) token:token)
 (defun next-token (state)
   "Reads the next available token from the input stream. Unless something catastrophic happens this function will always

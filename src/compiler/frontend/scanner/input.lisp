@@ -51,6 +51,10 @@ For most use-cases you should use `call-with-input' or `with-input' respectively
 (defgeneric close-input (source-input)
   (:documentation  "Closes the given input stream."))
 
+(defmethod open-input ((inp source-input) &rest args) ; specialization for when we already have ac constructed input
+  (declare (ignore args))
+  inp)
+
 (defmethod open-input ((input-designator string) &rest args)
   (let ((label (getf args :label)))
     (make-instance 'string-input :string input-designator :label label)))
@@ -65,9 +69,3 @@ The `input' is closed automatically after the `function' has been called."
     (unwind-protect
          (funcall fn input)
       (close-input input))))
-
-(defmacro with-input ((input-var input-designator &rest args) &body body)
-  "Constructs a `source-input' from the given input designator and binds it to `input-var' for the duration of `body'.
-It closes the `input' automatically after `body' has been executed.
-"
-  `(call-with-input ,input-designator (lambda (,input-var) ,@body) ,@args))

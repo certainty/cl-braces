@@ -26,7 +26,7 @@
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :frontend.scanner :scanner)
   (:use :cl)
-  (:import-from :serapeum :-> :defunion :defunit)
+  (:import-from :serapeum :->)
   (:export
    :call-with-scanner
    :with-scanner

@@ -53,9 +53,11 @@
   (:documentation "The state of the parser which is threaded through all parsing methods"))
 
 (defun parse (input-desginator)
-  (scanner:with-scanner (scanner input-desginator)
-    (let ((state (make-instance 'state :scanner scanner)))
-      (%parse state))))
+  (scanner:call-with-scanner
+   input-desginator
+   (lambda (scanner)
+     (let ((state (make-instance 'state :scanner scanner)))
+       (%parse state)))))
 
 (-> %parse (state) ast:node)
 (defun %parse (state)
