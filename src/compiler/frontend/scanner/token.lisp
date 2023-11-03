@@ -26,7 +26,13 @@
 (serapeum:defunion token-class
   @ILLEGAL
   @EOF
-  @INTEGER)
+  @LPAREN
+  @RPAREN
+  @INTEGER
+  @PLUS
+  @MINUS
+  @STAR
+  @SLASH)
 
 (defclass token ()
   ((class :reader class
@@ -57,3 +63,8 @@
   "Returns true if the token's class is equal to the given `expected-class.'"
   (with-slots (class) token
     (eql class expected-class)))
+
+(-> literal-p (token) boolean)
+(defun literal-p (token)
+  "Returns true if the token is a literal."
+  (or (class= token @INTEGER)))

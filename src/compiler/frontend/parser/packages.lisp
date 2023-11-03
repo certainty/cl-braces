@@ -11,6 +11,10 @@
    :literal
    :literal-value
 
+   :unary-expression
+   :unary-expression-operator
+   :unary-expression-operand
+
    :walk
    :enter
    :leave))

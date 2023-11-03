@@ -12,6 +12,7 @@
    :location
    :token-class
    :class=
+   :literal-p
 
    :source-location
    :location-offset
@@ -20,7 +21,13 @@
 
    :@EOF
    :@ILLEGAL
-   :@INTEGER)
+   :@LPAREN
+   :@RPAREN
+   :@INTEGER
+   :@PLUS
+   :@MINUS
+   :@STAR
+   :@SLASH)
   (:shadow :class))
 
 (defpackage :cl-braces.compiler.frontend.scanner

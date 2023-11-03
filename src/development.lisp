@@ -22,6 +22,6 @@
 
 (defmacro pry (&body form)
   (let ((result (gensym)))
-    `(let ((,result (progn ,@form)))
-       (format *debug-io* "~&👀  ~a => ~a" ',form ,result)
-       ,result)))
+    `(let ((,result  (progn ,@form)))
+       (prog1 ,result
+         (format *debug-io* "~&👀  ~a => ~a" ',@form ,result)))))

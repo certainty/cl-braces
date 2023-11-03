@@ -10,15 +10,15 @@
 ;;;; The main API to the scanner are the following functions:
 ;;;;
 ;;;; * `call-with-scanner' - Calls the given function with a new scanner that is initialized with the input stream of the input designator.
-;;;; * `with-scanner' - Calls the given body with a new scanner that is initialized with the input stream of the input designator.
 ;;;; * `next-token' - Reads the next available token from the input stream.
 ;;;;
 ;;;; Usage:
 ;;;;
 ;;;; ```common-lisp
-;;;; (with-scanner (state "3 * (3 - 5)")
-;;;;   (let ((all-tokens (loop for token = (next-token state) until (eofp state) collect token)))
-;;;;     (format t "~a~%" all-tokens)))
+;;;; (call-with-scanner "3 * (3-5)"
+;;;;   (lambda (state)
+;;;;    (let ((all-tokens (loop for token = (next-token state) until (eofp state) collect token)))
+;;;;      (format t "~a~%" all-tokens))))
 ;;;; ```
 
 (defparameter *fail-fast* nil "If true, the scanner will enter the debugger when an error is encountered")
@@ -36,7 +36,6 @@
           :initform (error "no input given")
           :type source-input
           :documentation "The input that the scanner reads from.")
-
    (input-stream :initform nil
                  :type (or null stream)
                  :documentation "The input stream as retrieved from the input. This slot is used to cache the stream.")
@@ -143,23 +142,32 @@ The following example shows how to deal with these cases:
     (or
      (scan-eof state)
      (scan-integer state)
+     (scan-one-char-tokens state)
      (scan-illegal state))))
 
 (-> scan-integer (state) (or null token:token))
 (defun scan-integer (state)
-  (multiple-value-bind (sign digit) (peek2 state)
-    (cond
-      ((and (or (eql #\+ sign) (eql #\- sign)) (digit-char-p digit))
-       (advance! state)
-       (scan-digits state)
-       (accept state token:@INTEGER #'parse-integer))
-      ((scan-digits state)
-       (accept state token:@INTEGER #'parse-integer)))))
-
+  (let  ((digit (peek state)))
+    (when (digit-char-p digit)
+      (advance! state)
+      (scan-digits state)
+      (accept state token:@INTEGER #'parse-integer))))
 
 (-> scan-digits (state) (or null list))
 (defun scan-digits (state)
   (scan-while state (lambda (c) (and c (digit-char-p c)))))
+
+(-> scan-one-char-tokens (state) (or null token:token))
+(defun scan-one-char-tokens (state)
+  (let ((c (peek state)))
+    (macrolet ((=> (token-class) `(progn (advance! state) (accept state ,token-class))))
+      (case c
+        (#\( (=> token:@LPAREN))
+        (#\) (=> token:@RPAREN))
+        (#\+ (=> token:@PLUS))
+        (#\- (=> token:@MINUS))
+        (#\/ (=> token:@SLASH))
+        (#\* (=> token:@STAR))))))
 
 (-> scan-eof (state) (or null token:token))
 (defun scan-eof (state)

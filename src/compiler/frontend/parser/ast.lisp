@@ -19,12 +19,26 @@
   (:documentation "An expression that could not be parsed correctly."))
 
 (defclass literal (expression)
-  ((token :reader literal-token
-          :initarg :token
-          :initform (error "must provide token")
-          :type token:token))
+  ((token
+    :reader literal-token
+    :initarg :token
+    :initform (error "must provide token")
+    :type token:token))
   (:documentation "The base class for all literals in the highlevel AST."))
 
 (-> literal-value (literal) t)
 (defun literal-value (expression)
   (token:value (literal-token expression)))
+
+(defclass unary-expression (expression)
+  ((operator
+    :reader unary-expression-operator
+    :initarg :operator
+    :initform (error "must provide op")
+    :type token:token)
+   (operand
+    :reader unary-expression-operand
+    :initarg :operand
+    :initform (error "must provide operand")
+    :type expression))
+  (:documentation "An expression for binary relations"))
