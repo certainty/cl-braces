@@ -12,7 +12,8 @@
 (defun run-suites ()
   (run-tests
    :name "compiler"
-   :package '(:tests.frontend.scanner :tests.frontend.parser)))
+   :package '(:tests.frontend.scanner :tests.frontend.parser)
+   :run-context))
 
 (defun run-asdf ()
   (if (uiop:getenvp "CI_ENV")
@@ -20,9 +21,13 @@
       (run-all-no-ci)))
 
 (defun run-all-ci ()
-  (let ((*debugger-hook*))
-    (with-summary ()
-      (run-suites))))
+  (let (*debugger-hook*)
+    (let ((db (with-summary ()
+                (run-suites))))
+      (unless (and
+               (null (lisp-unit2::failed-assertions db))
+               (null (errors db)))
+        (uiop:quit 1)))))
 
 (defun run-all-no-ci ()
   (with-summary ()
