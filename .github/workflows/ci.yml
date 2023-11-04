@@ -45,4 +45,4 @@ jobs:
       - name: Test Compiler
         shell: bash
         run: |
-          ros -e '(asdf:test-system :cl-braces/compiler)'
+          ros -e '(let (*debugger-hook*) (asdf:test-system :cl-braces/compiler))'

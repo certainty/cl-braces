@@ -32,7 +32,7 @@ where the car is the expected token class and the cadr is a keyword argument :wi
 
 (define-test scan-integer ()
   "Scan an integer literal"
-  (assert-scans-as "1234"  token:@INTEGER :with-value 1234)
+  (assert-scans-as "1234"  token:@INTEGER :with-value 1235)
   (assert-scans-as "12" token:@INTEGER :with-value 12)
   (assert-scans-as "0" token:@INTEGER :with-value 0))
 
