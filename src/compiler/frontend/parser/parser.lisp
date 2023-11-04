@@ -68,10 +68,8 @@
 (defun %parse (state)
   (handler-bind ((error-detail (lambda (c) (if *fail-fast* (invoke-debugger c) (invoke-restart 'continue)))))
     (advance! state)
-    (when (eofp state)
-      (error-at-current state "Unexpected end of input")
-      (return-from %parse (accept state 'ast:bad-expression)))
-    (parse-expression state)))
+    (prog1 (parse-expression state)
+      (consume! state token:@EOF "Expected end of file"))))
 
 (defun parse-expression (state)
   (or
@@ -119,7 +117,7 @@
             (setf cur-token cur)
             (setf next-token (scanner:next-token scanner))))
       (when (token:class= cur-token token:@ILLEGAL)
-        (error-at-current state "Illegal token"))
+        (signal-parse-error state "Illegal token"))
       (values cur-token next-token))))
 
 (-> consume! (state token:token-class string &rest list) token:token)
@@ -129,7 +127,7 @@
     (assert cur-token) ; we can only get here when consume! has been called withoud advance!
 
     (unless (token:class= cur-token expected-token-class)
-      (error-at-current state format-string args))
+      (signal-parse-error state format-string args))
     (prog1 cur-token
       (advance! state))))
 
@@ -143,17 +141,23 @@
           (advance! state)
           (return next-class))))))
 
-(-> error-at-current (state string &rest t) null)
-(defun error-at-current (state format-string &rest args)
+(-> signal-parse-error (state string &rest t) null)
+(defun signal-parse-error (state format-string &rest args)
   "Record an error at the current location"
   (with-slots (cur-token) state
-    (apply #'error-at state cur-token format-string args)))
+    (apply #'signal-parse-error-at state cur-token format-string args)))
 
-(-> error-at (state token:token string &rest t) null)
-(defun error-at (state token format-string &rest args)
+(-> signal-parse-error-at-next (state string &rest t))
+(defun signal-parse-error-at-next (state format-string &rest args)
+  "Record an error at the next location"
+  (with-slots (next-token) state
+    (signal-parse-error-at state next-token format-string args)))
+
+(-> signal-parse-error-at (state token:token string &rest t) null)
+(defun signal-parse-error-at (state token format-string &rest args)
   (with-slots (panic-mode-p had-errors-p errors scanner) state
 
-    (when panic-mode-p (return-from error-at))
+    (when panic-mode-p (return-from signal-parse-error-at))
 
     (setf panic-mode-p t)
     (setf had-error-p t)
