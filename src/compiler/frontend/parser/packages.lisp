@@ -15,6 +15,11 @@
    :unary-expression-operator
    :unary-expression-operand
 
+   :binary-expression
+   :binary-expression-lhs
+   :binary-expression-operator
+   :binary-expression-rhs
+
    :walk
    :enter
    :leave))

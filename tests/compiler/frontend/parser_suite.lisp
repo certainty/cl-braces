@@ -20,3 +20,11 @@
     (assert-eql 'ast:unary-expression (type-of node))
     (assert-eql token:@PLUS (token:class (ast:unary-expression-operator node)))
     (assert-eql 'ast:literal (type-of (ast:unary-expression-operand node)))))
+
+(define-test parse-binary-plus ()
+  "Parse binary plus with two operands"
+  (let ((node (parser:parse "3 + 4")))
+    (assert-eql 'ast:binary-expression (type-of node))
+    (assert-eql 'ast:literal (type-of (ast:binary-expression-lhs node)))
+    (assert-eql token:@PLUS (token:class (ast:binary-expression-operator node)))
+    (assert-eql 'ast:literal (type-of (ast:binary-expression-rhs node)))))

@@ -42,3 +42,21 @@
     :initform (error "must provide operand")
     :type expression))
   (:documentation "An expression for binary relations"))
+
+(defclass binary-expression (expression)
+  ((lhs
+    :reader binary-expression-lhs
+    :initarg :lhs
+    :initform (error "must provide lhs")
+    :type expression)
+   (operand
+    :reader unary-expression-operand
+    :initarg :operand
+    :initform (error "must provide operand")
+    :type expression)
+   (rhs
+    :reader binary-expression-rhs
+    :initarg :rhs
+    :initform (error "must provide rhs")
+    :type expression))
+  (:documentation "An expression for binary relations"))
