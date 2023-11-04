@@ -1,23 +1,22 @@
-(in-package :cl-braces.compiler.tests)
+(in-package :tests.frontend.parser)
 
-(defsuite parser-suite (frontend-suite))
 
-(deftest parse-integer-literal (parser-suite)
+(define-test parse-integer-literal ()
   "Parse an integer literal"
   (let ((node (parser:parse "3")))
-    (assert-equalp (type-of node) 'ast:literal)
-    (assert-equalp (ast:literal-value node) 3)))
+    (assert-equal 'ast:literal (type-of node))
+    (assert-equal 3 (ast:literal-value node))))
 
-(deftest parse-unary-minus (parser-suite)
+(define-test parse-unary-minus ()
   "Parse simple unary minus"
   (let ((node (parser:parse "-3")))
-    (assert-equalp (type-of node) 'ast:unary-expression)
-    (assert-equalp (token:class (ast:unary-expression-operator node)) token:@MINUS)
-    (assert-equalp (type-of (ast:unary-expression-operand node)) 'ast:literal)))
+    (assert-eql 'ast:unary-expression (type-of node))
+    (assert-eql token:@MINUS (token:class (ast:unary-expression-operator node)))
+    (assert-eql 'ast:literal (type-of (ast:unary-expression-operand node)))))
 
-(deftest parse-unary-plus (parser-suite)
+(define-test parse-unary-plus ()
   "Parse simple unary plus"
   (let ((node (parser:parse "+3")))
-    (assert-equalp (type-of node) 'ast:unary-expression)
-    (assert-equalp (token:class (ast:unary-expression-operator node)) token:@PLUS)
-    (assert-equalp (type-of (ast:unary-expression-operand node)) 'ast:literal)))
+    (assert-eql 'ast:unary-expression (type-of node))
+    (assert-eql token:@PLUS (token:class (ast:unary-expression-operator node)))
+    (assert-eql 'ast:literal (type-of (ast:unary-expression-operand node)))))

@@ -34,16 +34,16 @@
                    (:file "parser")))))))
 
 (defsystem "cl-braces/compiler/tests"
-  :depends-on (:clunit2 :cl-braces/compiler)
+  :depends-on (:lisp-unit2 :cl-braces/compiler)
   :serial t
   :pathname "tests/compiler"
   :components
   ((:file "packages")
-   (:file "suites")
    (:module "frontend"
     :components
     ((:file "scanner_suite")
-     (:file "parser_suite"))))
+     (:file "parser_suite")))
+   (:file "runner"))
   :perform (test-op (o c)
                     (declare (ignore o c))
-                    (uiop:symbol-call :cl-braces.compiler.tests :run-all)))
+                    (uiop:symbol-call :cl-braces.tests.runner :run-asdf)))
