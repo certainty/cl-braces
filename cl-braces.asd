@@ -26,11 +26,14 @@
                    (:file "input")
                    (:file "token")
                    (:file "scanner")))
-
-                 (:module "parser"
+                 (:module "ast"
                   :components
                   ((:file "packages")
                    (:file "ast")
+                   (:file "printer")))
+                 (:module "parser"
+                  :components
+                  ((:file "packages")
                    (:file "parser")))))))
 
 (defsystem "cl-braces/compiler/tests"
