@@ -12,7 +12,7 @@
 (defun run-suites ()
   (run-tests
    :name "compiler"
-   :package '(:tests.frontend.scanner :tests.frontend.parser)))
+   :package '(:tests.frontend.scanner :tests.frontend.parser :tests.frontend.ast)))
 
 (defun run-asdf ()
   (if (uiop:getenvp "CI_ENV")

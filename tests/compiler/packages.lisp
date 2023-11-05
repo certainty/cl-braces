@@ -7,3 +7,7 @@
 (defpackage :cl-braces.tests.compiler.frontend.parser
   (:nicknames :tests.frontend.parser :tests.parser)
   (:use :cl :lisp-unit2))
+
+(defpackage :cl-braces.tests.compiler.frontend.ast
+  (:nicknames :tests.frontend.ast :tests.ast)
+  (:use :cl :lisp-unit2))
