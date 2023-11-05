@@ -6,7 +6,10 @@
   (:export
    :todo!
    :unreachable!
-   :pry))
+   :pry
+   :returning
+   :domap
+   ))
 
 (in-package :cl-braces.development)
 
@@ -25,3 +28,10 @@
     `(let ((,result  (progn ,@form)))
        (prog1 ,result
          (format *debug-io* "~&👀  ~a => ~a" ',@form ,result)))))
+
+(defmacro returning ((var expr) &body body)
+  `(let ((,var ,expr))
+     (prog1 ,var ,@body)))
+
+(defmacro domap ((var list) &body body)
+  `(mapcar (lambda (,var) ,@body) ,list))
