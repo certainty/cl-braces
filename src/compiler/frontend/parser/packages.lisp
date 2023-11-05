@@ -11,6 +11,9 @@
    :literal
    :literal-value
 
+   :grouping-expression
+   :grouping-expression-expression
+
    :unary-expression
    :unary-expression-operator
    :unary-expression-operand
