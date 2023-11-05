@@ -5,6 +5,15 @@
 ;;; When a parse fails, the parse will insert a sentinel node into the AST and continue parsing.
 ;;; The recovery is relatively simple and attempts to synchronize to the next statement boundary.
 
+(defmacro define-enum (name &rest variants)
+  (let ((iota 0))
+    `(progn
+       ,@(mapcar (lambda (variant)
+                   (prog1 `(defconstant ,(intern (format nil "+~A-~A+" name variant)) ,iota)
+                     (incf iota)))
+                 variants)
+       (deftype ,(intern (format nil "~A" name)) () '(integer 0 ,iota)))))
+
 (defparameter *fail-fast* nil "If true the parser will signal a continuable parse-error condition when an error is encountered. When continued the parser will attempt to synchronize to the next statement boundary.")
 
 (define-condition parse-errors (error)
@@ -57,26 +66,94 @@
     :documentation "A flag indicating if the parser is in panic mode"))
   (:documentation "The state of the parser which is threaded through all parsing methods"))
 
-(defun parse (input-desginator)
-  (scanner:call-with-scanner
-   input-desginator
-   (lambda (scanner)
-     (let ((state (make-instance 'state :scanner scanner)))
-       (%parse state)))))
+(defun parse-with (input parser &rest args)
+  (call-with-parse-state
+   input
+   (lambda (state)
+     (handler-bind ((error-detail (lambda (c) (if *fail-fast* (invoke-debugger c) (invoke-restart 'continue)))))
+       (advance! state)
+       (apply #'funcall parser state args)))))
 
-(-> %parse (state) (or null ast:node))
+(defun parse (input-desginator)
+  (call-with-parse-state input-desginator #'%parse))
+
+(-> %parse (state) (values (or null ast:node) boolean state))
 (defun %parse (state)
   (handler-bind ((error-detail (lambda (c) (if *fail-fast* (invoke-debugger c) (invoke-restart 'continue)))))
-    (advance! state)
-    (when (eofp state)
-      (error-at-current state "Unexpected end of input")
-      (return-from %parse (accept state 'ast:bad-expression)))
-    (parse-expression state)))
+    (with-slots (had-errors-p) state
+      (advance! state) ; prime the state
+      (let ((ast (parse-expression state)))
+        (consume! state token:@EOF "Expected end of file")
+        (values ast had-errors-p state)))))
 
-(defun parse-expression (state)
+(defun call-with-parse-state (input fn)
+  (scanner:call-with-scanner
+   input
+   (lambda (scanner)
+     (let ((state (make-instance 'state :scanner scanner)))
+       (funcall fn state)))))
+
+(define-enum precedence
+  none
+  assignment ; =
+  term       ; + -
+  factor     ; * /
+  unary      ; + - !
+  primary)
+
+(define-enum associativity
+  none
+  left
+  right)
+
+(serapeum:defconst +operator-rules+
+  (serapeum:dict
+   token:@MINUS  (cons +precedence-term+ +associativity-left+)
+   token:@PLUS   (cons +precedence-term+ +associativity-left+)
+   token:@SLASH  (cons +precedence-factor+ +associativity-left+)
+   token:@STAR   (cons +precedence-factor+ +associativity-left+)
+   token:@LPAREN (cons +precedence-none+ +associativity-none+)))
+
+(defun operator-rule-for (token-class)
+  (gethash token-class +operator-rules+ (cons +precedence-none+ +associativity-none+)))
+
+(defun parse-expression (state &optional (current-min-precedence +precedence-assignment+))
+  "Parse and expression respecting precedence and associativity rules of the operators.
+It is implemented using the [precedence climbing algorithm](https://en.wikipedia.org/wiki/Operator-precedence_parser).
+The main idea behind the algorithm is that an expression contains of groups of subexpressions that are connected by the
+operator with the lowest precedence.
+
+Example:
+2 + 3 ^ 2 * 3 + 4
+
+|---------------|   : prec 1
+    |-------|       : prec 2
+    |---|           : prec 3
+
+The algorithm fits well into the overall recursive descent approach, which we take for the rest of the parser.
+During recursive calls to parse subexpression we pass the current precedence level and the associativity of the operator
+subexpression or to return the result to the caller.
+
+The primary expressio in this algorithm are the literals and the grouping expressions.
+"
+  (with-slots (cur-token) state
+    (loop with left = (parse-primary-expression state)
+          with right = nil
+          do
+             (destructuring-bind (prec . assoc) (operator-rule-for (token:class cur-token))
+               (when (< prec current-min-precedence)
+                 (return left))
+               (let ((operator cur-token)
+                     (next-min-precedence (if (= assoc +associativity-left+) (1+ prec) prec)))
+                 (advance! state)
+                 (setf right (parse-expression state next-min-precedence))
+                 (setf left (accept state 'ast:binary-expression :lhs left :operator operator :rhs right)))))))
+
+(defun parse-primary-expression (state)
   (or
+   (parse-literal state)
    (parse-unary-expression state)
-   (parse-literal state)))
+   (parse-grouping-expression state)))
 
 (defun parse-literal (state)
   (or (parse-number-literal state)))
@@ -84,8 +161,17 @@
 (-> parse-number-literal (state) (or null ast:literal))
 (defun parse-number-literal (state)
   (let ((tok (consume! state token:@INTEGER "Expected number literal")))
-    (unless (token:class= tok token:@ILLEGAL)
-      (accept state 'ast:literal :token tok))))
+    (when tok
+      (unless (token:class= tok token:@ILLEGAL)
+        (accept state 'ast:literal :token tok)))))
+
+(defun parse-grouping-expression (state)
+  (let ((tok (consume! state token:@LPAREN "Expected '('")))
+    (when tok
+      (unless (token:class= tok token:@ILLEGAL)
+        (let ((expr (parse-expression state +precedence-term+)))
+          (consume! state token:@RPAREN "Expected ')' after expression")
+          (accept state 'ast:grouping-expression :expression expr))))))
 
 (-> parse-unary-expression (state) (or null ast:expression))
 (defun parse-unary-expression (state)
@@ -95,7 +181,7 @@
       ((or (token:class= cur-token token:@PLUS) (token:class= cur-token token:@MINUS))
        (let ((op cur-token))
          (advance! state)
-         (accept state 'ast:unary-expression :operator op :operand (parse-expression state)))))))
+         (accept state 'ast:unary-expression :operator op :operand (parse-primary-expression state)))))))
 
 (-> eofp (state) boolean)
 (defun eofp (state)
@@ -119,17 +205,18 @@
             (setf cur-token cur)
             (setf next-token (scanner:next-token scanner))))
       (when (token:class= cur-token token:@ILLEGAL)
-        (error-at-current state "Illegal token"))
+        (signal-parse-error state "Illegal token"))
       (values cur-token next-token))))
 
-(-> consume! (state token:token-class string &rest list) token:token)
+(-> consume! (state token:token-class string &rest list) (or null token:token))
 (defun consume! (state expected-token-class format-string &rest args)
   "Consumes input expecting it to be of the given token type"
   (with-slots (cur-token) state
     (assert cur-token) ; we can only get here when consume! has been called withoud advance!
 
     (unless (token:class= cur-token expected-token-class)
-      (error-at-current state format-string args))
+      (signal-parse-error state format-string args)
+      (return-from consume! nil))
     (prog1 cur-token
       (advance! state))))
 
@@ -143,22 +230,26 @@
           (advance! state)
           (return next-class))))))
 
-(-> error-at-current (state string &rest t) null)
-(defun error-at-current (state format-string &rest args)
+(-> signal-parse-error (state string &rest t) null)
+(defun signal-parse-error (state format-string &rest args)
   "Record an error at the current location"
   (with-slots (cur-token) state
-    (apply #'error-at state cur-token format-string args)))
+    (apply #'signal-parse-error-at state cur-token format-string args)))
 
-(-> error-at (state token:token string &rest t) null)
-(defun error-at (state token format-string &rest args)
+(-> signal-parse-error-at-next (state string &rest t))
+(defun signal-parse-error-at-next (state format-string &rest args)
+  "Record an error at the next location"
+  (with-slots (next-token) state
+    (signal-parse-error-at state next-token format-string args)))
+
+(-> signal-parse-error-at (state token:token string &rest t) (or null error-detail))
+(defun signal-parse-error-at (state token format-string &rest args)
   (with-slots (panic-mode-p had-errors-p errors scanner) state
-
-    (when panic-mode-p (return-from error-at))
-
-    (setf panic-mode-p t)
-    (setf had-error-p t)
-
-    (let* ((loc (token:location token))
-           (parse-error (make-condition 'error-detail :location loc :message (apply #'format nil format-string args))))
-      (cerror "Continue parsing collecting this error" parse-error)
-      (push parse-error errors))))
+    (unless panic-mode-p
+      (setf panic-mode-p t)
+      (setf had-errors-p t)
+      (let* ((loc (token:location token))
+             (parse-error (make-condition 'error-detail :location loc :message (apply #'format nil format-string args))))
+        (cerror "Continue parsing collecting this error" parse-error)
+        (prog1 parse-error
+          (push parse-error errors))))))

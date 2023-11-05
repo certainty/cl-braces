@@ -30,6 +30,14 @@
 (defun literal-value (expression)
   (token:value (literal-token expression)))
 
+(defclass grouping-expression (expression)
+  ((expression
+    :reader grouping-expression-expression
+    :initarg :expression
+    :initform (error "must provide expression")
+    :type expression))
+  (:documentation "An expression that is surrounded by parentheses."))
+
 (defclass unary-expression (expression)
   ((operator
     :reader unary-expression-operator
@@ -40,5 +48,23 @@
     :reader unary-expression-operand
     :initarg :operand
     :initform (error "must provide operand")
+    :type expression))
+  (:documentation "An expression for binary relations"))
+
+(defclass binary-expression (expression)
+  ((lhs
+    :reader binary-expression-lhs
+    :initarg :lhs
+    :initform (error "must provide lhs")
+    :type expression)
+   (operator
+    :reader binary-expression-operator
+    :initarg :operator
+    :initform (error "must provide operator")
+    :type token:token)
+   (rhs
+    :reader binary-expression-rhs
+    :initarg :rhs
+    :initform (error "must provide rhs")
     :type expression))
   (:documentation "An expression for binary relations"))

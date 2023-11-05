@@ -11,9 +11,17 @@
    :literal
    :literal-value
 
+   :grouping-expression
+   :grouping-expression-expression
+
    :unary-expression
    :unary-expression-operator
    :unary-expression-operand
+
+   :binary-expression
+   :binary-expression-lhs
+   :binary-expression-operator
+   :binary-expression-rhs
 
    :walk
    :enter
