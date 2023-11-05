@@ -75,6 +75,16 @@
        (apply #'funcall parser state args)))))
 
 (defun parse (input-desginator)
+  "Parses the source code denoted by `input-designatore' and returns 3 values
+1. the AST
+2. a boolean indicating if any errors have been encountered
+3. the parser state
+
+See `scanner:source-input' for the supported input designators
+Bind the dynamic variable `*fail-fast*' to true to signal a continuable parse-error condition when an error is encountered.
+By default it is bound to nil, which will cause the parser to insert a sentinel node into the AST and continue parsing.
+"
+
   (call-with-parse-state input-desginator #'%parse))
 
 (-> %parse (state) (values (or null ast:node) boolean state))
