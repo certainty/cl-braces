@@ -30,5 +30,7 @@
    :walk
    :enter
    :leave
-
+   :with-preorder-traversal
+   :with-postorder-traversal
+   :*traversal*
    :print-ast))

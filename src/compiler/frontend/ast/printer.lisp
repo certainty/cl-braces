@@ -16,8 +16,10 @@
     :type stream)))
 
 (defun print-ast (ast &key (stream *standard-output*) (print-spans-p nil))
+  "Prints the give `AST' to  `STREAM' in a human readable format."
   (let ((printer (make-instance 'ast-printer :stream stream :print-spans-p print-spans-p)))
-    (walk printer ast)))
+    (with-preorder-traversal
+      (walk printer ast))))
 
 (defun format-span (span stream)
   (format stream " [~A:~A ~A:~A]"
