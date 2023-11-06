@@ -24,13 +24,13 @@
 (define-condition error-detail (error)
   ((location :reader error-location
              :initarg :location
-             :type token:location)
+             :type location:source-location)
    (message :reader error-message
             :initarg :message))
   (:report
    (lambda (condition stream)
      (let ((location (error-location condition)))
-       (format stream "ParseError at Line: ~A, Column: ~A => ~A" (token:location-line location) (token:location-column location) (error-message condition)))))
+       (format stream "ParseError at Line: ~A, Column: ~A => ~A" (location:line location) (location:column location) (error-message condition)))))
   (:documentation "An instance of a parse error."))
 
 (defclass state ()

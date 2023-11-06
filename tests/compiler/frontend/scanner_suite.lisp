@@ -43,17 +43,17 @@ where the car is the expected token class and the cadr is a keyword argument :wi
          (t2 (scanner:next-token s))
          (t3 (scanner:next-token s)))
 
-    (assert-equal 1 (token:location-line (token:location t1)))
-    (assert-equal 4 (token:location-column (token:location t1)))
-    (assert-equal 3 (token:location-offset (token:location t1)))
+    (assert-equal 1 (location:line (token:location t1)))
+    (assert-equal 4 (location:column (token:location t1)))
+    (assert-equal 3 (location:offset (token:location t1)))
 
-    (assert-equal 2 (token:location-line (token:location t2)))
-    (assert-equal 1 (token:location-column (token:location t2)))
-    (assert-equal 5 (token:location-offset (token:location t2)))
+    (assert-equal 2 (location:line (token:location t2)))
+    (assert-equal 1 (location:column (token:location t2)))
+    (assert-equal 5 (location:offset (token:location t2)))
 
-    (assert-equal 2 (token:location-line (token:location t3)))
-    (assert-equal 5 (token:location-column (token:location t3)))
-    (assert-equal 9 (token:location-offset (token:location t3)))))
+    (assert-equal 2 (location:line (token:location t3)))
+    (assert-equal 5 (location:column (token:location t3)))
+    (assert-equal 9 (location:offset (token:location t3)))))
 
 (define-test scan-unary-ops ()
   "Scan unary operators"

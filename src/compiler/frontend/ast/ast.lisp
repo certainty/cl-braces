@@ -70,37 +70,14 @@
   (:documentation "An expression for binary relations"))
 
 ;;; Compute spans over expressions
-;;; TODO: This should be moved to a different file. Maybe to the token package?
-(defclass span ()
-  ((from :reader span-from
-         :initarg :from
-         :initform (error "must provide from")
-         :type token:location
-         :documentation "This is the location of the the first token or subexpression of the expression."
-         )
-   (to :reader span-to
-       :initarg :to
-       :initform (error "must provide to")
-       :type token:location
-       :documentation "This is the location of the last token or subexpression of the expression."))
-  (:documentation "A span in the source code for a given syntatic element. It denotes a range from the begining of the element to the end of the element."))
-
-(defmethod print-object ((span span) stream)
-  (with-slots (from to) span
-    (print-unreadable-object (span stream :type t :identity t)
-      (format stream "[~A, ~A]" from to))))
-
-(defgeneric span (expression)
-  (:documentation "Computes the span of the expression in the source code."))
-
-(defmethod span ((node unary-expression))
+(defmethod location:span-for ((node unary-expression))
   (with-slots (operator operand) node
     (let ((operand (span operand)))
       (make-instance 'span
                      :from (token:location operator)
                      :to (span-to operand)))))
 
-(defmethod span ((node binary-expression))
+(defmethod location:span-for ((node binary-expression))
   (with-slots (lhs rhs) node
     (let ((lhs (span lhs))
           (rhs (span rhs)))
@@ -108,14 +85,14 @@
                      :from (span-from lhs)
                      :to (span-to rhs)))))
 
-(defmethod span ((node grouping-expression))
+(defmethod location:span-for ((node grouping-expression))
   (with-slots (expression) node
     (let ((sub-expr-span (span expression)))
       (make-instance 'span
                      :from (span-from sub-expr-span)
                      :to (span-to sub-expr-span)))))
 
-(defmethod span ((node literal))
+(defmethod location:span-for ((node literal))
   (with-slots (token) node
     (make-instance 'span
                    :from (token:location token)

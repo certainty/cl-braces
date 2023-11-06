@@ -18,6 +18,8 @@
   :serial t
   :pathname "src/compiler"
   :components ((:file "../development")
+               (:file "packages")
+               (:file "location")
                (:module "frontend"
                 :components
                 ((:module "scanner"
@@ -34,7 +36,12 @@
                  (:module "parser"
                   :components
                   ((:file "packages")
-                   (:file "parser")))))))
+                   (:file "parser")))))
+               (:module "backend"
+                :components
+                ((:file "packages")
+                 (:file "codegen")))
+               (:file "pipeline")))
 
 (defsystem "cl-braces/compiler/tests"
   :depends-on (:lisp-unit2 :cl-braces/compiler)

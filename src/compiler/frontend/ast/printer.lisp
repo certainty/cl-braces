@@ -23,10 +23,10 @@
 
 (defun format-span (span stream)
   (format stream " [~A:~A ~A:~A]"
-          (token:location-line (span-from span))
-          (token:location-column (span-from span))
-          (token:location-line (span-to span))
-          (token:location-column (span-to span))))
+          (location:line (span-from span))
+          (location:column (span-from span))
+          (location:line (span-to span))
+          (location:column (span-to span))))
 
 (defun connective (indentation-level)
   (let ((connection "├─── "))
