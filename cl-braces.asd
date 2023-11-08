@@ -13,7 +13,7 @@
 
 (defsystem "cl-braces/compiler"
   :description "Compiler for cl-braces the minimal go-like programming language"
-  :depends-on (:alexandria :serapeum)
+  :depends-on (:alexandria :serapeum :cl-braces/vm)
   :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
   :serial t
   :pathname "src/compiler"
@@ -42,6 +42,20 @@
                 ((:file "packages")
                  (:file "codegen")))
                (:file "pipeline")))
+
+(defsystem "cl-braces/vm"
+  :description "Compiler for cl-braces the minimal go-like programming language"
+  :depends-on (:alexandria :serapeum)
+  :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
+  :serial t
+  :pathname "src/vm"
+  :components ((:file "../development")
+               (:file "packages")
+               (:module "runtime"
+                :components
+                ((:file "value")))
+               (:file "bytecode")
+               (:file "isa")))
 
 (defsystem "cl-braces/compiler/tests"
   :depends-on (:lisp-unit2 :cl-braces/compiler)

@@ -121,6 +121,8 @@
 (defgeneric leave (visitor node)
   (:documentation "Dispatches to the appropriate leave method for the node and visitor"))
 
+(defmethod leave (visitor (node node)) nil)
+
 (defgeneric walk (visitor node)
   (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'. The order in which the nodes are visited is determined by the value of `*traversal*'"))
 
@@ -137,7 +139,7 @@
        (leave visitor node)))
     (postorder
      (walk visitor (binary-expression-lhs node))
-     (walk visitor (bianry-expression-rhs node))
+     (walk visitor (binary-expression-rhs node))
      (enter visitor node)
      (leave visitor node))))
 
