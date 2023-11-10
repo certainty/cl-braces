@@ -1,11 +1,12 @@
 (in-package :cl-braces.compiler.frontend.ast)
 
 (defclass node ()
-  ((location :reader location
-             :initarg :location
-             :initform (error "must provide location")
-             :type token:location
-             :documentation "The location of the start of the node in the source code."))
+  ((location
+    :reader location
+    :initarg :location
+    :initform (error "must provide location")
+    :type token:location
+    :documentation "The location of the start of the node in the source code."))
   (:documentation "The base class for all AST nodes in the highlevel AST."))
 
 (defclass expression (node) ()

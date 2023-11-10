@@ -38,6 +38,7 @@
              (setf indentation (concatenate 'string indentation "│    ")))
            (format nil "~A~A" indentation connection))))))
 
+;; default implementations
 (defmethod enter ((printer ast-printer) (node node))
   (with-slots (indentation-level stream print-spans-p) printer
     (format stream "~A~A" (connective indentation-level) (class-name (class-of node)))
@@ -48,6 +49,7 @@
 (defmethod leave ((printer ast-printer) (node node))
   nil)
 
+;; specific implementations
 (defmethod enter ((printer ast-printer) (node bad-expression))
   (with-slots (stream print-spans-p) printer
     (format stream "~A~A" (indent printer) "<bad-expression>")

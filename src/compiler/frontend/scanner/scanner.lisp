@@ -113,9 +113,9 @@ You should use the `class=' predicate to test for these.
 The following example shows how to deal with these cases:
 
 ```common-lisp
-(scanner:with-scanner (s \"3 +3\")
+  ;; assuming you have a scanner created
   (loop
-    (let ((token (scanner:next-token s)))
+    (let ((token (scanner:next-token scanner)))
       (cond
         ((token:class= token token:@ILLEGAL) (print \"Illegal token\"))
         ((token:class= token token:@EOF) (return))

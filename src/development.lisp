@@ -9,7 +9,7 @@
    :pry
    :returning
    :domap
-   ))
+   :define-enum))
 
 (in-package :cl-braces.development)
 
@@ -35,3 +35,12 @@
 
 (defmacro domap ((var list) &body body)
   `(mapcar (lambda (,var) ,@body) ,list))
+
+(defmacro define-enum (name &rest variants)
+  (let ((iota 0))
+    `(progn
+       ,@(mapcar (lambda (variant)
+                   (prog1 `(defconstant ,(intern (format nil "+~A-~A+" name variant) *package*) ,iota)
+                     (incf iota)))
+                 variants)
+       (deftype ,(intern (format nil "~A" name) *package*) () '(integer 0 ,iota)))))

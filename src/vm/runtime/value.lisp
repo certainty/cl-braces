@@ -1,3 +1,3 @@
-(in-package :cl-braces.vm.runtime.value)
+(in-package :vm.value)
 
 (deftype value () t)

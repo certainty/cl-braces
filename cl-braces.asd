@@ -40,6 +40,8 @@
                (:module "backend"
                 :components
                 ((:file "packages")
+                 (:file "constants-builder")
+                 (:file "chunk-builder")
                  (:file "codegen")))
                (:file "pipeline")))
 

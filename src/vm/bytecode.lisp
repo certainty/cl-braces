@@ -46,8 +46,8 @@
 
 (defmethod initialize-instance :after ((isa isa) &key)
   (with-slots (instructions-by-mnemonic instruction-set) isa
-    (loop for i across instruction-set
-          do (setf (gethash (isa-instruction-mnemonic i) instructions-by-mnemonic) i))))
+    (loop :for i :across instruction-set
+          :do (setf (gethash (isa-instruction-mnemonic i) instructions-by-mnemonic) i))))
 
 (defgeneric print-isa (isa &optional stream)
   (:documentation "Prints the given isa to the stream"))
@@ -170,6 +170,8 @@
 
 (defstruct (ternary-instruction (:include binary-instruction))
   (op3 (error "must supply op3") :type operand-t :read-only t))
+
+(deftype constant-table () '(vector value:value))
 
 (defstruct chunk
   (constants (error "must supply constants") :type (vector value:value) :read-only t)

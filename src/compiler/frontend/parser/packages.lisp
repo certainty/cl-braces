@@ -2,7 +2,7 @@
 
 (defpackage :cl-braces.compiler.frontend.parser
   (:nicknames :frontend.parser :parser)
-  (:use :cl)
+  (:use :cl :cl-braces.development)
   (:import-from :serapeum :->)
   (:export
    :parse))

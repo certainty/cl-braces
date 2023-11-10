@@ -13,9 +13,17 @@
   (:import-from :serapeum :->)
   (:export
    :chunk
+   :constant-table
    :make-chunk
    :print-isa
    :*isa-1.0*
+   :operand-value
+   :address-value
+   :register-value
+
+   :address-t
+   :register-t
+   :opcode-t
 
    :instr
    :address
