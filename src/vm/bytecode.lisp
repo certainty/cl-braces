@@ -103,8 +103,8 @@
 
 (defmethod print-isa ((instruction isa-instruction) &optional (stream t))
   (with-slots (mnemonic operands description) instruction
-    (let ((printed-operands (format nil "~{~a~^, ~}" (coerce operands 'list))))
-      (format stream "~7a ~15a ~a" mnemonic printed-operands description))))
+    (let ((printed-operands (format nil "~{~a~^, ~}" (mapcar (lambda (op) (print-isa op nil)) (coerce operands 'list)))))
+      (format stream "~7a ~18a ~a" mnemonic printed-operands description))))
 
 (defmacro define-isa (isa-name  &key version instructions)
   "Defines a new isa with the given version and instructions."
