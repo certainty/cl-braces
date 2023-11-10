@@ -106,15 +106,13 @@
     (let ((printed-operands (format nil "~{~a~^, ~}" (coerce operands 'list))))
       (format stream "~7a ~15a ~a" mnemonic printed-operands description))))
 
-(defmacro defisa (&key version instructions)
+(defmacro define-isa (isa-name  &key version instructions)
   "Defines a new isa with the given version and instructions."
-  (let* ((isa-name (intern (format nil "ISA-~A.~A" (first version) (second version))))
-         (parameter-name (intern (format nil "*~a*" isa-name))))
-    `(progn
-       (defparameter ,parameter-name
-         (make-instance 'isa
-                        :version (version ,(first version) ,(second version))
-                        :instructions (make-isa-instruction-set ,@instructions))))))
+  `(progn
+     (defparameter ,isa-name
+       (make-instance 'isa
+                      :version (version ,(first version) ,(second version))
+                      :instructions (make-isa-instruction-set ,@instructions)))))
 
 (defmacro make-isa-instruction-set (&rest instructions)
   `(vector ,@(mapcar (lambda (instruction)
