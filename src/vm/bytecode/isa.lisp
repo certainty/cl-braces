@@ -5,6 +5,9 @@
 ;;; It also serves as the basis for the disassembler and the code generator so we have a single source of truth for the instructions.
 ;;;
 ;;; The ISA is defined using the define-isa macro, which is used to describe and define a new instruction set.
+;;;
+;;; Use the `print-isa' function to get information about the instructions that are available in the virtual machine.
+;;; The default is will be bound to `*current-isa*' so you can use `(print-isa *current-isa*)' to get information about the current instruction set.
 
 (defparameter *current-isa* "The current isa that is used to construct instructions")
 
@@ -18,15 +21,17 @@
     :reader isa-version
     :initarg :version
     :initform (version 1 0 )
-    :type version)
+    :type version
+    :documentation "The version of the instruction set architecture")
    (instruction-set
     :reader isa-instruction-set
     :initarg :instructions
-    :type (vector isa-instruction))
+    :type (vector isa-instruction)
+    :documentation "The instructions that are available in this instruction set architecture")
    (instructions-by-mnemonic
     :initform (make-hash-table :test 'eql)
     :type (hash-table symbol isa-instruction)))
-  (:documentation "A description of an instruction set architecture"))
+  (:documentation "This class represents an instruction set architecture (ISA). It's used in code-generation and disassembly to describe the instructions that are available in the virtual machine."))
 
 (defmethod initialize-instance :after ((isa isa) &key)
   (with-slots (instructions-by-mnemonic instruction-set) isa
@@ -34,19 +39,19 @@
           :do (setf (gethash (isa-instruction-mnemonic i) instructions-by-mnemonic) i))))
 
 (defun instruction-by-mnemonic (mnemonic &optional (isa *current-isa*))
+  "Returns the instruction with the given mnemonic"
   (with-slots (instructions-by-mnemonic) isa
-    (let ((instruction (gethash mnemonic instructions-by-mnemonic)))
-      (unless instruction
-        (error "Unknown instruction ~A" mnemonic))
-      instruction)))
+    (gethash mnemonic instructions-by-mnemonic)))
 
 (defun instruction-by-opcode (opcode &optional (isa *current-isa*))
+  "Returns the instruction with the given opcode."
   (with-slots (instruction-set) isa
     (loop :for i :across instruction-set
           :when (eql opcode (isa-instruction-opcode i))
             :return i)))
 
 (defun mnemonic-for-instruction (opcode &optional (isa *current-isa*))
+  "Returns the mnemonic for the given opcode."
   (with-slots (instructions-by-mnemonic) isa
     (loop :for i :being :the :hash-values :of instructions-by-mnemonic
           :when (eql opcode (isa-instruction-opcode i))
@@ -96,26 +101,44 @@
     :reader isa-instruction-opcode
     :initarg
     :opcode
-    :type opcode-t)
+    :type opcode-t
+    :documentation "The opcode of the instruction")
    (operands
     :reader isa-instruction-operands
     :initarg
     :operands
-    :type (vector isa-operand))
+    :type (vector isa-operand)
+    :documentation "The operands that are required for this instruction")
    (mnemonic
     :reader isa-instruction-mnemonic
     :initarg :mnemonic
-    :type string)
+    :type string
+    :documentation "The mnemonic of the instruction")
    (description
     :initarg
     :description
-    :type string))
+    :type string
+    :documentation "A helpful description of the instruction"))
   (:documentation "A description of an instruction that can be used to construct instructions"))
 
-
-
 (defmacro define-isa (isa-name  &key version instructions)
-  "Defines a new isa with the given version and instructions."
+  "Defines a new isa with the given version and instructions.
+    The instructions are defined using the following syntax:
+    (define-isa *my-isa*
+      :version (1 0) :
+      instructions
+      ((add \"ADD\" ((reg dst) (reg lhs) (reg rhs)) \"Adds two registers\"))
+
+   Each instruction is defined using the following syntax:
+   (mnemonic operands description)
+
+   The operands are defined using the following syntax:
+   (type name)
+
+   The supported operand types are:
+   - reg: A register
+   - addr: An address
+"
   `(progn
      (defparameter ,isa-name
        (make-instance 'isa
@@ -139,7 +162,6 @@
                                     (t (error "Unknown operand type ~A" (first operand)))))
                                 operands))))
 
-
 (defun instr (mnemonic &rest args)
   "Creates an instruction from the given mnemonic and operands."
   (let* ((instruction (instruction-by-mnemonic mnemonic))
@@ -161,7 +183,6 @@
         for given-operand across given-operands
         do (unless (typep given-operand (isa-operand-type-guard wanted-operand))
              (error "Expected operand of type ~A but got ~A" (isa-operand-type-guard wanted-operand) given-operand))))
-
 
 (defgeneric print-isa (isa &optional stream)
   (:documentation "Prints the given isa to the stream"))

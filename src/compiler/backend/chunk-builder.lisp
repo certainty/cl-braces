@@ -1,5 +1,8 @@
 (in-package :cl-braces.compiler.backend.codegen)
 
+;;;; The chunk builder constructs the chunk of bytecode for the virtual machine machine.
+;;;; Its main inteface is to add instructions and constants. See also the `constants-builder' for details.
+
 (defclass chunk-builder ()
   ((constants
     :initform (make-constants-builder)
@@ -14,6 +17,7 @@
   (:documentation "Builds a chunk of bytecode"))
 
 (defun make-chunk-builder ()
+  "Create a new chunk builder"
   (make-instance 'chunk-builder))
 
 (-> add-constant (chunk-builder vm.value:value) bytecode:address)
@@ -29,7 +33,8 @@
     (dolist (instr more-instructions)
       (vector-push-extend instr instructions))))
 
-(defmethod chunk-result ((builder chunk-builder) registers-used)
+(defun chunk-result ((builder chunk-builder) registers-used)
+  "Return the chunk of bytecode. All constants will be deduplicated."
   (with-slots (constants instructions) builder
     (bytecode:make-chunk
      :constants (constants-result constants)

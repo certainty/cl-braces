@@ -58,8 +58,8 @@
                 ((:file "value")))
                (:module "bytecode"
                 :components
-                ((:file "isa")
-                 (:file "chunk")
+                ((:file "chunk")
+                 (:file "isa")
                  (:file "disassembler")
                  (:file "isa-1.0")))))
 

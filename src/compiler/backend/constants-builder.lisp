@@ -1,5 +1,9 @@
 (in-package :cl-braces.compiler.backend.codegen)
 
+;;;; We use a constants builder instead of writing directly to `constant-table'.
+;;;; This allows us to deduplicate constants during generation and when we emit the final
+;;;; constant table, we can still emit the correct addresses for the constants.
+
 (defclass constants-builder ()
   ((registered-constants
     :initform (make-hash-table :test 'equal)
@@ -12,11 +16,13 @@
   (:documentation "A builder that allows to generate deduplicated constant segments for code chunks"))
 
 (defun make-constants-builder ()
+  "Creates a new constants builder. You should never have to create this directly. Use the `chunk-builder' instead."
   (make-instance 'constants-builder))
 
 (-> constants-add (constants-builder vm.value:value) bytecode:address)
 (defun constants-add (builder value)
-  "Add the constant to the constant pool and return its address"
+  "Add the constant to the constant pool and return its address.
+  Constants will be deduplicated, so if the constant already exists as determined by `equal', the address of the existing constant will be returned."
   (with-slots (registered-constants next-address) builder
     (or (gethash value registered-constants)
         (let ((address (bytecode:addr next-address)))

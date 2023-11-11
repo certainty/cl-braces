@@ -2,7 +2,9 @@
 
 (defpackage :cl-braces.compiler
   (:nicknames :compiler)
-  (:use :cl))
+  (:use :cl)
+  (:export
+   :compile-this))
 
 (defpackage :cl-braces.compiler.location
   (:nicknames :compiler.location :location)
