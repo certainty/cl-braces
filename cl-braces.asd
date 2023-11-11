@@ -56,8 +56,12 @@
                (:module "runtime"
                 :components
                 ((:file "value")))
-               (:file "bytecode")
-               (:file "isa")))
+               (:module "bytecode"
+                :components
+                ((:file "isa")
+                 (:file "chunk")
+                 (:file "disassembler")
+                 (:file "isa-1.0")))))
 
 (defsystem "cl-braces/compiler/tests"
   :depends-on (:lisp-unit2 :cl-braces/compiler)

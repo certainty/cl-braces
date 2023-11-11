@@ -1,28 +1,12 @@
 (in-package :cl-braces.vm.bytecode)
 
-(deftype opcode-t ()  '(unsigned-byte 8))
-(deftype register-t () '(unsigned-byte 16))
-(deftype address-t () '(unsigned-byte 64))
-(deftype operand-t () '(or register-t address-t))
+;;; The instruction set architecture (ISA) is a description of the instructions that are available in the virtual machine.
+;;; It is used to construct instructions and to print the instructions in a human readable format.
+;;; It also serves as the basis for the disassembler and the code generator so we have a single source of truth for the instructions.
+;;;
+;;; The ISA is defined using the define-isa macro, which is used to describe and define a new instruction set.
 
-;; A type that is only used during construction of instuctions to make the operations more typesafe
-;; In the finaly instruction we only encode the raw value
-(-> reg (register-t) register)
-(defstruct (register  (:conc-name register-) (:constructor reg (provided-value)) (:copier nil))
-  (value provided-value  :type register-t :read-only t))
-
-(-> addr (integer) address)
-(defstruct (address (:conc-name address-) (:constructor addr (provided-value)) (:copier nil))
-  (value provided-value :type address-t :read-only t))
-
-(defgeneric operand-value (operand)
-  (:documentation "Returns the value of the given operand"))
-
-(defmethod operand-value ((operand register))
-  (register-value operand))
-
-(defmethod operand-value ((operand address))
-  (address-value operand))
+(defparameter *current-isa* "The current isa that is used to construct instructions")
 
 (-> version ((integer 0 *) (integer 0 *)) version)
 (defstruct (version (:constructor version (major minor)))
@@ -49,19 +33,43 @@
     (loop :for i :across instruction-set
           :do (setf (gethash (isa-instruction-mnemonic i) instructions-by-mnemonic) i))))
 
-(defgeneric print-isa (isa &optional stream)
-  (:documentation "Prints the given isa to the stream"))
-
-(defmethod print-isa ((isa isa) &optional (stream t))
-  (format stream "Version: ~A.~A ~%Instructions:~% ~{~a~^~% ~}" (version-major (isa-version isa)) (version-minor (isa-version isa))
-          (mapcar (lambda (i) (print-isa i nil)) (coerce (isa-instruction-set isa) 'list))))
-
 (defun instruction-by-mnemonic (mnemonic &optional (isa *current-isa*))
   (with-slots (instructions-by-mnemonic) isa
     (let ((instruction (gethash mnemonic instructions-by-mnemonic)))
       (unless instruction
         (error "Unknown instruction ~A" mnemonic))
       instruction)))
+
+(defun instruction-by-opcode (opcode &optional (isa *current-isa*))
+  (with-slots (instruction-set) isa
+    (loop :for i :across instruction-set
+          :when (eql opcode (isa-instruction-opcode i))
+            :return i)))
+
+(defun mnemonic-for-instruction (opcode &optional (isa *current-isa*))
+  (with-slots (instructions-by-mnemonic) isa
+    (loop :for i :being :the :hash-values :of instructions-by-mnemonic
+          :when (eql opcode (isa-instruction-opcode i))
+            :return (isa-instruction-mnemonic i))))
+
+;; A type that is only used during construction of instuctions to make the operations more typesafe
+;; In the finaly instruction we only encode the raw value
+(-> reg (register-t) register)
+(defstruct (register  (:conc-name register-) (:constructor reg (provided-value)) (:copier nil))
+  (value provided-value  :type register-t :read-only t))
+
+(-> addr (integer) address)
+(defstruct (address (:conc-name address-) (:constructor addr (provided-value)) (:copier nil))
+  (value provided-value :type address-t :read-only t))
+
+(defgeneric operand-value (operand)
+  (:documentation "Returns the value of the given operand"))
+
+(defmethod operand-value ((operand register))
+  (register-value operand))
+
+(defmethod operand-value ((operand address))
+  (address-value operand))
 
 (defclass isa-operand ()
   ((type-description
@@ -76,9 +84,12 @@
    (name :initarg :name :type string))
   (:documentation "A description of an operand type that can be used to construct instructions"))
 
-(defmethod print-isa ((operand isa-operand) &optional (stream t))
-  (with-slots (name) operand
-    (format stream "~A" name)))
+(defun isa-operand-typep (operand expected-type)
+  (typep (isa-operand-type-guard operand) expected-type))
+
+(defun isa-operand-type (operand)
+  (with-slots (type-guard) operand
+    type-guard))
 
 (defclass isa-instruction ()
   ((opcode
@@ -101,10 +112,7 @@
     :type string))
   (:documentation "A description of an instruction that can be used to construct instructions"))
 
-(defmethod print-isa ((instruction isa-instruction) &optional (stream t))
-  (with-slots (mnemonic operands description) instruction
-    (let ((printed-operands (format nil "~{~a~^, ~}" (mapcar (lambda (op) (print-isa op nil)) (coerce operands 'list)))))
-      (format stream "~7a ~18a ~a" mnemonic printed-operands description))))
+
 
 (defmacro define-isa (isa-name  &key version instructions)
   "Defines a new isa with the given version and instructions."
@@ -131,7 +139,6 @@
                                     (t (error "Unknown operand type ~A" (first operand)))))
                                 operands))))
 
-(defparameter *current-isa* "The current isa that is used to construct instructions")
 
 (defun instr (mnemonic &rest args)
   "Creates an instruction from the given mnemonic and operands."
@@ -155,23 +162,19 @@
         do (unless (typep given-operand (isa-operand-type-guard wanted-operand))
              (error "Expected operand of type ~A but got ~A" (isa-operand-type-guard wanted-operand) given-operand))))
 
-;; A machine instruction as loaded and executed by the vm.
-;; We chose a representation that is easy to decode and cache-friendly.
-(defstruct instruction
-  (opcode (error "must supply opcode") :type opcode-t :read-only t))
 
-(defstruct (unary-instruction (:include instruction))
-  (op1 (error "must supply op1") :type operand-t :read-only t))
+(defgeneric print-isa (isa &optional stream)
+  (:documentation "Prints the given isa to the stream"))
 
-(defstruct (binary-instruction (:include unary-instruction))
-  (op2 (error "must supply op2") :type operand-t :read-only t))
+(defmethod print-isa ((isa isa) &optional (stream t))
+  (format stream "Version: ~A.~A ~%Instructions:~% ~{~a~^~% ~}" (version-major (isa-version isa)) (version-minor (isa-version isa))
+          (mapcar (lambda (i) (print-isa i nil)) (coerce (isa-instruction-set isa) 'list))))
 
-(defstruct (ternary-instruction (:include binary-instruction))
-  (op3 (error "must supply op3") :type operand-t :read-only t))
+(defmethod print-isa ((instruction isa-instruction) &optional (stream t))
+  (with-slots (mnemonic operands description) instruction
+    (let ((printed-operands (format nil "~{~a~^, ~}" (mapcar (lambda (op) (print-isa op nil)) (coerce operands 'list)))))
+      (format stream "~7a ~18a ~a" mnemonic printed-operands description))))
 
-(deftype constant-table () '(vector value:value))
-
-(defstruct chunk
-  (constants (error "must supply constants") :type (vector value:value) :read-only t)
-  (code (error "must supply code") :type (vector instruction) :read-only t)
-  (registers-used 0 :type (integer 0 *) :read-only t))
+(defmethod print-isa ((operand isa-operand) &optional (stream t))
+  (with-slots (name) operand
+    (format stream "~A" name)))

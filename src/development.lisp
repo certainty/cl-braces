@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage :cl-braces.development
-  (:nicknames :dev)
+  (:nicknames :dev :development)
   (:use :cl)
   (:export
    :todo!

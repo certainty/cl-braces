@@ -9,7 +9,7 @@
 
 (defpackage :cl-braces.vm.bytecode
   (:nicknames :vm.bytecode :bytecode)
-  (:use :cl)
+  (:use :cl :development)
   (:import-from :serapeum :->)
   (:export
    :chunk
@@ -17,6 +17,7 @@
    :make-chunk
    :print-isa
    :*isa-1.0*
+   :*current-isa*
    :operand-value
    :address-value
    :register-value
@@ -38,5 +39,11 @@
    :sub
    :div
    :mul
-   :neg
-   ))
+   :neg))
+
+(defpackage :cl-braces.vm.machine
+  (:nicknames :vm.machine :machine)
+  (:use :cl)
+  (:import-from :cl-braces.vm.bytecode)
+  (:export
+   :execute))
