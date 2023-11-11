@@ -8,4 +8,4 @@
   (:import-from :cl-braces.vm.runtime.value :value)
   (:import-from :cl-braces.vm.bytecode :addr :reg :register :address)
   (:export
-   :emit))
+   :generate-chunk))

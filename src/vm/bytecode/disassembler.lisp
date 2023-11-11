@@ -2,10 +2,9 @@
 
 (defun disass (chunk &key (isa *current-isa*) (stream *standard-output*))
   "Disassemble a chunk of bytecode. It uses the following format:
-   PC: [LABEL] ENCODED-INSTRUCTION OPCODE OPERANDS [COMMENT]
-"
+   PC: [LABEL] ENCODED-INSTRUCTION OPCODE OPERANDS [COMMENT] "
   (do-instructions (pc instr chunk)
-    (format stream "~3a: ~7,a ~8,a ~8,a ~15,a // ~a~%"
+    (format stream "~3a: ~a ~8,a ~8,a ~15,a // ~a~%"
             (column-pc pc)
             (column-label instr isa chunk)
             (column-encoded-instruction instr isa)

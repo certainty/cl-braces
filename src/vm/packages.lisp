@@ -21,6 +21,7 @@
    :operand-value
    :address-value
    :register-value
+   :disass
 
    :address-t
    :register-t

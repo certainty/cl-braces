@@ -68,7 +68,7 @@
        (advance! state)
        (apply #'funcall parser state args)))))
 
-(-> parse (t) (values (or null ast:node) boolean state &optional))
+(-> parse (t) (values (or null ast:node) boolean state))
 (defun parse (input-desginator)
   "Parses the source code denoted by `input-designator' and returns 3 values
 1. the AST
@@ -79,7 +79,6 @@ See `scanner:source-input' for the supported input designators
 Bind the dynamic variable `*fail-fast*' to true to signal a continuable parse-error condition when an error is encountered.
 By default it is bound to nil, which will cause the parser to insert a sentinel node into the AST and continue parsing.
 "
-
   (call-with-parse-state input-desginator #'%parse))
 
 (-> %parse (state) (values (or null ast:node) boolean state))
@@ -91,7 +90,6 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
         (consume! state token:@EOF "Expected end of file")
         (values ast had-errors-p state)))))
 
-(-> parse (t function) (values &optional))
 (defun call-with-parse-state (input-desginator fn)
   (scanner:call-with-scanner
    input-desginator
