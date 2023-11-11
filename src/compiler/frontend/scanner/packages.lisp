@@ -14,11 +14,6 @@
    :class=
    :literal-p
 
-   :source-location
-   :location-offset
-   :location-line
-   :location-column
-
    :@EOF
    :@ILLEGAL
    :@LPAREN

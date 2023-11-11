@@ -16,15 +16,17 @@
     :type stream)))
 
 (defun print-ast (ast &key (stream *standard-output*) (print-spans-p nil))
+  "Prints the give `AST' to  `STREAM' in a human readable format."
   (let ((printer (make-instance 'ast-printer :stream stream :print-spans-p print-spans-p)))
-    (walk printer ast)))
+    (with-preorder-traversal
+      (walk printer ast))))
 
 (defun format-span (span stream)
   (format stream " [~A:~A ~A:~A]"
-          (token:location-line (span-from span))
-          (token:location-column (span-from span))
-          (token:location-line (span-to span))
-          (token:location-column (span-to span))))
+          (location:line (span-from span))
+          (location:column (span-from span))
+          (location:line (span-to span))
+          (location:column (span-to span))))
 
 (defun connective (indentation-level)
   (let ((connection "├─── "))
@@ -36,6 +38,7 @@
              (setf indentation (concatenate 'string indentation "│    ")))
            (format nil "~A~A" indentation connection))))))
 
+;; default implementations
 (defmethod enter ((printer ast-printer) (node node))
   (with-slots (indentation-level stream print-spans-p) printer
     (format stream "~A~A" (connective indentation-level) (class-name (class-of node)))
@@ -46,6 +49,7 @@
 (defmethod leave ((printer ast-printer) (node node))
   nil)
 
+;; specific implementations
 (defmethod enter ((printer ast-printer) (node bad-expression))
   (with-slots (stream print-spans-p) printer
     (format stream "~A~A" (indent printer) "<bad-expression>")

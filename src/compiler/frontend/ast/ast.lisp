@@ -1,11 +1,12 @@
 (in-package :cl-braces.compiler.frontend.ast)
 
 (defclass node ()
-  ((location :reader location
-             :initarg :location
-             :initform (error "must provide location")
-             :type token:location
-             :documentation "The location of the start of the node in the source code."))
+  ((location
+    :reader location
+    :initarg :location
+    :initform (error "must provide location")
+    :type token:location
+    :documentation "The location of the start of the node in the source code."))
   (:documentation "The base class for all AST nodes in the highlevel AST."))
 
 (defclass expression (node) ()
@@ -70,36 +71,14 @@
   (:documentation "An expression for binary relations"))
 
 ;;; Compute spans over expressions
-(defclass span ()
-  ((from :reader span-from
-         :initarg :from
-         :initform (error "must provide from")
-         :type token:location
-         :documentation "This is the location of the the first token or subexpression of the expression."
-         )
-   (to :reader span-to
-       :initarg :to
-       :initform (error "must provide to")
-       :type token:location
-       :documentation "This is the location of the last token or subexpression of the expression."))
-  (:documentation "A span in the source code."))
-
-(defmethod print-object ((span span) stream)
-  (with-slots (from to) span
-    (print-unreadable-object (span stream :type t :identity t)
-      (format stream "[~A, ~A]" from to))))
-
-(defgeneric span (expression)
-  (:documentation "Computes the span of the expression in the source code."))
-
-(defmethod span ((node unary-expression))
+(defmethod location:span-for ((node unary-expression))
   (with-slots (operator operand) node
     (let ((operand (span operand)))
       (make-instance 'span
                      :from (token:location operator)
                      :to (span-to operand)))))
 
-(defmethod span ((node binary-expression))
+(defmethod location:span-for ((node binary-expression))
   (with-slots (lhs rhs) node
     (let ((lhs (span lhs))
           (rhs (span rhs)))
@@ -107,45 +86,82 @@
                      :from (span-from lhs)
                      :to (span-to rhs)))))
 
-(defmethod span ((node grouping-expression))
+(defmethod location:span-for ((node grouping-expression))
   (with-slots (expression) node
     (let ((sub-expr-span (span expression)))
       (make-instance 'span
                      :from (span-from sub-expr-span)
                      :to (span-to sub-expr-span)))))
 
-(defmethod span ((node literal))
+(defmethod location:span-for ((node literal))
   (with-slots (token) node
     (make-instance 'span
                    :from (token:location token)
                    :to (token:location token))))
 
+;;; AST traversal via the visitor pattern
 ;;; Visitor for AST nodes
+(deftype traversal () '(member inorder postorder))
+
+(declaim (type traversal *traversal*))
+(defparameter *traversal* 'inorder "Specifies the way the AST will be traversed. It's a dynamic variable so you can even change the traversal strategy while we traverse")
+
+(defmacro with-preorder-traversal (&body body)
+  "Executes `BODY' with the traversal strategy set to preorder. This is really only useful when body is a call to `walk'"
+  `(let ((*traversal* 'inorder))
+     ,@body))
+
+(defmacro with-postorder-traversal (&body body)
+  "Executes `BODY' with the traversal strategy set to postorder. This is really only useful when body is a call to `walk'"
+  `(let ((*traversal* 'postorder))
+     ,@body))
+
 (defgeneric enter (visitor node)
   (:documentation "Dispatches to the appropriate visit method for the node and visitor"))
 
 (defgeneric leave (visitor node)
   (:documentation "Dispatches to the appropriate leave method for the node and visitor"))
 
+(defmethod leave (visitor (node node)) nil)
+
 (defgeneric walk (visitor node)
-  (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'."))
+  (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'. The order in which the nodes are visited is determined by the value of `*traversal*'"))
 
 (defmethod walk (visitor (node node))
   (enter visitor node)
   (leave visitor node))
 
 (defmethod walk (visitor (node binary-expression))
-  (enter visitor node)
-  (walk visitor (binary-expression-lhs node))
-  (walk visitor (binary-expression-rhs node))
-  (leave visitor node))
+  (case *traversal*
+    (inorder
+     (when (enter visitor node)
+       (walk visitor (binary-expression-lhs node))
+       (walk visitor (binary-expression-rhs node))
+       (leave visitor node)))
+    (postorder
+     (walk visitor (binary-expression-lhs node))
+     (walk visitor (binary-expression-rhs node))
+     (enter visitor node)
+     (leave visitor node))))
 
 (defmethod walk (visitor (node unary-expression))
-  (enter visitor node)
-  (walk visitor (unary-expression-operand node))
-  (leave visitor node))
+  (case *traversal*
+    (inorder
+     (when (enter visitor node)
+       (walk visitor (unary-expression-operand node))
+       (leave visitor node)))
+    (postorder
+     (walk visitor (unary-expression-operand node))
+     (enter visitor node)
+     (leave visitor node))))
 
 (defmethod walk (visitor (node grouping-expression))
-  (enter visitor node)
-  (walk visitor (grouping-expression-expression node))
-  (leave visitor node))
+  (case *traversal*
+    (inorder
+     (when (enter visitor node)
+       (walk visitor (grouping-expression-expression node))
+       (leave visitor node)))
+    (postorder
+     (walk visitor (grouping-expression-expression node))
+     (enter visitor node)
+     (leave visitor node))))

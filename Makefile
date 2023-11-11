@@ -1,7 +1,10 @@
 RUN_LISP=sbcl --noinform --non-interactive
 LISP=sbcl --noinform
 
-test:
+test-vm:
+	$(RUN_LISP) --eval '(progn (ql:quickload :cl-braces/vm/tests) (asdf:test-system :cl-braces/vm))'
+
+test-compiler:
 	$(RUN_LISP) --eval '(progn (ql:quickload :cl-braces/compiler/tests) (asdf:test-system :cl-braces/compiler))'
 
 repl:

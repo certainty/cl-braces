@@ -5,32 +5,26 @@
 ;;; When a parse fails, the parse will insert a sentinel node into the AST and continue parsing.
 ;;; The recovery is relatively simple and attempts to synchronize to the next statement boundary.
 
-(defmacro define-enum (name &rest variants)
-  (let ((iota 0))
-    `(progn
-       ,@(mapcar (lambda (variant)
-                   (prog1 `(defconstant ,(intern (format nil "+~A-~A+" name variant)) ,iota)
-                     (incf iota)))
-                 variants)
-       (deftype ,(intern (format nil "~A" name)) () '(integer 0 ,iota)))))
-
 (defparameter *fail-fast* nil "If true the parser will signal a continuable parse-error condition when an error is encountered. When continued the parser will attempt to synchronize to the next statement boundary.")
 
 (define-condition parse-errors (error)
-  ((details :reader error-detail
-            :initarg :details))
+  ((details
+    :reader error-detail
+    :initarg :details))
   (:documentation "The parser will collect parser errors and once the parsing process is finished it will signal this error condition containing all the details"))
 
 (define-condition error-detail (error)
-  ((location :reader error-location
-             :initarg :location
-             :type token:location)
-   (message :reader error-message
-            :initarg :message))
+  ((location
+    :reader error-location
+    :initarg :location
+    :type location:source-location)
+   (message
+    :reader error-message
+    :initarg :message))
   (:report
    (lambda (condition stream)
      (let ((location (error-location condition)))
-       (format stream "ParseError at Line: ~A, Column: ~A => ~A" (token:location-line location) (token:location-column location) (error-message condition)))))
+       (format stream "ParseError at Line: ~A, Column: ~A => ~A" (location:line location) (location:column location) (error-message condition)))))
   (:documentation "An instance of a parse error."))
 
 (defclass state ()
@@ -50,6 +44,7 @@
     :type (or null token:token)
     :documentation "The next token to be read")
    (errors
+    :reader parse-errors
     :initarg :errors
     :initform nil
     :type list
@@ -74,7 +69,17 @@
        (advance! state)
        (apply #'funcall parser state args)))))
 
+(-> parse (t) (values (or null ast:node) boolean state))
 (defun parse (input-desginator)
+  "Parses the source code denoted by `input-designator' and returns 3 values
+1. the AST
+2. a boolean indicating if any errors have been encountered
+3. the parser state
+
+See `scanner:source-input' for the supported input designators
+Bind the dynamic variable `*fail-fast*' to true to signal a continuable parse-error condition when an error is encountered.
+By default it is bound to nil, which will cause the parser to insert a sentinel node into the AST and continue parsing.
+"
   (call-with-parse-state input-desginator #'%parse))
 
 (-> %parse (state) (values (or null ast:node) boolean state))
@@ -86,9 +91,9 @@
         (consume! state token:@EOF "Expected end of file")
         (values ast had-errors-p state)))))
 
-(defun call-with-parse-state (input fn)
+(defun call-with-parse-state (input-desginator fn)
   (scanner:call-with-scanner
-   input
+   input-desginator
    (lambda (scanner)
      (let ((state (make-instance 'state :scanner scanner)))
        (funcall fn state)))))
@@ -118,8 +123,8 @@
   (gethash token-class +operator-rules+ (cons +precedence-none+ +associativity-none+)))
 
 (defun parse-expression (state &optional (current-min-precedence +precedence-assignment+))
-  "Parse and expression respecting precedence and associativity rules of the operators.
-It is implemented using the [precedence climbing algorithm](https://en.wikipedia.org/wiki/Operator-precedence_parser).
+  "Parse the expression respecting precedence and associativity rules of the operators.
+This implementation [precedence climbing algorithm](https://en.wikipedia.org/wiki/Operator-precedence_parser), to do so.
 The main idea behind the algorithm is that an expression contains of groups of subexpressions that are connected by the
 operator with the lowest precedence.
 
@@ -150,12 +155,14 @@ The primary expressio in this algorithm are the literals and the grouping expres
                  (setf left (accept state 'ast:binary-expression :lhs left :operator operator :rhs right)))))))
 
 (defun parse-primary-expression (state)
+  "Parse a primary expression, which are usually terminal nodes. The prefix `primary-' is often used in parsers to denot these types of productions."
   (or
    (parse-literal state)
    (parse-unary-expression state)
    (parse-grouping-expression state)))
 
 (defun parse-literal (state)
+  "Recognizes a literal expression"
   (or (parse-number-literal state)))
 
 (-> parse-number-literal (state) (or null ast:literal))

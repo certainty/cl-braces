@@ -113,9 +113,9 @@ You should use the `class=' predicate to test for these.
 The following example shows how to deal with these cases:
 
 ```common-lisp
-(scanner:with-scanner (s \"3 +3\")
+  ;; assuming you have a scanner created
   (loop
-    (let ((token (scanner:next-token s)))
+    (let ((token (scanner:next-token scanner)))
       (cond
         ((token:class= token token:@ILLEGAL) (print \"Illegal token\"))
         ((token:class= token token:@EOF) (return))
@@ -250,7 +250,7 @@ If `token-class' is token:@ILLEGAL then a `scan-error' condition is signalled."
   (with-slots (lexeme token-offset token-column token-line) scanner
     (let* ((token-lexeme (coerce lexeme 'string))
            (value (funcall to-value token-lexeme))
-           (location (make-instance 'token:source-location :line token-line :column token-column :offset token-offset)))
+           (location (make-instance 'location:source-location :line token-line :column token-column :offset token-offset)))
       (let ((token (make-instance 'token:token :class token-class :lexeme lexeme :value value :location location)))
         (prog1 token
           (when (token:class= token token:@ILLEGAL)

@@ -1,19 +1,19 @@
 (in-package :cl-user)
 
-(defpackage :cl-braces.tests.compiler.runner
+(defpackage :cl-braces.tests.vm.runner
   (:use :cl :lisp-unit2)
   (:export
    :run-all
    :run-all-ci
    :run-all-no-ci))
 
-(in-package :cl-braces.tests.compiler.runner)
+(in-package :cl-braces.tests.vm.runner)
 
 (defun run-suites ()
-  (let ((snapshots:*snapshot-dir* (truename "./tests/snapshots/compiler")))
+  (let ((snapshots:*snapshot-dir* (truename "./tests/snapshots/vm")))
     (run-tests
-     :name "compiler"
-     :package '(:tests.frontend.scanner :tests.frontend.parser :tests.frontend.ast :tests.backend.codegen :tests.compiler.pipeline))))
+     :name "vm"
+     :package '(:tests.vm.bytecode))))
 
 (defun run-asdf ()
   (if (uiop:getenvp "CI_ENV")
