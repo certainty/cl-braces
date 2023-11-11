@@ -5,4 +5,6 @@
   (:use :cl :cl-braces.development)
   (:import-from :serapeum :->)
   (:export
-   :parse))
+   :parse
+   :parse-errors
+   ))

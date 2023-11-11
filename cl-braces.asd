@@ -48,7 +48,7 @@
 (defsystem "cl-braces/vm"
   :description "Compiler for cl-braces the minimal go-like programming language"
   :depends-on (:alexandria :serapeum)
-  :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
+  :in-order-to ((test-op (test-op "cl-braces/vm/tests")))
   :serial t
   :pathname "src/vm"
   :components ((:file "../development")
@@ -69,11 +69,29 @@
   :pathname "tests/compiler"
   :components
   ((:file "packages")
+   (:file "../snapshots")
    (:module "frontend"
     :components
     ((:file "scanner_suite")
      (:file "parser_suite")))
+   (:module "backend"
+    :components
+    ((:file "codegen_suite")))
+   (:file "pipeline_suite")
    (:file "runner"))
   :perform (test-op (o c)
                     (declare (ignore o c))
-                    (uiop:symbol-call :cl-braces.tests.runner :run-asdf)))
+                    (uiop:symbol-call :cl-braces.tests.compiler.runner :run-asdf)))
+
+(defsystem "cl-braces/vm/tests"
+  :depends-on (:lisp-unit2 :cl-braces/vm :cl-braces/compiler)
+  :serial t
+  :pathname "tests/vm"
+  :components
+  ((:file "packages")
+   (:file "../snapshots")
+   (:file "bytecode_suite")
+   (:file "runner"))
+  :perform (test-op (o c)
+                    (declare (ignore o c))
+                    (uiop:symbol-call :cl-braces.tests.vm.runner :run-asdf)))

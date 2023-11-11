@@ -33,7 +33,7 @@
     (dolist (instr more-instructions)
       (vector-push-extend instr instructions))))
 
-(defun chunk-result ((builder chunk-builder) registers-used)
+(defun chunk-result (builder registers-used)
   "Return the chunk of bytecode. All constants will be deduplicated."
   (with-slots (constants instructions) builder
     (bytecode:make-chunk

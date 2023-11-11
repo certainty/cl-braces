@@ -44,6 +44,7 @@
     :type (or null token:token)
     :documentation "The next token to be read")
    (errors
+    :reader parse-errors
     :initarg :errors
     :initform nil
     :type list

@@ -14,6 +14,13 @@
   (:export
    :chunk
    :constant-table
+   :make-constants-builder
+   :constants-add
+   :make-chunk-builder
+
+   :add-constant
+   :add-instructions
+
    :make-chunk
    :print-isa
    :*isa-1.0*
