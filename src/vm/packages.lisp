@@ -13,6 +13,8 @@
   (:import-from :serapeum :->)
   (:export
    :chunk
+   :chunk-code
+   :chunk-constants
    :constant-table
    :make-constants-builder
    :constants-add
