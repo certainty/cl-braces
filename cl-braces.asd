@@ -68,7 +68,8 @@
                 ((:file "chunk")
                  (:file "isa")
                  (:file "disassembler")
-                 (:file "isa-1.0")))))
+                 (:file "isa-1.0")))
+               (:file "machine")))
 
 (defclass test-vm-op (asdf:test-op) ())
 (defclass test-compiler-op (asdf:test-op) ())

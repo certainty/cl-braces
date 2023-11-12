@@ -67,6 +67,7 @@
 (defstruct (address (:conc-name address-) (:constructor addr (provided-value)) (:copier nil))
   (value provided-value :type address-t :read-only t))
 
+(-> operand-value ((or register address)) operand-t)
 (defgeneric operand-value (operand)
   (:documentation "Returns the value of the given operand"))
 
@@ -166,14 +167,13 @@
   "Creates an instruction from the given mnemonic and operands."
   (let* ((instruction (instruction-by-mnemonic mnemonic))
          (opcode (isa-instruction-opcode instruction))
-         (expected-operands (isa-instruction-operands instruction)))
-    (check-operands expected-operands (coerce args 'vector))
-    (case (length expected-operands)
-      ;; todo extract values again
-      (0 (make-instruction :opcode opcode))
-      (1 (make-unary-instruction :opcode opcode :op1 (operand-value (first args))))
-      (2 (make-binary-instruction :opcode opcode :op1 (operand-value (first args)) :op2 (operand-value (second args))))
-      (3 (make-ternary-instruction :opcode opcode :op1 (operand-value (first args)) :op2 (operand-value (second args)) :op3 (operand-value (third args)))))))
+         (expected-operands (isa-instruction-operands instruction))
+         (given-operands (coerce args 'vector))
+         (operand-values (make-array (length expected-operands) :element-type 'operand-t)))
+    (check-operands expected-operands given-operands)
+    (loop :for i :from 0 :below (length expected-operands)
+          :do (setf (aref operand-values i) (operand-value (aref given-operands i))))
+    (make-instruction :opcode opcode :operands operand-values)))
 
 (defun check-operands (wanted-operands given-operands)
   "Checkst that the operands given match the required operands defined in the instruction. Also verifies that the types match."
@@ -199,3 +199,12 @@
 (defmethod print-isa ((operand isa-operand) &optional (stream t))
   (with-slots (name) operand
     (format stream "~A" name)))
+
+
+;; executes body in a context where the opcode is bound to a symbolic name matching the mnemonic in the isa
+;; we use symbol macros to make this work
+(defmacro with-opcodes-from-isa (&body body)
+  (let ((symbol-macros
+          (loop for instruction across (isa-instruction-set *current-isa*)
+                collect `(,(isa-instruction-mnemonic instruction) ,(isa-instruction-opcode instruction)))))
+    `(symbol-macrolet ,symbol-macros ,@body)))

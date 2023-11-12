@@ -15,13 +15,16 @@
    The format of the disassembly is as follows:
    PC: [LABEL] ENCODED-INSTRUCTION OPCODE OPERANDS [COMMENT] "
   (do-instructions (pc instr chunk)
-    (format stream "~3a: ~a ~8,a ~8,a ~15,a // ~a~%"
-            (column-pc pc)
-            (column-label instr isa chunk)
-            (column-encoded-instruction instr isa)
-            (column-opcode instr isa)
-            (column-operands instr isa)
-            (column-comment instr isa chunk))))
+    (disass-instruction pc instr chunk :isa isa :stream stream)))
+
+(defun disass-instruction (pc instr chunk &key (isa *current-isa*) (stream *standard-output*))
+  (format stream "~3a: ~a ~8,a ~8,a ~15,a // ~a~%"
+          (column-pc pc)
+          (column-label instr isa chunk)
+          (column-encoded-instruction instr isa)
+          (column-opcode instr isa)
+          (column-operands instr isa)
+          (column-comment instr isa chunk)))
 
 (defun column-pc (pc)
   (format nil "~3,'0X" pc))

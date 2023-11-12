@@ -19,6 +19,8 @@
    :make-constants-builder
    :constants-add
    :make-chunk-builder
+   :instruction-opcode
+   :instruction-operands
 
    :add-constant
    :add-instructions
@@ -27,10 +29,12 @@
    :print-isa
    :*isa-1.0*
    :*current-isa*
+   :with-opcodes-from-isa
    :operand-value
    :address-value
    :register-value
    :disass
+   :disass-instruction
 
    :address-t
    :register-t
@@ -53,7 +57,7 @@
 
 (defpackage :cl-braces.vm.machine
   (:nicknames :vm.machine :machine)
-  (:use :cl)
+  (:use :cl :cl-braces.development)
   (:import-from :cl-braces.vm.bytecode)
   (:export
    :execute))
