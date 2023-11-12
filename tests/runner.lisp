@@ -18,7 +18,7 @@
     (with-env-specific-setup
       (run-tests
        :name "vm"
-       :package '(:tests.vm.bytecode)))))
+       :package '(:tests.vm.bytecode :tests.vm.machine)))))
 
 (defun run-compiler-suites ()
   (let ((snapshots:*snapshot-dir* (merge-pathnames "tests/snapshots/compiler/" (system-path))))

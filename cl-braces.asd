@@ -93,7 +93,8 @@
      (:file "pipeline_suite")))
    (:module "vm"
     :components
-    ((:file "bytecode_suite"))))
+    ((:file "bytecode_suite")
+     (:file "machine_suite"))))
   :perform (test-vm-op (o c)
                        (declare (ignore o c))
                        (uiop:symbol-call :cl-braces.tests.runner :run-vm-suites))

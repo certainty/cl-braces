@@ -203,7 +203,7 @@
 
 ;; executes body in a context where the opcode is bound to a symbolic name matching the mnemonic in the isa
 ;; we use symbol macros to make this work
-(defmacro with-opcodes-from-isa (&body body)
+(defmacro with-opcodes-from-current-isa (&body body)
   (let ((symbol-macros
           (loop for instruction across (isa-instruction-set *current-isa*)
                 collect `(,(isa-instruction-mnemonic instruction) ,(isa-instruction-opcode instruction)))))

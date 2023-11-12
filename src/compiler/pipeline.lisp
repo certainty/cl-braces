@@ -4,7 +4,9 @@
   ((message :initarg :message :reader compile-error-message)
    (details :initarg :details :reader compile-error-details))
   (:report (lambda (condition stream)
-             (format stream "~A" (compile-error-message condition)))))
+             (format stream "~A ~A"
+                     (compile-error-message condition)
+                     (compile-error-details condition)))))
 
 (defun compile-this (input-designator)
   "Compile the `input-designator' to a chunk of bytecode."

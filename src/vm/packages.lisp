@@ -15,7 +15,9 @@
    :chunk
    :chunk-code
    :chunk-constants
+   :chunk-registers-used
    :constant-table
+
    :make-constants-builder
    :constants-add
    :make-chunk-builder
@@ -29,7 +31,7 @@
    :print-isa
    :*isa-1.0*
    :*current-isa*
-   :with-opcodes-from-isa
+   :with-opcodes-from-current-isa
    :operand-value
    :address-value
    :register-value
@@ -58,6 +60,7 @@
 (defpackage :cl-braces.vm.machine
   (:nicknames :vm.machine :machine)
   (:use :cl :cl-braces.development)
+  (:import-from :serapeum :->)
   (:import-from :cl-braces.vm.bytecode)
   (:export
    :execute))
