@@ -12,5 +12,5 @@
   "Compile the `input-designator' to a chunk of bytecode."
   (multiple-value-bind (ast had-errors state) (parser:parse input-designator)
     (when had-errors
-      (signal 'compile-error :message "Parse error" :details (parser:parse-errors state)))
+      (error (make-condition 'compile-error :message "Compilation failed" :details (parser:parse-errors state))))
     (codegen:generate-chunk ast)))

@@ -154,6 +154,11 @@ The primary expressio in this algorithm are the literals and the grouping expres
                  (setf right (parse-expression state next-min-precedence))
                  (setf left (accept state 'ast:binary-expression :lhs left :operator operator :rhs right)))))))
 
+(defmacro when-token (state expected-class &body body)
+  `(with-slots (cur-token) ,state
+     (when (token:class= cur-token ,expected-class)
+       ,@body)))
+
 (defun parse-primary-expression (state)
   "Parse a primary expression, which are usually terminal nodes. The prefix `primary-' is often used in parsers to denot these types of productions."
   (or
@@ -167,18 +172,20 @@ The primary expressio in this algorithm are the literals and the grouping expres
 
 (-> parse-number-literal (state) (or null ast:literal))
 (defun parse-number-literal (state)
-  (let ((tok (consume! state token:@INTEGER "Expected number literal")))
-    (when tok
-      (unless (token:class= tok token:@ILLEGAL)
-        (accept state 'ast:literal :token tok)))))
+  (when-token state token:@INTEGER
+    (let ((tok (consume! state token:@INTEGER "Expected number literal")))
+      (when tok
+        (unless (token:class= tok token:@ILLEGAL)
+          (accept state 'ast:literal :token tok))))))
 
 (defun parse-grouping-expression (state)
-  (let ((tok (consume! state token:@LPAREN "Expected '('")))
-    (when tok
-      (unless (token:class= tok token:@ILLEGAL)
-        (let ((expr (parse-expression state +precedence-term+)))
-          (consume! state token:@RPAREN "Expected ')' after expression")
-          (accept state 'ast:grouping-expression :expression expr))))))
+  (when-token state token:@LPAREN
+    (let ((tok (consume! state token:@LPAREN "Expected '('")))
+      (when tok
+        (unless (token:class= tok token:@ILLEGAL)
+          (let ((expr (parse-expression state +precedence-term+)))
+            (consume! state token:@RPAREN "Expected ')' after expression")
+            (accept state 'ast:grouping-expression :expression expr)))))))
 
 (-> parse-unary-expression (state) (or null ast:expression))
 (defun parse-unary-expression (state)
