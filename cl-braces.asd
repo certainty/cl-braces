@@ -11,14 +11,22 @@
   :serial t
   :depends-on (:cl-braces/compiler))
 
+(defsystem "cl-braces/utils"
+  :description "Utilities used in different parts of the project"
+  :depends-on  (:alexandria :serapeum :lisp-unit2)
+  :serial t
+  :pathname "src/utils"
+  :components ((:file "packages")
+               (:file "development")
+               (:file "tests")))
+
 (defsystem "cl-braces/compiler"
   :description "Compiler for cl-braces the minimal go-like programming language"
-  :depends-on (:alexandria :serapeum :cl-braces/vm)
-  :in-order-to ((test-op (test-op "cl-braces/compiler/tests")))
+  :depends-on (:alexandria :serapeum :cl-braces/vm :cl-braces/utils)
+  :in-order-to ((test-op (test-compiler-op "cl-braces/tests")))
   :serial t
   :pathname "src/compiler"
-  :components ((:file "../development")
-               (:file "packages")
+  :components ((:file "packages")
                (:file "location")
                (:module "frontend"
                 :components
@@ -47,12 +55,11 @@
 
 (defsystem "cl-braces/vm"
   :description "Compiler for cl-braces the minimal go-like programming language"
-  :depends-on (:alexandria :serapeum)
-  :in-order-to ((test-op (test-op "cl-braces/vm/tests")))
+  :depends-on (:alexandria :serapeum :cl-braces/utils)
+  :in-order-to ((test-op (test-vm-op "cl-braces/tests")))
   :serial t
   :pathname "src/vm"
-  :components ((:file "../development")
-               (:file "packages")
+  :components ((:file "packages")
                (:module "runtime"
                 :components
                 ((:file "value")))
@@ -63,35 +70,33 @@
                  (:file "disassembler")
                  (:file "isa-1.0")))))
 
-(defsystem "cl-braces/compiler/tests"
-  :depends-on (:lisp-unit2 :cl-braces/compiler)
-  :serial t
-  :pathname "tests/compiler"
-  :components
-  ((:file "packages")
-   (:file "../snapshots")
-   (:module "frontend"
-    :components
-    ((:file "scanner_suite")
-     (:file "parser_suite")))
-   (:module "backend"
-    :components
-    ((:file "codegen_suite")))
-   (:file "pipeline_suite")
-   (:file "runner"))
-  :perform (test-op (o c)
-                    (declare (ignore o c))
-                    (uiop:symbol-call :cl-braces.tests.compiler.runner :run-asdf)))
+(defclass test-vm-op (asdf:test-op) ())
+(defclass test-compiler-op (asdf:test-op) ())
 
-(defsystem "cl-braces/vm/tests"
-  :depends-on (:lisp-unit2 :cl-braces/vm :cl-braces/compiler)
+(defsystem "cl-braces/tests"
+  :depends-on (:lisp-unit2 :cl-braces/compiler :cl-braces/vm :cl-braces/utils)
   :serial t
-  :pathname "tests/vm"
+  :pathname "tests"
   :components
   ((:file "packages")
-   (:file "../snapshots")
-   (:file "bytecode_suite")
-   (:file "runner"))
-  :perform (test-op (o c)
-                    (declare (ignore o c))
-                    (uiop:symbol-call :cl-braces.tests.vm.runner :run-asdf)))
+   (:file "runner")
+   (:module "compiler"
+    :components
+    ((:module "frontend"
+      :components
+      ((:file "scanner_suite")
+       (:file "parser_suite")))
+     (:module "backend"
+      :components
+      ((:file "codegen_suite")))
+     (:file "pipeline_suite")))
+   (:module "vm"
+    :components
+    ((:file "bytecode_suite"))))
+  :perform (test-vm-op (o c)
+                       (declare (ignore o c))
+                       (uiop:symbol-call :cl-braces.tests.runner :run-vm-suites))
+
+  :perform (test-compiler-op (o c)
+                             (declare (ignore o c))
+                             (uiop:symbol-call :cl-braces.tests.runner :run-compiler-suites)))

@@ -1,6 +1,6 @@
 [![CI](https://github.com/certainty/cl-braces/actions/workflows/ci.yml/badge.svg)](https://github.com/certainty/cl-braces/actions/workflows/ci.yml)
 
-# CL-Braces a minimal go compiler and virtual machine
+# CL-Braces a compiler and virtual machine for a small go-like language.
 
 ## State
 
