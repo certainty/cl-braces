@@ -191,7 +191,7 @@ The following example shows how to deal with these cases:
   "Returns true if the scanner has reached the end of the input stream."
   (null (peek state)))
 
-(serapeum:defconst +whitespace+ (list #\Space #\Tab #\Return #\Newline))
+(define-constant +whitespace+ (list #\Space #\Tab #\Return #\Newline) :test #'equalp)
 
 (defun skip-whitespaces! (state)
   "Skip whitespaces and comments"

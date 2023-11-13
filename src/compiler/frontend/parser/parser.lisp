@@ -111,13 +111,14 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
   left
   right)
 
-(serapeum:defconst +operator-rules+
-  (serapeum:dict
-   token:@MINUS  (cons +precedence-term+ +associativity-left+)
-   token:@PLUS   (cons +precedence-term+ +associativity-left+)
-   token:@SLASH  (cons +precedence-factor+ +associativity-left+)
-   token:@STAR   (cons +precedence-factor+ +associativity-left+)
-   token:@LPAREN (cons +precedence-none+ +associativity-none+)))
+(define-constant +operator-rules+
+    (serapeum:dict
+     token:@MINUS  (cons +precedence-term+ +associativity-left+)
+     token:@PLUS   (cons +precedence-term+ +associativity-left+)
+     token:@SLASH  (cons +precedence-factor+ +associativity-left+)
+     token:@STAR   (cons +precedence-factor+ +associativity-left+)
+     token:@LPAREN (cons +precedence-none+ +associativity-none+))
+  :test #'equalp)
 
 (defun operator-rule-for (token-class)
   (gethash token-class +operator-rules+ (cons +precedence-none+ +associativity-none+)))
@@ -139,7 +140,12 @@ The algorithm fits well into the overall recursive descent approach, which we ta
 During recursive calls to parse subexpression we pass the current precedence level and the associativity of the operator
 subexpression or to return the result to the caller.
 
-The primary expressio in this algorithm are the literals and the grouping expressions.
+The primary expression in this algorithm are the literals and the grouping expressions.
+
+Example:
+ ```
+ (parse-expression state +precedence-assignment+)
+ ```
 "
   (with-slots (cur-token) state
     (loop with left = (parse-primary-expression state)
