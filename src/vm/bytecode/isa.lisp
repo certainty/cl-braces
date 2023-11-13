@@ -9,6 +9,8 @@
 ;;; Use the `print-isa' function to get information about the instructions that are available in the virtual machine.
 ;;; The default is will be bound to `*current-isa*' so you can use `(print-isa *current-isa*)' to get information about the current instruction set.
 
+
+
 (defparameter *current-isa* "The current isa that is used to construct instructions")
 
 (-> version ((integer 0 *) (integer 0 *)) version)

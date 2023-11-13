@@ -20,6 +20,10 @@
   (opcode (error "must supply opcode") :type opcode-t :read-only t)
   (operands (error "must supply operands") :type (vector operand-t) :read-only t))
 
+(defmethod print-object ((instruction instruction) stream)
+  (print-unreadable-object (instruction stream :type nil)
+    (format stream "INSTRUCTION OPCODE: ~A ~A" (instruction-opcode instruction) (instruction-operands instruction))))
+
 (deftype constant-table () '(vector value:value))
 
 (defstruct chunk
