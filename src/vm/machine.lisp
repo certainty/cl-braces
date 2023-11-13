@@ -27,63 +27,63 @@
          (registers (make-array (bytecode:chunk-registers-used chunk) :element-type 'value:value :initial-element 0)))
 
     #+cl-braces-debug-vm
-    (when *debug-execution*
+    (progn
       (format t "Executing next chunk: ~%")
       (bytecode:disass chunk))
 
     (bytecode:with-opcodes-from-current-isa
-      (loop
-        (when (>= pc instruction-count)
-          (return))
+        (loop
+          (when (>= pc instruction-count)
+            (return))
 
-        (setf instruction (aref instructions pc))
-        (setf opcode (bytecode:instruction-opcode instruction))
-        (incf pc)
+          (setf instruction (aref instructions pc))
+          (setf opcode (bytecode:instruction-opcode instruction))
+          (incf pc)
 
-        #+cl-braces-debug-vm
-        (when *debug-execution*
-          (format t "~%[~3,'0X] Next instruction~%" pc)
-          (format t "=============================~%")
-          (format t "~A~%" registers)
-          (format t "=============================~%")
-          (bytecode:disass-instruction pc instruction chunk))
+          #+cl-braces-debug-vm
+          (progn
+            (format t "~%[~3,'0X] Next instruction~%" pc)
+            (format t "=============================~%")
+            (format t "~A~%" registers)
+            (format t "=============================~%")
+            (bytecode:disass-instruction pc instruction chunk))
 
-        (cond
-          ((= bytecode:noop opcode) t)
-          ((= bytecode:halt opcode) (return))
-          ((= bytecode:loada opcode)
-           (with-operands (dst addr) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst) (aref constants addr))))
-          ((= bytecode:add opcode)
-           (with-operands (dst lhs rhs) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst) (+ (aref registers lhs) (aref registers rhs)))))
+          (cond
+            ((= bytecode:noop opcode) t)
+            ((= bytecode:halt opcode) (return))
+            ((= bytecode:loada opcode)
+             (with-operands (dst addr) instruction
+               (setf result-reg dst)
+               (setf (aref registers dst) (aref constants addr))))
+            ((= bytecode:add opcode)
+             (with-operands (dst lhs rhs) instruction
+               (setf result-reg dst)
+               (setf (aref registers dst) (+ (aref registers lhs) (aref registers rhs)))))
 
-          ((= bytecode:sub opcode)
-           (with-operands (dst lhs rhs) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst) (- (aref registers lhs) (aref registers rhs)))))
+            ((= bytecode:sub opcode)
+             (with-operands (dst lhs rhs) instruction
+               (setf result-reg dst)
+               (setf (aref registers dst) (- (aref registers lhs) (aref registers rhs)))))
 
-          ((= bytecode:mul opcode)
-           (with-operands (dst lhs rhs) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst) (* (aref registers lhs) (aref registers rhs)))))
+            ((= bytecode:mul opcode)
+             (with-operands (dst lhs rhs) instruction
+               (setf result-reg dst)
+               (setf (aref registers dst) (* (aref registers lhs) (aref registers rhs)))))
 
-          ((= bytecode:div opcode)
-           (with-operands (dst lhs rhs) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst) (/ (aref registers lhs) (aref registers rhs)))))
+            ((= bytecode:div opcode)
+             (with-operands (dst lhs rhs) instruction
+               (setf result-reg dst)
+               (setf (aref registers dst) (/ (aref registers lhs) (aref registers rhs)))))
 
-          ((= bytecode:neg opcode)
-           (with-operands (dst) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst) (- (aref registers dst)))))
-          (t (todo! "unsupported opcode")))))
+            ((= bytecode:neg opcode)
+             (with-operands (dst) instruction
+               (setf result-reg dst)
+               (setf (aref registers dst) (- (aref registers dst)))))
+            (t (todo! "unsupported opcode")))))
 
     ;; dump the machine state
     #+cl-braces-debug-vm
-    (when *debug-execution*
+    (progn
       (format t "~%=============================~%Execution finished.~%")
       (format t "PC: ~3,'0X~%" pc)
       (format t "Registers: ~A~%" registers)
