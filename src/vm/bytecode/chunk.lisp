@@ -17,28 +17,12 @@
 ;; We chose a representation that is easy to decode and cache-friendly.
 ;; TODO: I'm not sure the tiered struct approach is the best way to go.
 (defstruct instruction
-  (opcode (error "must supply opcode") :type opcode-t :read-only t))
+  (opcode (error "must supply opcode") :type opcode-t :read-only t)
+  (operands (error "must supply operands") :type (vector operand-t) :read-only t))
 
-(defstruct (unary-instruction (:include instruction))
-  (op1 (error "must supply op1") :type operand-t :read-only t))
-
-(defstruct (binary-instruction (:include unary-instruction))
-  (op2 (error "must supply op2") :type operand-t :read-only t))
-
-(defstruct (ternary-instruction (:include binary-instruction))
-  (op3 (error "must supply op3") :type operand-t :read-only t))
-
-(defun instruction-operands (instruction)
-  (cond
-    ((ternary-instruction-p instruction)
-     (vector (ternary-instruction-op1 instruction)
-             (ternary-instruction-op2 instruction)
-             (ternary-instruction-op3 instruction)))
-    ((binary-instruction-p instruction)
-     (vector (binary-instruction-op1 instruction)
-             (binary-instruction-op2 instruction)))
-    ((unary-instruction-p instruction)
-     (vector (unary-instruction-op1 instruction)))))
+(defmethod print-object ((instruction instruction) stream)
+  (print-unreadable-object (instruction stream :type nil)
+    (format stream "INSTRUCTION OPCODE: ~A ~A" (instruction-opcode instruction) (instruction-operands instruction))))
 
 (deftype constant-table () '(vector value:value))
 
@@ -48,7 +32,7 @@
   ;; The code is a vector of instructions, so we can implement jumps efficiently.
   (code (error "must supply code") :type (vector instruction) :read-only t)
   ;; The registers-used is a hint to the VM which sets up the call-frame for this chunk, to allocate the right amount of registers in the register file.
-  (registers-used 0 :type (integer 0 *) :read-only t))
+  (registers-used 0 :type (integer 0 *)  :read-only t))
 
 (serapeum:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
   (let ((code (gensym)))

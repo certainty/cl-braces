@@ -4,6 +4,7 @@
   (:nicknames :frontend.parser :parser)
   (:use :cl :cl-braces.development)
   (:import-from :serapeum :->)
+  (:import-from :alexandria :define-constant)
   (:export
    :parse
    :parse-errors

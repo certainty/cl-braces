@@ -29,6 +29,7 @@
   (:nicknames :frontend.scanner :scanner)
   (:use :cl)
   (:import-from :serapeum :->)
+  (:import-from :alexandria :define-constant)
   (:export
    :open-scanner
    :close-scanner

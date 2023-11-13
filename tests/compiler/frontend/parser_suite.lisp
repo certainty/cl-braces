@@ -74,3 +74,8 @@
         (assert-eql token:@MINUS (token:class (ast:binary-expression-operator inner)))
         (assert-eql 'ast:literal (type-of (ast:binary-expression-lhs inner)))
         (assert-eql 'ast:literal (type-of (ast:binary-expression-rhs inner)))))))
+
+(define-test parse-reprodcue-bug ()
+  (multiple-value-bind (ast had-errors) (parser:parse "(3 + 3) * 3")
+    (declare (ignore ast))
+    (assert-false had-errors)))

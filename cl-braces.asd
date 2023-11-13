@@ -68,7 +68,8 @@
                 ((:file "chunk")
                  (:file "isa")
                  (:file "disassembler")
-                 (:file "isa-1.0")))))
+                 (:file "isa-1.0")))
+               (:file "machine")))
 
 (defclass test-vm-op (asdf:test-op) ())
 (defclass test-compiler-op (asdf:test-op) ())
@@ -92,7 +93,8 @@
      (:file "pipeline_suite")))
    (:module "vm"
     :components
-    ((:file "bytecode_suite"))))
+    ((:file "bytecode_suite")
+     (:file "machine_suite"))))
   :perform (test-vm-op (o c)
                        (declare (ignore o c))
                        (uiop:symbol-call :cl-braces.tests.runner :run-vm-suites))

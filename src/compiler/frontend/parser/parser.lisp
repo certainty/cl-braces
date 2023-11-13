@@ -111,13 +111,14 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
   left
   right)
 
-(serapeum:defconst +operator-rules+
-  (serapeum:dict
-   token:@MINUS  (cons +precedence-term+ +associativity-left+)
-   token:@PLUS   (cons +precedence-term+ +associativity-left+)
-   token:@SLASH  (cons +precedence-factor+ +associativity-left+)
-   token:@STAR   (cons +precedence-factor+ +associativity-left+)
-   token:@LPAREN (cons +precedence-none+ +associativity-none+)))
+(define-constant +operator-rules+
+    (serapeum:dict
+     token:@MINUS  (cons +precedence-term+ +associativity-left+)
+     token:@PLUS   (cons +precedence-term+ +associativity-left+)
+     token:@SLASH  (cons +precedence-factor+ +associativity-left+)
+     token:@STAR   (cons +precedence-factor+ +associativity-left+)
+     token:@LPAREN (cons +precedence-none+ +associativity-none+))
+  :test #'equalp)
 
 (defun operator-rule-for (token-class)
   (gethash token-class +operator-rules+ (cons +precedence-none+ +associativity-none+)))
@@ -139,7 +140,12 @@ The algorithm fits well into the overall recursive descent approach, which we ta
 During recursive calls to parse subexpression we pass the current precedence level and the associativity of the operator
 subexpression or to return the result to the caller.
 
-The primary expressio in this algorithm are the literals and the grouping expressions.
+The primary expression in this algorithm are the literals and the grouping expressions.
+
+Example:
+ ```
+ (parse-expression state +precedence-assignment+)
+ ```
 "
   (with-slots (cur-token) state
     (loop with left = (parse-primary-expression state)
@@ -154,6 +160,11 @@ The primary expressio in this algorithm are the literals and the grouping expres
                  (setf right (parse-expression state next-min-precedence))
                  (setf left (accept state 'ast:binary-expression :lhs left :operator operator :rhs right)))))))
 
+(defmacro when-token (state expected-class &body body)
+  `(with-slots (cur-token) ,state
+     (when (token:class= cur-token ,expected-class)
+       ,@body)))
+
 (defun parse-primary-expression (state)
   "Parse a primary expression, which are usually terminal nodes. The prefix `primary-' is often used in parsers to denot these types of productions."
   (or
@@ -167,18 +178,20 @@ The primary expressio in this algorithm are the literals and the grouping expres
 
 (-> parse-number-literal (state) (or null ast:literal))
 (defun parse-number-literal (state)
-  (let ((tok (consume! state token:@INTEGER "Expected number literal")))
-    (when tok
-      (unless (token:class= tok token:@ILLEGAL)
-        (accept state 'ast:literal :token tok)))))
+  (when-token state token:@INTEGER
+    (let ((tok (consume! state token:@INTEGER "Expected number literal")))
+      (when tok
+        (unless (token:class= tok token:@ILLEGAL)
+          (accept state 'ast:literal :token tok))))))
 
 (defun parse-grouping-expression (state)
-  (let ((tok (consume! state token:@LPAREN "Expected '('")))
-    (when tok
-      (unless (token:class= tok token:@ILLEGAL)
-        (let ((expr (parse-expression state +precedence-term+)))
-          (consume! state token:@RPAREN "Expected ')' after expression")
-          (accept state 'ast:grouping-expression :expression expr))))))
+  (when-token state token:@LPAREN
+    (let ((tok (consume! state token:@LPAREN "Expected '('")))
+      (when tok
+        (unless (token:class= tok token:@ILLEGAL)
+          (let ((expr (parse-expression state +precedence-term+)))
+            (consume! state token:@RPAREN "Expected ')' after expression")
+            (accept state 'ast:grouping-expression :expression expr)))))))
 
 (-> parse-unary-expression (state) (or null ast:expression))
 (defun parse-unary-expression (state)
