@@ -36,6 +36,18 @@
     ((value:int n) (format nil "i~A" n))
     (_ (format nil "R~A" reg))))
 
+(defmacro binary-op (operation instruction registers result-register)
+  `(with-operands (dst lhs rhs) instruction
+     (setf ,result-register dst)
+     (setf (aref ,registers dst)
+           (value:box (,operation (value:unbox (aref ,registers lhs))
+                                  (value:unbox (aref ,registers rhs)))))))
+
+(defmacro unary-op (operation instruction registers result-register)
+  `(with-operands (dst) instruction
+     (setf ,result-register dst)
+     (setf (aref ,registers dst) (value:box (,operation (value:unbox (aref ,registers dst)))))))
+
 (-> execute (bytecode:chunk) (values value:value &optional))
 (defun execute (chunk)
   (let* ((pc (the fixnum 0))
@@ -68,39 +80,22 @@
            (with-operands (dst addr) instruction
              (setf result-reg dst)
              (setf (aref registers dst) (aref constants addr))))
+
           ((= bytecode:add opcode)
-           (with-operands (dst lhs rhs) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst)
-                   (value:box (+ (value:unbox (aref registers lhs))
-                                 (value:unbox (aref registers rhs)))))))
+           (binary-op + instruction registers result-reg))
 
           ((= bytecode:sub opcode)
-           (with-operands (dst lhs rhs) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst)
-                   (value:box (- (value:unbox (aref registers lhs))
-                                 (value:unbox (aref registers rhs)))))))
+           (binary-op - instruction registers result-reg))
 
           ((= bytecode:mul opcode)
-           (with-operands (dst lhs rhs) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst)
-                   (value:box (* (value:unbox (aref registers lhs))
-                                 (value:unbox (aref registers rhs)))))))
+           (binary-op * instruction registers result-reg))
 
           ((= bytecode:div opcode)
-           (with-operands (dst lhs rhs) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst)
-                   (value:box (/ (value:unbox (aref registers lhs))
-                                 (value:unbox (aref registers rhs)))))))
+           (binary-op / instruction registers result-reg))
 
           ((= bytecode:neg opcode)
-           (with-operands (dst) instruction
-             (setf result-reg dst)
-             ;; TODO: this should be implemented as a mutation of the value inside the register and box itself
-             (setf (aref registers dst) (value:box (- (value:unbox (aref registers dst)))))))
+           (unary-op - instruction registers result-reg))
+
           (t (todo! "unsupported opcode")))))
 
     #+cl-braces-debug-vm
