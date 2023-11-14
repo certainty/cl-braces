@@ -44,7 +44,7 @@
 
 (defmethod ast:enter ((generator bytecode-generator) (node ast:literal))
   (with-slots (operands chunk-builder register-allocator) generator
-    (let ((const-address (add-constant chunk-builder (ast:literal-value node)))
+    (let ((const-address (add-constant chunk-builder (value:box (ast:literal-value node))))
           (register (next-register register-allocator)))
       (push register operands)
       (add-instructions chunk-builder (bytecode:instr 'bytecode:loada register const-address)))))

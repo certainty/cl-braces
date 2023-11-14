@@ -85,6 +85,10 @@
     (address
      (let* ((constants (chunk-constants chunk))
             (constant (aref constants (the address-t value))))
-       (format nil "~a = ~a" (format-operand value op-type) constant)))
+       (format nil "~a = ~a" (format-operand value op-type) (format-constant constant))))
     (t (unreachable! "Unknown operand type"))))
 
+(defun format-constant (constant)
+  (trivia:match constant
+    ((value:none) "none")
+    ((value:int n) (format nil "i~A" n))))

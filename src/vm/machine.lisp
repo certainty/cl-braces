@@ -18,7 +18,7 @@
 (defun dump-machine-state (headline pc chunk registers &key (disass-chunk t) (dump-instruction nil))
   (format t "### ~A ###~%~%" headline)
   (format t "PC:           ~3,'0X~%" pc)
-  (format t "Registers:    ~{~a~^, ~} ~%" (loop for reg across registers for i from 0 collect (format nil "R~A=~A" i reg)))
+  (format t "Registers:    ~{~a~^, ~} ~%" (loop for reg across registers for i from 0 collect (format nil "R~A=~A" i (format-register reg))))
 
   (when dump-instruction
     (format t "Instruction: ")
@@ -30,6 +30,12 @@
 
   (format t "~%"))
 
+(defun format-register (reg)
+  (trivia:match reg
+    ((value:none) "none")
+    ((value:int n) (format nil "i~A" n))
+    (_ (format nil "R~A" reg))))
+
 (-> execute (bytecode:chunk) (values value:value &optional))
 (defun execute (chunk)
   (let* ((pc (the fixnum 0))
@@ -39,8 +45,7 @@
          (result-reg nil)
          (opcode (the fixnum 0))
          (constants (bytecode:chunk-constants chunk))
-         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type 'value:value :initial-element 0)))
-
+         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or value:value bytecode:register-t) :initial-element value:none)))
     #+cl-braces-debug-vm
     (dump-machine-state "Initial machine state" pc chunk registers :disass-chunk t)
 
@@ -66,27 +71,36 @@
           ((= bytecode:add opcode)
            (with-operands (dst lhs rhs) instruction
              (setf result-reg dst)
-             (setf (aref registers dst) (+ (aref registers lhs) (aref registers rhs)))))
+             (setf (aref registers dst)
+                   (value:box (+ (value:unbox (aref registers lhs))
+                                 (value:unbox (aref registers rhs)))))))
 
           ((= bytecode:sub opcode)
            (with-operands (dst lhs rhs) instruction
              (setf result-reg dst)
-             (setf (aref registers dst) (- (aref registers lhs) (aref registers rhs)))))
+             (setf (aref registers dst)
+                   (value:box (- (value:unbox (aref registers lhs))
+                                 (value:unbox (aref registers rhs)))))))
 
           ((= bytecode:mul opcode)
            (with-operands (dst lhs rhs) instruction
              (setf result-reg dst)
-             (setf (aref registers dst) (* (aref registers lhs) (aref registers rhs)))))
+             (setf (aref registers dst)
+                   (value:box (* (value:unbox (aref registers lhs))
+                                 (value:unbox (aref registers rhs)))))))
 
           ((= bytecode:div opcode)
            (with-operands (dst lhs rhs) instruction
              (setf result-reg dst)
-             (setf (aref registers dst) (/ (aref registers lhs) (aref registers rhs)))))
+             (setf (aref registers dst)
+                   (value:box (/ (value:unbox (aref registers lhs))
+                                 (value:unbox (aref registers rhs)))))))
 
           ((= bytecode:neg opcode)
            (with-operands (dst) instruction
              (setf result-reg dst)
-             (setf (aref registers dst) (- (aref registers dst)))))
+             ;; TODO: this should be implemented as a mutation of the value inside the register and box itself
+             (setf (aref registers dst) (value:box (- (value:unbox (aref registers dst)))))))
           (t (todo! "unsupported opcode")))))
 
     #+cl-braces-debug-vm

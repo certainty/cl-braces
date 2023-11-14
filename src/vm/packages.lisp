@@ -5,7 +5,11 @@
   (:use :cl)
   (:import-from :serapeum :->)
   (:export
-   :value))
+   :value
+   :int
+   :none
+   :box
+   :unbox))
 
 (defpackage :cl-braces.vm.bytecode
   (:nicknames :vm.bytecode :bytecode)
