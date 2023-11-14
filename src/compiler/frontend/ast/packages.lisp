@@ -31,6 +31,7 @@
    :expression-statement
 
    :program
+   :program-declarations
    :make-program
 
    :span
