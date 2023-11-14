@@ -35,3 +35,7 @@
 (defpackage :cl-braces.tests.vm.machine
   (:nicknames :tests.vm.machine)
   (:use :cl :lisp-unit2))
+
+(defpackage :cl-braces.tests.system
+  (:nicknames :tests.system)
+  (:use :cl :lisp-unit2))

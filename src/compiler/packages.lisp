@@ -14,6 +14,7 @@
    :offset
    :line
    :column
+   :make-source-location
 
    :source-span
    :span-from

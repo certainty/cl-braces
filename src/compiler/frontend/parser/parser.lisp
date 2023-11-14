@@ -86,10 +86,12 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 (defun %parse (state)
   (handler-bind ((error-detail (lambda (c) (if *fail-fast* (invoke-debugger c) (invoke-restart 'continue)))))
     (with-slots (had-errors-p) state
-      (advance! state) ; prime the state
-      (let ((ast (parse-expression state)))
+      (let ((decls nil))
+        (advance! state)
+        (loop until (eofp state)
+              do (push (parse-declaration state) decls))
         (consume! state token:@EOF "Expected end of file")
-        (values ast had-errors-p state)))))
+        (values (ast:make-program decls) had-errors-p state)))))
 
 (defun call-with-parse-state (input-desginator fn)
   (scanner:call-with-scanner
@@ -98,9 +100,24 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
      (let ((state (make-instance 'state :scanner scanner)))
        (funcall fn state)))))
 
+(-> parse-declaration (state) (or null ast:node))
+(defun parse-declaration (state)
+  (parse-statement state))
+
+(-> parse-statement (state) (or null ast:node))
+(defun parse-statement (state)
+  (parse-expression-statement state))
+
+(-> parse-expression-statement (state) (or null ast:node))
+(defun parse-expression-statement (state)
+  (when-let ((expr (parse-expression state)))
+    (prog1 (accept state 'ast:expression-statement :expression expr)
+      ;; optionally consume the semicolon
+      (match-any state token:@SEMICOLON))))
+
 (define-enum precedence
   none
-  assignment ; =
+  assignment ; = or :=
   term       ; + -
   factor     ; * /
   unary      ; + - !

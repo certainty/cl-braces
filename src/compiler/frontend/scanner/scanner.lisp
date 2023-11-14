@@ -142,7 +142,9 @@ The following example shows how to deal with these cases:
     (or
      (scan-eof state)
      (scan-integer state)
+     (scan-two-char-tokens state)
      (scan-one-char-tokens state)
+     (scan-identifier state)
      (scan-illegal state))))
 
 (-> scan-integer (state) (or null token:token))
@@ -157,6 +159,14 @@ The following example shows how to deal with these cases:
 (defun scan-digits (state)
   (scan-while state (lambda (c) (and c (digit-char-p c)))))
 
+(-> scan-two-char-tokens (state) (or null token:token))
+(defun scan-two-char-tokens (state)
+  (multiple-value-bind (c1 c2) (peek2 state)
+    (macrolet ((=> (token-class) `(progn (advance! state) (advance! state) (accept state ,token-class))))
+      (cond
+        ((and (eql c1 #\:) (eql c2 #\=))
+         (=> token:@COLON_EQUAL))))))
+
 (-> scan-one-char-tokens (state) (or null token:token))
 (defun scan-one-char-tokens (state)
   (let ((c (peek state)))
@@ -167,7 +177,19 @@ The following example shows how to deal with these cases:
         (#\+ (=> token:@PLUS))
         (#\- (=> token:@MINUS))
         (#\/ (=> token:@SLASH))
-        (#\* (=> token:@STAR))))))
+        (#\* (=> token:@STAR))
+        (#\; (=> token:@SEMICOLON))))))
+
+(defun identifier-char-p (c)
+  (and c (or (alpha-char-p c) (digit-char-p c) (eql c #\_) (eql c #\-))))
+
+(-> scan-identifier (state) (or null token:token))
+(defun scan-identifier (state)
+  (when-let ((c (peek state)))
+    (when (alpha-char-p c)
+      (advance! state)
+      (scan-while state #'identifier-char-p)
+      (accept state token:@IDENTIFIER #'identity))))
 
 (-> scan-eof (state) (or null token:token))
 (defun scan-eof (state)

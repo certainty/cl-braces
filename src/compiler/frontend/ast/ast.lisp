@@ -70,7 +70,50 @@
     :type expression))
   (:documentation "An expression for binary relations"))
 
-;;; Compute spans over expressions
+(defclass statement (node) ())
+
+(defclass expression-statement (statement)
+  ((expression
+    :reader expression-statement-expression
+    :initarg :expression
+    :initform (error "must provide expression")
+    :type expression))
+  (:documentation "A statement that is an expression."))
+
+(defclass declaration (statement) ())
+
+(defclass bad-declaration (declaration)
+  ((message :reader bad-declaration-message
+            :initarg :message
+            :initform (error "must provide message")
+            :type string))
+  (:documentation "A declaration that could not be parsed correctly."))
+
+(defclass short-variable-declaration (declaration)
+  ((identifier
+    :reader short-variable-declaration-identifier
+    :initarg :identifier
+    :initform (error "must provide identifier")
+    :type token:token)
+   (initializer
+    :reader short-variable-declaration-initializer
+    :initarg :initializer
+    :initform (error "must provide initializer")
+    :type expression))
+  (:documentation "A declaration of a variable with an initializer"))
+
+(defclass program (node)
+  ((declarations
+    :reader program-declarations
+    :initarg :declarations
+    :initform (error "must provide declarations")
+    :type list))
+  (:documentation "The root node of the highlevel AST."))
+
+(defun make-program (decls)
+  (make-instance 'program :declarations decls :location (location:make-source-location 0 0 0)))
+
+;;; Compute spans
 (defmethod location:span-for ((node unary-expression))
   (with-slots (operator operand) node
     (let ((operand (span operand)))
@@ -98,6 +141,24 @@
     (make-instance 'span
                    :from (token:location token)
                    :to (token:location token))))
+
+(defmethod location:span-for ((node bad-expression))
+  (with-slots (location) node
+    (make-instance 'span
+                   :from location
+                   :to location)))
+
+(defmethod location:span-for ((node expression-statement))
+  (with-slots (expression) node
+    (location:span-for expression)))
+
+(defmethod location:span-for ((node short-variable-declaration))
+  (with-slots (identifier initializer) node
+    (let ((initializer (location:span-for initializer)))
+      (make-instance 'span
+                     :from (token:location identifier)
+                     :to (location:span-to initializer)))))
+
 
 ;;; AST traversal via the visitor pattern
 ;;; Visitor for AST nodes
@@ -131,10 +192,40 @@
   (enter visitor node)
   (leave visitor node))
 
+(defun stop-walking-p (visitor-result)
+  (and visitor-result (eq visitor-result :stop)))
+
+(defun continue-walking-p (visitor-result)
+  (not (stop-walking-p visitor-result)))
+
+(defmethod walk (visitor (node program))
+  (case *traversal*
+    (inorder
+     (when (continue-walking-p (enter visitor node))
+       (dolist (decl (program-declarations node))
+         (walk visitor decl))
+       (leave visitor node)))
+    (postorder
+     (dolist (decl (program-declarations node))
+       (walk visitor decl))
+     (enter visitor node)
+     (leave visitor node))))
+
+(defmethod walk (visitor (node expression-statement))
+  (case *traversal*
+    (inorder
+     (when (continue-walking-p (enter visitor node))
+       (walk visitor (expression-statement-expression node))
+       (leave visitor node)))
+    (postorder
+     (walk visitor (expression-statement-expression node))
+     (enter visitor node)
+     (leave visitor node))))
+
 (defmethod walk (visitor (node binary-expression))
   (case *traversal*
     (inorder
-     (when (enter visitor node)
+     (when (continue-walking-p (enter visitor node))
        (walk visitor (binary-expression-lhs node))
        (walk visitor (binary-expression-rhs node))
        (leave visitor node)))
@@ -147,7 +238,7 @@
 (defmethod walk (visitor (node unary-expression))
   (case *traversal*
     (inorder
-     (when (enter visitor node)
+     (when (continue-walking-p (enter visitor node))
        (walk visitor (unary-expression-operand node))
        (leave visitor node)))
     (postorder
@@ -158,7 +249,7 @@
 (defmethod walk (visitor (node grouping-expression))
   (case *traversal*
     (inorder
-     (when (enter visitor node)
+     (when (continue-walking-p (enter visitor node))
        (walk visitor (grouping-expression-expression node))
        (leave visitor node)))
     (postorder

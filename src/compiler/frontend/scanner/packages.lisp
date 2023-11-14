@@ -22,14 +22,17 @@
    :@PLUS
    :@MINUS
    :@STAR
-   :@SLASH)
+   :@SLASH
+   :@SEMICOLON
+   :@COLON_EQUAL
+   :@IDENTIFIER)
   (:shadow :class))
 
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :frontend.scanner :scanner)
   (:use :cl)
   (:import-from :serapeum :->)
-  (:import-from :alexandria :define-constant)
+  (:import-from :alexandria :define-constant :when-let)
   (:export
    :open-scanner
    :close-scanner

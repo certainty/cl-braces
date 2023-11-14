@@ -55,7 +55,21 @@ where the car is the expected token class and the cadr is a keyword argument :wi
     (assert-equal 5 (location:column (token:location t3)))
     (assert-equal 9 (location:offset (token:location t3)))))
 
+(define-test scan-semicolon ()
+  "Scan a semicolon"
+  (assert-scans-as " ; " token:@SEMICOLON))
+
 (define-test scan-unary-ops ()
   "Scan unary operators"
   (assert-scan-all-as "+ -" token:@PLUS token:@MINUS)
   (assert-scan-all-as "+3" token:@PLUS token:@INTEGER))
+
+(define-test scan-colon-equal ()
+  "Scan the colon equal operator"
+  (assert-scans-as ":=" token:@COLON_EQUAL))
+
+(define-test scan-identifier ()
+  "Scan identifiers"
+  (assert-scans-as "foobar" token:@IDENTIFIER :with-value "foobar")
+  (assert-scans-as "someVariable" token:@IDENTIFIER :with-value "someVariable")
+  (assert-scans-as "some-function" token:@IDENTIFIER :with-value "some-function"))
