@@ -72,6 +72,13 @@
 
 (defclass statement (node) ())
 
+(defclass bad-statement (statement)
+  ((message :reader bad-statement-message
+            :initarg :message
+            :initform (error "must provide message")
+            :type string))
+  (:documentation "A statement that could not be parsed correctly."))
+
 (defclass expression-statement (statement)
   ((expression
     :reader expression-statement-expression
@@ -89,12 +96,20 @@
             :type string))
   (:documentation "A declaration that could not be parsed correctly."))
 
-(defclass short-variable-declaration (declaration)
+(defclass variable (node)
   ((identifier
-    :reader short-variable-declaration-identifier
+    :reader variable-identifier
     :initarg :identifier
     :initform (error "must provide identifier")
-    :type token:token)
+    :type token:token))
+  (:documentation "The base class for all variables in the highlevel AST."))
+
+(defclass short-variable-declaration (declaration)
+  ((variable
+    :reader short-variable-declaration-variable
+    :initarg :variable
+    :initform (error "must provide identifier")
+    :type variable)
    (initializer
     :reader short-variable-declaration-initializer
     :initarg :initializer
@@ -214,6 +229,12 @@
 (defmethod children ((node program))
   (program-declarations node))
 
+(defmethod children ((node bad-declaration))
+  nil)
+
+(defmethod children ((node bad-statement))
+  nil)
+
 (defmethod children ((node expression-statement))
   (list (expression-statement-expression node)))
 
@@ -228,4 +249,15 @@
   (list (grouping-expression-expression node)))
 
 (defmethod children ((node literal))
+  nil)
+
+(defmethod children ((node bad-expression))
+  nil)
+
+(defmethod children ((node short-variable-declaration))
+  (list
+   (short-variable-declaration-variable node)
+   (short-variable-declaration-initializer node)))
+
+(defmethod children ((node variable))
   nil)

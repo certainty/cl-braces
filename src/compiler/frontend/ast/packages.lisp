@@ -28,8 +28,12 @@
    :short-variable-declaration
 
    :statement
+   :bad-statement
    :expression-statement
    :expression-statement-expression
+
+   :variable
+   :variable-identifier
 
    :program
    :program-declarations
@@ -46,4 +50,4 @@
    :with-postorder-traversal
    :*traversal*
    :print-ast)
-  (:shadow :declaration))
+  (:shadow :declaration :variable))

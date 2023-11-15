@@ -76,10 +76,16 @@
         (cond
           ((= bytecode:noop opcode) t)
           ((= bytecode:halt opcode) (return))
+
           ((= bytecode:loada opcode)
            (with-operands (dst addr) instruction
              (setf result-reg dst)
              (setf (aref registers dst) (aref constants addr))))
+
+          ((= bytecode:mov opcode)
+           (with-operands (dst src) instruction
+             (setf result-reg dst)
+             (setf (aref registers dst) (aref registers src))))
 
           ((= bytecode:add opcode)
            (binary-op + instruction registers result-reg))

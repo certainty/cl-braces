@@ -53,6 +53,7 @@
    :reg
 
    :loada
+   :mov
    :noop
    :halt
    :add

@@ -149,3 +149,24 @@
 (defmethod leave ((printer ast-printer) (node expression-statement))
   (with-slots (indentation-level) printer
     (decf indentation-level)))
+
+(defmethod enter ((printer ast-printer) (node short-variable-declaration))
+  (with-slots (indentation-level stream print-spans-p) printer
+    (with-slots (identifier initializer) node
+      (format stream "~A~A"  (connective indentation-level) "short-variable-declaration")
+      (when print-spans-p
+        (format-span (location:span-for node) stream))
+      (terpri stream)
+      (incf indentation-level))))
+
+(defmethod leave ((printer ast-printer) (node short-variable-declaration))
+  (with-slots (indentation-level) printer
+    (decf indentation-level)))
+
+(defmethod enter ((printer ast-printer) (node variable))
+  (with-slots (indentation-level stream print-spans-p) printer
+    (with-slots (identifier type initializer) node
+      (format stream "~A~A"  (connective indentation-level) (token:lexeme identifier))
+      (when print-spans-p
+        (format-span (location:span-for node) stream))
+      (terpri stream))))

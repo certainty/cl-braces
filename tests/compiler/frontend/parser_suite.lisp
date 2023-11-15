@@ -86,6 +86,7 @@
     (declare (ignore ast))
     (assert-false had-errors)))
 
-;; (define-test parse-short-assignment ()
-;;   (multiple-value-bind (ast had-errors state) (parser:parse "a := 3")
-;;     (assert-false had-errors)))
+(define-test parse-short-assignment ()
+  (multiple-value-bind (ast had-errors) (parser:parse "a := 3")
+    (declare (ignore ast))
+    (assert-false had-errors)))

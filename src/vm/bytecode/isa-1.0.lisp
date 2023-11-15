@@ -29,10 +29,11 @@
 
 
    ;; ternary instructions #xc0 - #xff
-   (#xC0 sub   ((reg dst) (reg lhs) (reg rhs)) "Subtracts what is in $lhs from $rhs and stores the result in $dst.")
-   (#xC1 add   ((reg dst) (reg lhs) (reg rhs)) "Add what is in $lhs to $rhs and stores the result in $dst.")
-   (#xC2 mul   ((reg dst) (reg lhs) (reg rhs)) "Multiplies what is in $lhs by $rhs and stores the result in $dst.")
-   (#xC3 div   ((reg dst) (reg lhs) (reg rhs)) "Divides what is in $lhs by $rhs and stores the result in $dst.")
-   (#xC4 loada ((reg dst) (addr src))          "Loads the constant from $src into $dst")))
+   (#xC0 sub   ((reg dst)  (reg lhs) (reg rhs)) "Subtracts what is in $lhs from $rhs and stores the result in $dst.")
+   (#xC1 add   ((reg dst)  (reg lhs) (reg rhs)) "Add what is in $lhs to $rhs and stores the result in $dst.")
+   (#xC2 mul   ((reg dst)  (reg lhs) (reg rhs)) "Multiplies what is in $lhs by $rhs and stores the result in $dst.")
+   (#xC3 div   ((reg dst)  (reg lhs) (reg rhs)) "Divides what is in $lhs by $rhs and stores the result in $dst.")
+   (#xC4 loada ((reg dst)  (addr src))          "Loads the constant from $src into $dst")
+   (#xC5 mov   ((reg dst) (reg src))            "Moves the value from $src to $dst")))
 
 (setf *current-isa* *isa-1.0*)

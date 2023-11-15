@@ -86,10 +86,8 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 (defun %parse (state)
   (handler-bind ((error-detail (lambda (c) (if *fail-fast* (invoke-debugger c) (invoke-restart 'continue)))))
     (with-slots (had-errors-p) state
-      (let ((decls nil))
-        (advance! state)
-        (loop until (eofp state)
-              do (push (parse-declaration state) decls))
+      (advance! state)
+      (let ((decls (loop until (eofp state) collect (parse-declaration state))))
         (consume! state token:@EOF "Expected end of file")
         (values (ast:make-program decls) had-errors-p state)))))
 
@@ -102,12 +100,16 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 
 (-> parse-declaration (state) (or null ast:node))
 (defun parse-declaration (state)
-  (let ((stmt (parse-statement state)))
-    (unless stmt
-      (let ((bad-decl (accept state 'ast:bad-declaration :message "Expected declaration")))
-        (signal-parse-error state "Expected declaration")
-        (synchronize state)
-        bad-decl))))
+  (with-slots (panic-mode-p) state
+    (when-let ((decl (parse-short-variable-declaration state)))
+      (return-from parse-declaration decl))
+
+    (when-let ((stmt (parse-statement state)))
+      (return-from parse-declaration stmt))
+
+    (when panic-mode-p
+      (synchronize state)
+      (return-from parse-declaration (accept state 'ast:bad-declaration :message "Expected declaration")))))
 
 (defun synchronize (state)
   (with-slots (cur-token panic-mode-p) state
@@ -120,9 +122,25 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
          (return))
         (t (advance! state))))))
 
+(defun parse-short-variable-declaration (state)
+  "Parse a short variable declaration of the form <variable> := <expression>"
+  (with-slots (cur-token next-token) state
+    (when (and (token:class= cur-token token:@IDENTIFIER) (token:class= next-token token:@COLON_EQUAL))
+      (let* ((ident (consume! state token:@IDENTIFIER "Expected identifier"))
+             (variable (accept state 'ast:variable :identifier ident)))
+        (consume! state token:@COLON_EQUAL "Expected ':='")
+        (if-let ((expr (parse-expression-statement state)))
+          (accept state 'ast:short-variable-declaration :variable variable :initializer expr)
+          (progn
+            (signal-parse-error state "Expected expression")
+            nil))))))
+
 (-> parse-statement (state) (or null ast:node))
 (defun parse-statement (state)
-  (parse-expression-statement state))
+  (or (parse-expression-statement state)
+      (let ((bad-stmt (accept state 'ast:bad-statement :message "Expected statement")))
+        (signal-parse-error state "Expected statement")
+        bad-stmt)))
 
 (-> parse-expression-statement (state) (or null ast:node))
 (defun parse-expression-statement (state)
@@ -203,7 +221,13 @@ Example:
   (or
    (parse-literal state)
    (parse-unary-expression state)
+   (parse-variable state)
    (parse-grouping-expression state)))
+
+(defun parse-variable (state)
+  (when-token state token:@IDENTIFIER
+    (let ((tok (consume! state token:@IDENTIFIER "Expected identifier")))
+      (accept state 'ast:variable :identifier tok))))
 
 (defun parse-literal (state)
   "Recognizes a literal expression"
