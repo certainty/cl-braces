@@ -113,6 +113,7 @@
 (defun make-program (decls)
   (make-instance 'program :declarations decls :location (location:make-source-location 0 0 0)))
 
+
 ;;; Compute spans
 (defmethod location:span-for ((node unary-expression))
   (with-slots (operator operand) node
@@ -167,6 +168,9 @@
 (declaim (type traversal *traversal*))
 (defparameter *traversal* 'inorder "Specifies the way the AST will be traversed. It's a dynamic variable so you can even change the traversal strategy while we traverse")
 
+(defgeneric children (node)
+  (:documentation "Returns a list of the children of `NODE'"))
+
 (defmacro with-preorder-traversal (&body body)
   "Executes `BODY' with the traversal strategy set to preorder. This is really only useful when body is a call to `walk'"
   `(let ((*traversal* 'inorder))
@@ -188,71 +192,40 @@
 (defgeneric walk (visitor node)
   (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'. The order in which the nodes are visited is determined by the value of `*traversal*'"))
 
-(defmethod walk (visitor (node node))
-  (enter visitor node)
-  (leave visitor node))
-
 (defun stop-walking-p (visitor-result)
   (and visitor-result (eq visitor-result :stop)))
 
 (defun continue-walking-p (visitor-result)
   (not (stop-walking-p visitor-result)))
 
-(defmethod walk (visitor (node program))
+(defmethod walk (visitor (node node))
   (case *traversal*
     (inorder
      (when (continue-walking-p (enter visitor node))
-       (dolist (decl (program-declarations node))
-         (walk visitor decl))
+       (dolist (child (children node))
+         (walk visitor child))
        (leave visitor node)))
     (postorder
-     (dolist (decl (program-declarations node))
-       (walk visitor decl))
+     (dolist (child (children node))
+       (walk visitor child))
      (enter visitor node)
      (leave visitor node))))
 
-(defmethod walk (visitor (node expression-statement))
-  (case *traversal*
-    (inorder
-     (when (continue-walking-p (enter visitor node))
-       (walk visitor (expression-statement-expression node))
-       (leave visitor node)))
-    (postorder
-     (walk visitor (expression-statement-expression node))
-     (enter visitor node)
-     (leave visitor node))))
+(defmethod children ((node program))
+  (program-declarations node))
 
-(defmethod walk (visitor (node binary-expression))
-  (case *traversal*
-    (inorder
-     (when (continue-walking-p (enter visitor node))
-       (walk visitor (binary-expression-lhs node))
-       (walk visitor (binary-expression-rhs node))
-       (leave visitor node)))
-    (postorder
-     (walk visitor (binary-expression-lhs node))
-     (walk visitor (binary-expression-rhs node))
-     (enter visitor node)
-     (leave visitor node))))
+(defmethod children ((node expression-statement))
+  (list (expression-statement-expression node)))
 
-(defmethod walk (visitor (node unary-expression))
-  (case *traversal*
-    (inorder
-     (when (continue-walking-p (enter visitor node))
-       (walk visitor (unary-expression-operand node))
-       (leave visitor node)))
-    (postorder
-     (walk visitor (unary-expression-operand node))
-     (enter visitor node)
-     (leave visitor node))))
+(defmethod children ((node binary-expression))
+  (list (binary-expression-lhs node)
+        (binary-expression-rhs node)))
 
-(defmethod walk (visitor (node grouping-expression))
-  (case *traversal*
-    (inorder
-     (when (continue-walking-p (enter visitor node))
-       (walk visitor (grouping-expression-expression node))
-       (leave visitor node)))
-    (postorder
-     (walk visitor (grouping-expression-expression node))
-     (enter visitor node)
-     (leave visitor node))))
+(defmethod children ((node unary-expression))
+  (list (unary-expression-operand node)))
+
+(defmethod children ((node grouping-expression))
+  (list (grouping-expression-expression node)))
+
+(defmethod children ((node literal))
+  nil)
