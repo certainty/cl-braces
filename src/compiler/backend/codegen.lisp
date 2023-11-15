@@ -42,6 +42,9 @@
   (ast:with-postorder-traversal
     (ast:walk generator node)))
 
+(defmethod ast:enter ((generator bytecode-generator) (node ast:program))
+  :continue)
+
 (defmethod ast:enter ((generator bytecode-generator) (node ast:literal))
   (with-slots (operands chunk-builder register-allocator) generator
     (let ((const-address (add-constant chunk-builder (value:box (ast:literal-value node))))
@@ -51,7 +54,7 @@
 
 (defmethod ast:enter ((generator bytecode-generator) (node ast:grouping-expression))
   ;; nothing to do
-  t)
+  :continue)
 
 (defmethod ast:enter ((generator bytecode-generator) (node ast:unary-expression))
   (with-slots (operands chunk-builder) generator
@@ -85,3 +88,6 @@
         ((token:class= op token:@SLASH)
          (add-instructions chunk-builder (bytecode:instr 'bytecode:div dst left right)))
         (t (todo! "binary operator"))))))
+
+(defmethod ast:enter ((generator bytecode-generator) (node ast:expression-statement))
+  :continue)

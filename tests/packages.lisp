@@ -13,7 +13,8 @@
 
 (defpackage :cl-braces.tests.compiler.frontend.parser
   (:nicknames :tests.frontend.parser :tests.parser)
-  (:use :cl :lisp-unit2))
+  (:use :cl :lisp-unit2)
+  (:import-from :alexandria :when-let))
 
 (defpackage :cl-braces.tests.compiler.frontend.ast
   (:nicknames :tests.frontend.ast :tests.ast)

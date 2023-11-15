@@ -29,6 +29,7 @@
 
    :statement
    :expression-statement
+   :expression-statement-expression
 
    :program
    :program-declarations
