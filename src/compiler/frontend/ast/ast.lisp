@@ -168,9 +168,6 @@
 (declaim (type traversal *traversal*))
 (defparameter *traversal* 'inorder "Specifies the way the AST will be traversed. It's a dynamic variable so you can even change the traversal strategy while we traverse")
 
-(defgeneric children (node)
-  (:documentation "Returns a list of the children of `NODE'"))
-
 (defmacro with-preorder-traversal (&body body)
   "Executes `BODY' with the traversal strategy set to preorder. This is really only useful when body is a call to `walk'"
   `(let ((*traversal* 'inorder))
@@ -180,6 +177,9 @@
   "Executes `BODY' with the traversal strategy set to postorder. This is really only useful when body is a call to `walk'"
   `(let ((*traversal* 'postorder))
      ,@body))
+
+(defgeneric children (node)
+  (:documentation "Returns a list of the children of `NODE'"))
 
 (defgeneric enter (visitor node)
   (:documentation "Dispatches to the appropriate visit method for the node and visitor"))

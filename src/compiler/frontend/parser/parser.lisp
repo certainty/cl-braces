@@ -102,7 +102,23 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 
 (-> parse-declaration (state) (or null ast:node))
 (defun parse-declaration (state)
-  (parse-statement state))
+  (let ((stmt (parse-statement state)))
+    (unless stmt
+      (let ((bad-decl (accept state 'ast:bad-declaration :message "Expected declaration")))
+        (signal-parse-error state "Expected declaration")
+        (synchronize state)
+        bad-decl))))
+
+(defun synchronize (state)
+  (with-slots (cur-token panic-mode-p) state
+    (setf panic-mode-p nil)
+    (loop
+      (cond
+        ((eofp state) (return))
+        ((token:class= cur-token token:@SEMICOLON)
+         (advance! state)
+         (return))
+        (t (advance! state))))))
 
 (-> parse-statement (state) (or null ast:node))
 (defun parse-statement (state)
