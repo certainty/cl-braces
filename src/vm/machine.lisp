@@ -1,10 +1,5 @@
 (in-package :cl-braces.vm.machine)
 
-(defun debug-vm (&optional (debug t))
-  (if debug
-      (push :cl-braces-debug-vm *features*)
-      (setf *features* (remove :cl-braces-debug-vm *features*))))
-
 (defmacro with-operands ((operand &rest operands) instruction &body body)
   (let ((operand-count (length (cons operand operands)))
         (operands-var (gensym))
@@ -58,8 +53,12 @@
          (opcode (the fixnum 0))
          (constants (bytecode:chunk-constants chunk))
          (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or value:value bytecode:register-t) :initial-element value:none)))
-    #+cl-braces-debug-vm
-    (dump-machine-state "Initial machine state" pc chunk registers :disass-chunk t)
+
+
+    #-cl-braces-vm-release
+    (progn
+      (format t "## Execute ~%~%")
+      (dump-machine-state "Initial machine state" pc chunk registers :disass-chunk t))
 
     (bytecode:with-opcodes-from-current-isa
       (loop
@@ -70,16 +69,23 @@
         (setf opcode (bytecode:instruction-opcode instruction))
         (incf pc)
 
-        #+cl-braces-debug-vm
+        #-cl-braces-vm-release
         (dump-machine-state "Execute instruction" pc chunk registers :disass-chunk nil :dump-instruction t)
 
         (cond
           ((= bytecode:noop opcode) t)
+
           ((= bytecode:halt opcode) (return))
+
           ((= bytecode:loada opcode)
            (with-operands (dst addr) instruction
              (setf result-reg dst)
              (setf (aref registers dst) (aref constants addr))))
+
+          ((= bytecode:mov opcode)
+           (with-operands (dst src) instruction
+             (setf result-reg dst)
+             (setf (aref registers dst) (aref registers src))))
 
           ((= bytecode:add opcode)
            (binary-op + instruction registers result-reg))
@@ -98,7 +104,7 @@
 
           (t (todo! "unsupported opcode")))))
 
-    #+cl-braces-debug-vm
+    #-cl-braces-vm-release
     (dump-machine-state "Final machine state" pc chunk registers :disass-chunk nil :dump-instruction nil)
 
     (values (aref registers result-reg))))

@@ -6,6 +6,7 @@
   (:import-from :serapeum :->)
   (:export
    :node
+   :location
    :expression
    :bad-expression
    :literal
@@ -23,6 +24,27 @@
    :binary-expression-operator
    :binary-expression-rhs
 
+   :declaration
+   :bad-declaration
+   :short-variable-declaration
+   :short-variable-declaration-initializer
+   :short-variable-declaration-variable
+
+   :statement
+   :bad-statement
+   :expression-statement
+   :expression-statement-expression
+
+   :variable
+   :variable-identifier
+
+   :block
+   :block-statements
+
+   :program
+   :program-declarations
+   :make-program
+
    :span
    :span-from
    :span-to
@@ -33,4 +55,5 @@
    :with-preorder-traversal
    :with-postorder-traversal
    :*traversal*
-   :print-ast))
+   :print-ast)
+  (:shadow :declaration :variable :block))

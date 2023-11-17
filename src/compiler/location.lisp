@@ -26,6 +26,9 @@
     (print-unreadable-object (location stream :type t :identity t)
       (format stream "line: ~a column: ~a offset: ~a" line column offset))))
 
+(defun make-source-location (line column offset)
+  (make-instance 'source-location :line line :column column :offset offset))
+
 (defclass source-span ()
   ((from
     :reader span-from

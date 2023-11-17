@@ -1,10 +1,5 @@
 (in-package :cl-braces.compiler)
 
-(defun debug-compiler (&optional (debug t))
-  (if debug
-      (push :cl-braces-debug-compiler *features*)
-      (setf *features* (remove :cl-braces-debug-compiler *features*))))
-
 (define-condition compile-error (error)
   ((message :initarg :message :reader compile-error-message)
    (details :initarg :details :reader compile-error-details))
@@ -15,13 +10,38 @@
 
 (defun compile-this (input-designator)
   "Compile the `input-designator' to a chunk of bytecode."
+  (let* ((ast (pass-syntactic-analysis input-designator))
+         (symbols (pass-semantic-analysis ast))
+         (chunk (pass-code-generation ast symbols)))
+    chunk))
+
+(defmethod pass-syntactic-analysis (input-designator)
   (multiple-value-bind (ast had-errors state) (parser:parse input-designator)
     (when had-errors
-      (error (make-condition 'compile-error :message "Compilation failed" :details (parser:parse-errors state))))
+      (error (make-condition 'compile-error :message "Syntactic analysis failed" :details (parser:parse-errors state))))
 
-    #+cl-braces-debug-compiler
-    (progn
-      (format t "Parsing stage finished with ~A errors~%" (length (parser:parse-errors state)))
-      (ast:print-ast ast))
+    (prog1 ast
+      #-cl-braces-compiler-release
+      (when ast
+        (format t "~%## Parse ~%")
+        (dev:debug-print ast)
+        (terpri)))))
 
-    (codegen:generate-chunk ast)))
+(defmethod pass-semantic-analysis (ast)
+  (multiple-value-bind (symbol-table errors) (symbol-resolver:resolve-symbols ast)
+    (when errors
+      (error (make-condition 'compile-error :message "Semantic analysis failed" :details errors)))
+
+    (prog1 symbol-table
+      #-cl-braces-compiler-release
+      (when symbol-table
+        (format t "~%## Symbols ~%")
+        (dev:debug-print symbol-table)))))
+
+(defmethod pass-code-generation (ast symbol-table)
+  (let ((chunk (codegen:generate-chunk ast symbol-table)))
+    (prog1 chunk
+      #-cl-braces-compiler-release
+      (progn
+        (format t "~%## Bytecode ~%")
+        (dev:debug-print chunk)))))

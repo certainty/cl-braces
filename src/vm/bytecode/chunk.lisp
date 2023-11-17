@@ -14,11 +14,9 @@
 (deftype operand-t () '(or register-t address-t))
 
 ;; A machine instruction as loaded and executed by the vm.
-;; We chose a representation that is easy to decode and cache-friendly.
-;; TODO: I'm not sure the tiered struct approach is the best way to go.
-(defstruct instruction
-  (opcode (error "must supply opcode") :type opcode-t :read-only t)
-  (operands (error "must supply operands") :type (vector operand-t) :read-only t))
+(serapeum:defconstructor instruction
+  (opcode opcode-t)
+  (operands (vector operand-t)))
 
 (defmethod print-object ((instruction instruction) stream)
   (print-unreadable-object (instruction stream :type nil)
@@ -26,13 +24,10 @@
 
 (deftype constant-table () '(vector value:value))
 
-(defstruct chunk
-  ;; The constants table is a vector of runtiome:value. Constants can thus be access by index.
-  (constants (error "must supply constants") :type (vector value:value) :read-only t)
-  ;; The code is a vector of instructions, so we can implement jumps efficiently.
-  (code (error "must supply code") :type (vector instruction) :read-only t)
-  ;; The registers-used is a hint to the VM which sets up the call-frame for this chunk, to allocate the right amount of registers in the register file.
-  (registers-used 0 :type (integer 0 *)  :read-only t))
+(serapeum:defconstructor chunk
+  (constants constant-table)
+  (code (vector instruction))
+  (registers-used (integer 0 *)))
 
 (serapeum:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
   (let ((code (gensym)))

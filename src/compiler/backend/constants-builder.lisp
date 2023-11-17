@@ -25,7 +25,7 @@
   Constants will be deduplicated, so if the constant already exists as determined by `equal', the address of the existing constant will be returned."
   (with-slots (registered-constants next-address) builder
     (or (gethash value registered-constants)
-        (let ((address (bytecode:addr next-address)))
+        (let ((address (bytecode:address next-address)))
           (prog1 address
             (setf (gethash value registered-constants) address)
             (incf next-address))))))

@@ -22,12 +22,18 @@
 
 (defsystem "cl-braces/compiler"
   :description "Compiler for cl-braces the minimal go-like programming language"
-  :depends-on (:alexandria :serapeum :cl-braces/vm :cl-braces/utils)
+  :depends-on
+  (:alexandria
+   :serapeum
+   :frugal-uuid
+   :cl-braces/vm
+   :cl-braces/utils)
   :in-order-to ((test-op (test-compiler-op "cl-braces/tests")))
   :serial t
   :pathname "src/compiler"
   :components ((:file "packages")
                (:file "location")
+               (:file "symbols")
                (:module "frontend"
                 :components
                 ((:module "scanner"
@@ -45,6 +51,12 @@
                   :components
                   ((:file "packages")
                    (:file "parser")))))
+               (:module "middleend"
+                :components
+                ((:module "semantic"
+                  :components
+                  ((:file "packages")
+                   (:file "symbol-resolver")))))
                (:module "backend"
                 :components
                 ((:file "packages")
@@ -87,14 +99,19 @@
       :components
       ((:file "scanner_suite")
        (:file "parser_suite")))
+     (:module "middleend"
+      :components
+      ((:file "symbol_resolver_suite")))
      (:module "backend"
       :components
       ((:file "codegen_suite")))
+     (:file "symbols_suite")
      (:file "pipeline_suite")))
    (:module "vm"
     :components
     ((:file "bytecode_suite")
-     (:file "machine_suite"))))
+     (:file "machine_suite")
+     (:file "system_suite"))))
   :perform (test-vm-op (o c)
                        (declare (ignore o c))
                        (uiop:symbol-call :cl-braces.tests.runner :run-vm-suites))

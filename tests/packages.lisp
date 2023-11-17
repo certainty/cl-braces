@@ -13,11 +13,17 @@
 
 (defpackage :cl-braces.tests.compiler.frontend.parser
   (:nicknames :tests.frontend.parser :tests.parser)
-  (:use :cl :lisp-unit2))
+  (:use :cl :lisp-unit2)
+  (:import-from :alexandria :when-let))
 
 (defpackage :cl-braces.tests.compiler.frontend.ast
   (:nicknames :tests.frontend.ast :tests.ast)
   (:use :cl :lisp-unit2))
+
+(defpackage :cl-braces.tests.compiler.middlend.symbols
+  (:nicknames :tests.middleend.symbols)
+  (:use :cl :lisp-unit2))
+
 
 (defpackage :cl-braces.tests.compiler.backend.codegen
   (:nicknames :tests.backend.codegen :backend.codegen)
@@ -27,6 +33,10 @@
   (:nicknames :tests.compiler.pipeline)
   (:use :cl :lisp-unit2))
 
+(defpackage :cl-braces.tests.compiler.symbols
+  (:nicknames :tests.compiler.symbols)
+  (:use :cl :lisp-unit2))
+
 ;;; VM
 (defpackage :cl-braces.tests.vm.bytecode
   (:nicknames :tests.vm.bytecode)
@@ -34,4 +44,8 @@
 
 (defpackage :cl-braces.tests.vm.machine
   (:nicknames :tests.vm.machine)
+  (:use :cl :lisp-unit2))
+
+(defpackage :cl-braces.tests.system
+  (:nicknames :tests.system)
   (:use :cl :lisp-unit2))

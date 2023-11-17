@@ -70,7 +70,74 @@
     :type expression))
   (:documentation "An expression for binary relations"))
 
-;;; Compute spans over expressions
+(defclass statement (node) ())
+
+(defclass bad-statement (statement)
+  ((message :reader bad-statement-message
+            :initarg :message
+            :initform (error "must provide message")
+            :type string))
+  (:documentation "A statement that could not be parsed correctly."))
+
+(defclass expression-statement (statement)
+  ((expression
+    :reader expression-statement-expression
+    :initarg :expression
+    :initform (error "must provide expression")
+    :type expression))
+  (:documentation "A statement that is an expression."))
+
+(defclass declaration (statement) ())
+
+(defclass bad-declaration (declaration)
+  ((message :reader bad-declaration-message
+            :initarg :message
+            :initform (error "must provide message")
+            :type string))
+  (:documentation "A declaration that could not be parsed correctly."))
+
+(defclass variable (node)
+  ((identifier
+    :reader variable-identifier
+    :initarg :identifier
+    :initform (error "must provide identifier")
+    :type token:token))
+  (:documentation "The base class for all variables in the highlevel AST."))
+
+(defclass short-variable-declaration (declaration)
+  ((variable
+    :reader short-variable-declaration-variable
+    :initarg :variable
+    :initform (error "must provide identifier")
+    :type variable)
+   (initializer
+    :reader short-variable-declaration-initializer
+    :initarg :initializer
+    :initform (error "must provide initializer")
+    :type expression))
+  (:documentation "A declaration of a variable with an initializer"))
+
+(defclass block (node)
+  ((statements
+    :reader block-statements
+    :initarg :statements
+    :initform (error "must provide statements")
+    :type list))
+  (:documentation "A block of statements"))
+
+(defclass program (node)
+  ((declarations
+    :reader program-declarations
+    :initarg :declarations
+    :initform (error "must provide declarations")
+    :type list))
+  (:documentation "The root node of the highlevel AST."))
+
+(defun make-program (decls)
+  (make-instance 'program :declarations decls :location (location:make-source-location 0 0 0)))
+
+
+;;; Compute spans
 (defmethod location:span-for ((node unary-expression))
   (with-slots (operator operand) node
     (let ((operand (span operand)))
@@ -99,6 +166,37 @@
                    :from (token:location token)
                    :to (token:location token))))
 
+(defmethod location:span-for ((node bad-expression))
+  (with-slots (location) node
+    (make-instance 'span
+                   :from location
+                   :to location)))
+
+(defmethod location:span-for ((node expression-statement))
+  (with-slots (expression) node
+    (location:span-for expression)))
+
+(defmethod location:span-for ((node short-variable-declaration))
+  (with-slots (identifier initializer) node
+    (let ((initializer (location:span-for initializer)))
+      (make-instance 'span
+                     :from (token:location identifier)
+                     :to (location:span-to initializer)))))
+
+(defmethod location:span-for ((node variable))
+  (with-slots (identifier) node
+    (make-instance 'span
+                   :from (token:location identifier)
+                   :to (token:location identifier))))
+
+(defmethod location:span-for ((node block))
+  (with-slots (statements) node
+    (let ((first-statement (first statements))
+          (last-statement  (first (last statements))))
+      (make-instance 'span
+                     :from (span-from first-statement)
+                     :to (span-to last-statement)))))
+
 ;;; AST traversal via the visitor pattern
 ;;; Visitor for AST nodes
 (deftype traversal () '(member inorder postorder))
@@ -116,6 +214,9 @@
   `(let ((*traversal* 'postorder))
      ,@body))
 
+(defgeneric children (node)
+  (:documentation "Returns a list of the children of `NODE'"))
+
 (defgeneric enter (visitor node)
   (:documentation "Dispatches to the appropriate visit method for the node and visitor"))
 
@@ -127,41 +228,60 @@
 (defgeneric walk (visitor node)
   (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'. The order in which the nodes are visited is determined by the value of `*traversal*'"))
 
+(defun stop-walking-p (visitor-result)
+  (and visitor-result (eq visitor-result :stop)))
+
+(defun continue-walking-p (visitor-result)
+  (not (stop-walking-p visitor-result)))
+
 (defmethod walk (visitor (node node))
-  (enter visitor node)
-  (leave visitor node))
-
-(defmethod walk (visitor (node binary-expression))
   (case *traversal*
     (inorder
-     (when (enter visitor node)
-       (walk visitor (binary-expression-lhs node))
-       (walk visitor (binary-expression-rhs node))
+     (when (continue-walking-p (enter visitor node))
+       (dolist (child (children node))
+         (walk visitor child))
        (leave visitor node)))
     (postorder
-     (walk visitor (binary-expression-lhs node))
-     (walk visitor (binary-expression-rhs node))
+     (dolist (child (children node))
+       (walk visitor child))
      (enter visitor node)
      (leave visitor node))))
 
-(defmethod walk (visitor (node unary-expression))
-  (case *traversal*
-    (inorder
-     (when (enter visitor node)
-       (walk visitor (unary-expression-operand node))
-       (leave visitor node)))
-    (postorder
-     (walk visitor (unary-expression-operand node))
-     (enter visitor node)
-     (leave visitor node))))
+(defmethod children ((node program))
+  (program-declarations node))
 
-(defmethod walk (visitor (node grouping-expression))
-  (case *traversal*
-    (inorder
-     (when (enter visitor node)
-       (walk visitor (grouping-expression-expression node))
-       (leave visitor node)))
-    (postorder
-     (walk visitor (grouping-expression-expression node))
-     (enter visitor node)
-     (leave visitor node))))
+(defmethod children ((node bad-declaration))
+  nil)
+
+(defmethod children ((node bad-statement))
+  nil)
+
+(defmethod children ((node expression-statement))
+  (list (expression-statement-expression node)))
+
+(defmethod children ((node binary-expression))
+  (list (binary-expression-lhs node)
+        (binary-expression-rhs node)))
+
+(defmethod children ((node unary-expression))
+  (list (unary-expression-operand node)))
+
+(defmethod children ((node grouping-expression))
+  (list (grouping-expression-expression node)))
+
+(defmethod children ((node literal))
+  nil)
+
+(defmethod children ((node bad-expression))
+  nil)
+
+(defmethod children ((node short-variable-declaration))
+  (list
+   (short-variable-declaration-variable node)
+   (short-variable-declaration-initializer node)))
+
+(defmethod children ((node variable))
+  nil)
+
+(defmethod children ((node block))
+  (block-statements node))

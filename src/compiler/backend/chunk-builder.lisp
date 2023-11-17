@@ -36,7 +36,7 @@
 (defun chunk-result (builder registers-used)
   "Return the chunk of bytecode. All constants will be deduplicated."
   (with-slots (constants instructions) builder
-    (bytecode:make-chunk
-     :constants (constants-result constants)
-     :code instructions
-     :registers-used registers-used)))
+    (bytecode:chunk
+     (constants-result constants)
+     instructions
+     registers-used)))

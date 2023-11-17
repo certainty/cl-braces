@@ -5,11 +5,16 @@
   @EOF
   @LPAREN
   @RPAREN
+  @LBRACE
+  @RBRACE
   @INTEGER
   @PLUS
   @MINUS
   @STAR
-  @SLASH)
+  @SLASH
+  @SEMICOLON
+  @COLON_EQUAL
+  @IDENTIFIER)
 
 (defclass token ()
   ((class :reader class

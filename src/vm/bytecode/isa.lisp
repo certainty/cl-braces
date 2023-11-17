@@ -9,20 +9,20 @@
 ;;; Use the `print-isa' function to get information about the instructions that are available in the virtual machine.
 ;;; The default is will be bound to `*current-isa*' so you can use `(print-isa *current-isa*)' to get information about the current instruction set.
 
-
-
 (defparameter *current-isa* "The current isa that is used to construct instructions")
 
-(-> version ((integer 0 *) (integer 0 *)) version)
-(defstruct (version (:constructor version (major minor)))
-  (major 0 :type (integer 0 *) :read-only t)
-  (minor 0 :type (integer 0 *) :read-only t))
+(deftype version-component () '(integer 0 *))
+
+(-> version (version-component version-component) version)
+(serapeum:defstruct-read-only (version (:constructor version (major minor)))
+  (major 0 :type version-component)
+  (minor 0 :type version-component))
 
 (defclass isa ()
   ((version
     :reader isa-version
     :initarg :version
-    :initform (version 1 0 )
+    :initform (version 1 0)
     :type version
     :documentation "The version of the instruction set architecture")
    (instruction-set
@@ -37,8 +37,8 @@
 
 (defmethod initialize-instance :after ((isa isa) &key)
   (with-slots (instructions-by-mnemonic instruction-set) isa
-    (loop :for i :across instruction-set
-          :do (setf (gethash (isa-instruction-mnemonic i) instructions-by-mnemonic) i))))
+    (loop for i across instruction-set
+          do (setf (gethash (isa-instruction-mnemonic i) instructions-by-mnemonic) i))))
 
 (defun instruction-by-mnemonic (mnemonic &optional (isa *current-isa*))
   "Returns the instruction with the given mnemonic"
@@ -48,26 +48,24 @@
 (defun instruction-by-opcode (opcode &optional (isa *current-isa*))
   "Returns the instruction with the given opcode."
   (with-slots (instruction-set) isa
-    (loop :for i :across instruction-set
-          :when (eql opcode (isa-instruction-opcode i))
-            :return i)))
+    (loop for i across instruction-set
+          when (eql opcode (isa-instruction-opcode i))
+            return i)))
 
 (defun mnemonic-for-instruction (opcode &optional (isa *current-isa*))
   "Returns the mnemonic for the given opcode."
-  (with-slots (instructions-by-mnemonic) isa
-    (loop :for i :being :the :hash-values :of instructions-by-mnemonic
-          :when (eql opcode (isa-instruction-opcode i))
-            :return (isa-instruction-mnemonic i))))
+  (when-let ((instruction (instruction-by-opcode opcode isa)))
+    (isa-instruction-mnemonic instruction)))
 
 ;; A type that is only used during construction of instuctions to make the operations more typesafe
-;; In the finaly instruction we only encode the raw value
-(-> reg (register-t) register)
-(defstruct (register  (:conc-name register-) (:constructor reg (provided-value)) (:copier nil))
-  (value provided-value  :type register-t :read-only t))
+;; In the final instruction we only encode the raw value
+(-> register (register-t) register)
+(serapeum:defconstructor register
+  (value register-t))
 
-(-> addr (integer) address)
-(defstruct (address (:conc-name address-) (:constructor addr (provided-value)) (:copier nil))
-  (value provided-value :type address-t :read-only t))
+(-> address (integer) address)
+(serapeum:defconstructor address
+  (value address-t))
 
 (-> operand-value ((or register address)) operand-t)
 (defgeneric operand-value (operand)
@@ -175,7 +173,7 @@
     (check-operands expected-operands given-operands)
     (loop :for i :from 0 :below (length expected-operands)
           :do (setf (aref operand-values i) (operand-value (aref given-operands i))))
-    (make-instruction :opcode opcode :operands operand-values)))
+    (instruction opcode operand-values)))
 
 (defun check-operands (wanted-operands given-operands)
   "Checkst that the operands given match the required operands defined in the instruction. Also verifies that the types match."

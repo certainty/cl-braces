@@ -19,12 +19,15 @@
     (disass-instruction instr chunk :isa isa :stream stream)))
 
 (defun disass-instruction (instr chunk &key (isa *current-isa*) (stream *standard-output*))
-  (format stream "~a ~8,a ~8,a ~15,a // ~a~%"
+  (format stream "~a ~8,a ~8,a ~15,a ~a~%"
           (column-label instr isa chunk)
           (column-encoded-instruction instr isa)
           (column-opcode instr isa)
           (column-operands instr isa)
           (column-comment instr isa chunk)))
+
+(defmethod development:debug-print ((obj chunk) &key (stream *standard-output*))
+  (disass obj :stream stream))
 
 (defun column-pc (pc)
   (format nil "~3,'0X" pc))
@@ -74,10 +77,12 @@
   (let* ((operand-values (instruction-operands instr))
          (isa-instr (instruction-by-opcode (instruction-opcode instr) isa))
          (isa-operands (isa-instruction-operands isa-instr))
-         (operand-comments (loop :for isa-op :across isa-operands
-                                 :for op :across operand-values
-                                 :collect (comment-for op (isa-operand-type isa-op) chunk))))
-    (format nil "~{~a~^, ~}" (remove-if #'null operand-comments))))
+         (operand-comments (remove-if #'null (loop :for isa-op :across isa-operands
+                                                   :for op :across operand-values
+                                                   :collect (comment-for op (isa-operand-type isa-op) chunk)))))
+    (if (consp operand-comments)
+        (format nil "// ~{~a~^, ~}" operand-comments)
+        "")))
 
 (defun comment-for (value op-type chunk)
   (case op-type

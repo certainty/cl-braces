@@ -15,6 +15,7 @@
   (:nicknames :vm.bytecode :bytecode)
   (:use :cl :development)
   (:import-from :serapeum :->)
+  (:import-from :alexandria :when-let)
   (:export
    :chunk
    :chunk-code
@@ -53,6 +54,7 @@
    :reg
 
    :loada
+   :mov
    :noop
    :halt
    :add
