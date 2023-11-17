@@ -14,7 +14,11 @@
   @SLASH
   @SEMICOLON
   @COLON_EQUAL
-  @IDENTIFIER)
+  @IDENTIFIER
+  @TRUE
+  @FALSE
+  @IF
+  @ELSE)
 
 (defclass token ()
   ((class :reader class
@@ -50,3 +54,8 @@
 (defun literal-p (token)
   "Returns true if the token is a literal."
   (or (class= token @INTEGER)))
+
+(-> identifier-p (token) boolean)
+(defun identifier-p (token)
+  "Returns true if the token is an identifier."
+  (class= token @IDENTIFIER))

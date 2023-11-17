@@ -27,7 +27,11 @@
    :@SLASH
    :@SEMICOLON
    :@COLON_EQUAL
-   :@IDENTIFIER)
+   :@IDENTIFIER
+   :@TRUE
+   :@FALSE
+   :@IF
+   :@ELSE)
   (:shadow :class))
 
 (defpackage :cl-braces.compiler.frontend.scanner

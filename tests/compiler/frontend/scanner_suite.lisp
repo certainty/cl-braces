@@ -36,6 +36,11 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as "12" token:@INTEGER :with-value 12)
   (assert-scans-as "0" token:@INTEGER :with-value 0))
 
+(define-test scan-boolean-literal ()
+  "Scans the boolean literals"
+  (assert-scans-as "true" token:@TRUE)
+  (assert-scans-as "false" token:@FALSE))
+
 (define-test location-tracking ()
   "Scan multiple tokens and track the location correctly for each"
   (let* ((s (scanner:open-scanner (format nil "   3~%4   5")))
@@ -77,3 +82,11 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as ") " token:@RPAREN)
   (assert-scans-as "{" token:@LBRACE)
   (assert-scans-as "}" token:@RBRACE))
+
+(define-test scan-keywords ()
+  "Scan various key words"
+  (assert-scans-as "if" token:@IF)
+  (assert-scans-as "iffy" token:@IDENTIFIER :with-value "iffy")
+
+  (assert-scans-as "else" token:@ELSE)
+  (assert-scans-as "welser" token:@IDENTIFIER :with-value "welser"))

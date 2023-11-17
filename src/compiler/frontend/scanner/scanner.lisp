@@ -187,11 +187,19 @@ The following example shows how to deal with these cases:
 
 (-> scan-identifier (state) (or null token:token))
 (defun scan-identifier (state)
-  (when-let ((c (peek state)))
-    (when (alpha-char-p c)
-      (advance! state)
-      (scan-while state #'identifier-char-p)
-      (accept state token:@IDENTIFIER #'identity))))
+  "Scan identifiers which are either user defined names, keywords or literal names"
+  (with-slots (lexeme) state
+    (when-let ((c (peek state)))
+      (when (alpha-char-p c)
+        (advance! state)
+        (scan-while state #'identifier-char-p)
+        (let ((identifier (coerce lexeme 'string)))
+          (cond
+            ((equal identifier "if") (accept state token:@IF))
+            ((equal identifier "else") (accept state token:@ELSE))
+            ((equal identifier "true") (accept state token:@TRUE))
+            ((equal identifier "false") (accept state token:@FALSE))
+            (t (accept state token:@IDENTIFIER #'identity))))))))
 
 (-> scan-eof (state) (or null token:token))
 (defun scan-eof (state)
