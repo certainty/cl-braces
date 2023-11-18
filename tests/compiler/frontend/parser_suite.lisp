@@ -2,7 +2,7 @@
 
 (defun parse-as-expression (input)
   (when-let ((program (parser:parse input)))
-    (when-let ((declarations (ast:program-declarations program)))
+    (when-let ((declarations (ast:statement-list-statements (ast:program-declarations program))))
       (when (= 1 (length declarations))
         (ast:expression-statement-expression (car declarations))))))
 
