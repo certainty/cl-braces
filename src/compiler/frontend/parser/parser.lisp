@@ -206,8 +206,40 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 (-> %parse-statement (state) (or null ast:node))
 (defun %parse-statement (state)
   (guard-parse state
-    (or (parse-simple-statement state)
-        (parse-block state))))
+    (or
+     (parse-if-statement state)
+     (parse-simple-statement state)
+     (parse-block state))))
+
+;;;
+;;; IfStmt = "if" [ SimpleStmt ";" ] Expression Block [ "else" ( IfStmt | Block ) ] .
+;;;
+(-> parse-if-statement (state) (or null ast:node))
+(defun parse-if-statement (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@IF)
+        (consume! state token:@IF "Expected 'if'")
+        (let ((init (parse-simple-statement state))
+              (condition nil))
+          ;; at this point init may either already be the condition or a simple statement.
+          ;; the only way to finde out is to check whether the next token is a semicolon
+          ;; TODO: find an abstraction parse, bind the result and fail if the parser returns nil
+          (if (token:class= cur-token token:@SEMICOLON)
+              ;; it was an initform, so we consume the token and expect another expression for the condition
+              (progn
+                (consume! state token:@SEMICOLON "Expected ';' after init form")
+                (setf condition (parse-expression state)))
+              ;; it was a condition, so we just use it
+              (progn
+                (setf condition init)
+                (setf init nil)))
+
+          (unless condition (signal-parse-error state "Expected expression"))
+          (let ((consequence (parse-block state)))
+            (unless consequence
+              (signal-parse-error state "Expected block"))
+            (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative nil)))))))
 
 ;;;
 ;;; SimpleStmt = EmptyStmt | ExpressionStmt | SendStmt | IncDecStmt | Assignment | ShortVarDecl .
@@ -346,7 +378,7 @@ Example:
 
 (defmacro when-token (state expected-class &body body)
   `(with-slots (cur-token) ,state
-     (when (token:class= cur-token ,expected-class)
+     (when (and cur-token (token:class= cur-token ,expected-class))
        ,@body)))
 
 (defun parse-primary-expression (state)

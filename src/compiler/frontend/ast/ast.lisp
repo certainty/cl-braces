@@ -98,21 +98,29 @@
     (location:span-for expression)))
 
 (defclass if-statement (statement)
-  ((condition
+  ((init
+    :reader if-statement-init
+    :initarg :init
+    :initform nil
+    :type (or null simple-statement))
+
+   (condition
     :reader if-statement-condition
     :initarg :condition
     :initform (error "must provide condition")
     :type expression)
+
    (consequence
     :reader if-statement-consequence
     :initarg :consequence
     :initform (error "must provide then-block")
     :type block)
+
    (alternative
     :reader if-statement-alternative
     :initarg :alternative
     :initform nil
-    :type (or null block)))
+    :type (or null statement)))
   (:documentation "A statement that is an expression."))
 
 (defmethod children ((node if-statement))
