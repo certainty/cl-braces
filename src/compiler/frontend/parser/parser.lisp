@@ -215,9 +215,11 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 (-> parse-simple-statement (state) (or null ast:node))
 (defun parse-simple-statement (state)
   (guard-parse state
-    (or
-     (parse-short-variable-declaration state)
-     (parse-expression-statement state))))
+    (with-slots (cur-token next-token) state
+      (when (token:class= cur-token token:@IDENTIFIER)
+        (when (or (token:class= next-token token:@COLON_EQUAL) (token:class= next-token token:@COMMA))
+          (return-from parse-simple-statement (parse-short-variable-declaration state))))
+      (parse-expression-statement state))))
 
 ;;;
 ;;; ExpressionStmt = Expression .
