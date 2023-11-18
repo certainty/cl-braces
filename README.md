@@ -18,5 +18,5 @@ A programming language that is used for real world applications, other than the 
 
 ## Decisions
 
-Use a golike language to show implementations of parsers and compilers for the typical langauge constructs, while still being fairly minimal
+Use a golike language to show implementations of compilers for the typical langauge constructs, while still being fairly minimal.
 Don’t only implement toy examples but try to give real implementions, that resemble what you would do in a compiler aimed for a real language
