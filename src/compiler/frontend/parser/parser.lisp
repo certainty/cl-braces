@@ -234,13 +234,20 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
               (progn
                 (setf condition init)
                 (setf init (make-instance 'ast:empty-statement :location (token:location cur-token)))))
-
           (unless condition (signal-parse-error state "Expected expression"))
           (let ((consequence (parse-block state)))
             (unless consequence
               (signal-parse-error state "Expected block"))
-            (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative nil)))))))
-
+            (unless (token:class= cur-token token:@ELSE)
+              (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative nil))
+            (advance! state)
+            (let ((alternative
+                    (if (token:class= cur-token token:@IF)
+                        (parse-if-statement state)
+                        (parse-block state))))
+              (unless alternative
+                (signal-parse-error state "Expected block or if statement"))
+              (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative alternative))))))))
 ;;;
 ;;; SimpleStmt = EmptyStmt | ExpressionStmt | SendStmt | IncDecStmt | Assignment | ShortVarDecl .
 ;;;
