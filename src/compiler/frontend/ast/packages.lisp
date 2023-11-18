@@ -24,6 +24,9 @@
    :binary-expression-operator
    :binary-expression-rhs
 
+   :expression-list
+   :experssion-list-expressions
+
    :declaration
    :bad-declaration
    :short-variable-declaration
@@ -35,9 +38,16 @@
    :if-statement
    :expression-statement
    :expression-statement-expression
+   :statement-list
+   :statement-list-statements
 
    :variable
    :variable-identifier
+
+   :identifier
+   :identifier-token
+   :identifier-name
+   :identifier-list
 
    :block
    :block-statements

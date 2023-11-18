@@ -340,6 +340,7 @@
         (#\/ (=> token:@SLASH))
         (#\* (=> token:@STAR))
         (#\; (=> token:@SEMICOLON))
+        (#\, (=> token:@COMMA))
         (#\< (=> token:@LT))
         (#\> (=> token:@GT))))))
 

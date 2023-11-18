@@ -144,7 +144,7 @@
 
 (defmethod enter ((printer ast-printer) (node bad-declaration))
   (with-slots (stream print-spans-p indentation-level) printer
-    (format stream "~A~A" (connective indentation-level) "<bad-declaration>")
+    (format stream "~A~A" (connective indentation-level) "bad-declaration")
     (when print-spans-p
       (format-span (location:span-for node) stream))
     (terpri stream)))
@@ -182,3 +182,46 @@
       (when print-spans-p
         (format-span (location:span-for node) stream))
       (terpri stream))))
+
+(defmethod enter ((printer ast-printer) (node identifier))
+  (with-slots (indentation-level stream print-spans-p) printer
+    (format stream "~A~A"  (connective indentation-level) (identifier-name node))
+    (when print-spans-p
+      (format-span (location:span-for node) stream))
+    (terpri stream)))
+
+(defmethod enter ((printer ast-printer) (node statement-list))
+  (with-slots (indentation-level stream print-spans-p) printer
+    (format stream "~A~A"  (connective indentation-level) "statement-list")
+    (when print-spans-p
+      (format-span (location:span-for node) stream))
+    (terpri stream)
+    (incf indentation-level)))
+
+(defmethod leave ((printer ast-printer) (node statement-list))
+  (with-slots (indentation-level) printer
+    (decf indentation-level)))
+
+(defmethod enter ((printer ast-printer) (node expression-list))
+  (with-slots (indentation-level stream print-spans-p) printer
+    (format stream "~A~A"  (connective indentation-level) "expression-list")
+    (when print-spans-p
+      (format-span (location:span-for node) stream))
+    (terpri stream)
+    (incf indentation-level)))
+
+(defmethod leave ((printer ast-printer) (node expression-list))
+  (with-slots (indentation-level) printer
+    (decf indentation-level)))
+
+(defmethod enter ((printer ast-printer) (node identifier-list))
+  (with-slots (indentation-level stream print-spans-p) printer
+    (format stream "~A~A"  (connective indentation-level) "identifier-list")
+    (when print-spans-p
+      (format-span (location:span-for node) stream))
+    (terpri stream)
+    (incf indentation-level)))
+
+(defmethod leave ((printer ast-printer) (node identifier-list))
+  (with-slots (indentation-level) printer
+    (decf indentation-level)))

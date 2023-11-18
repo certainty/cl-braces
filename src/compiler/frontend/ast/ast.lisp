@@ -70,6 +70,14 @@
     :type expression))
   (:documentation "An expression for binary relations"))
 
+(defclass expression-list (expression)
+  ((expressions
+    :reader expression-list-expressions
+    :initarg :expressions
+    :initform (error "must provide expressions")
+    :type list))
+  (:documentation "An expression that is a list of expressions"))
+
 (defclass statement (node) ())
 
 (defclass bad-statement (statement)
@@ -78,6 +86,14 @@
             :initform (error "must provide message")
             :type string))
   (:documentation "A statement that could not be parsed correctly."))
+
+(defclass statement-list (statement)
+  ((statements
+    :reader statement-list-statements
+    :initarg :statements
+    :initform (error "must provide statements")
+    :type list))
+  (:documentation "A statement that is a list of statements"))
 
 (defclass expression-statement (statement)
   ((expression
@@ -122,18 +138,38 @@
     :type token:token))
   (:documentation "The base class for all variables in the highlevel AST."))
 
+(defclass identifier (node)
+  ((token
+    :reader identifier-token
+    :initarg :token
+    :initform (error "must provide token")
+    :type token:token))
+  (:documentation "The base class for all identifiers in the highlevel AST."))
+
+(defun identifier-name (identifier)
+  (token:lexeme (identifier-token identifier)))
+
+(defclass identifier-list (node)
+  ((identifiers
+    :reader identifier-list-identifiers
+    :initarg :identifiers
+    :initform (error "must provide variables")
+    :type list))
+  (:documentation "A list of identifiers"))
+
 (defclass short-variable-declaration (declaration)
-  ((variable
-    :reader short-variable-declaration-variable
-    :initarg :variable
-    :initform (error "must provide identifier")
-    :type variable)
-   (initializer
-    :reader short-variable-declaration-initializer
-    :initarg :initializer
+  ((identifiers
+    :reader short-variable-declaration-identifiers
+    :initarg :identifiers
+    :initform (error "must provide variables")
+    :type identifier-list
+    :documentation "The list of variables")
+   (expressions
+    :reader short-variable-declaration-expressions
+    :initarg :expressions
     :initform (error "must provide initializer")
-    :type expression))
-  (:documentation "A declaration of a variable with an initializer"))
+    :type expression-list))
+  (:documentation "The list of expressions for the variables"))
 
 (defclass block (node)
   ((statements
@@ -148,7 +184,7 @@
     :reader program-declarations
     :initarg :declarations
     :initform (error "must provide declarations")
-    :type list))
+    :type statement-list))
   (:documentation "The root node of the highlevel AST."))
 
 (defun make-program (decls)
@@ -266,7 +302,7 @@
      (leave visitor node))))
 
 (defmethod children ((node program))
-  (program-declarations node))
+  (list (program-declarations node)))
 
 (defmethod children ((node bad-declaration))
   nil)
@@ -295,10 +331,13 @@
 
 (defmethod children ((node short-variable-declaration))
   (list
-   (short-variable-declaration-variable node)
-   (short-variable-declaration-initializer node)))
+   (short-variable-declaration-identifiers node)
+   (short-variable-declaration-expressions node)))
 
 (defmethod children ((node variable))
+  nil)
+
+(defmethod children ((node identifier))
   nil)
 
 (defmethod children ((node block))
@@ -308,3 +347,12 @@
   (list (if-statement-condition node)
         (if-statement-consequence node)
         (if-statement-alternative node)))
+
+(defmethod children ((node statement-list))
+  (statement-list-statements node))
+
+(defmethod children ((node expression-list))
+  (expression-list-expressions node))
+
+(defmethod children ((node identifier-list))
+  (identifier-list-identifiers node))

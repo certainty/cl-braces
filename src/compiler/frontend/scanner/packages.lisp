@@ -37,6 +37,7 @@
    :@GT
    :@GE
    :@SEMICOLON
+   :@COMMA
    :@COLON_EQUAL
    :@IDENTIFIER
    :@TRUE
