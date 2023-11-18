@@ -88,12 +88,6 @@
     (decf indentation-level)))
 
 ;; specific implementations
-(defmethod enter ((printer ast-printer) (node bad-expression))
-  (with-slots (stream print-spans-p indentation-level) printer
-    (format stream "~A~A" (connective indentation-level) "<bad-expression>")
-    (when print-spans-p
-      (format-span (location:span-for node) stream))
-    (terpri stream)))
 
 (defmethod enter ((printer ast-printer) (node literal))
   (with-slots (stream print-spans-p indentation-level) printer
