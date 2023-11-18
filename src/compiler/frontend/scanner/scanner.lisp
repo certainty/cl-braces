@@ -147,6 +147,11 @@
    Returns a fresh instance of `scanner'."
   (make-instance 'state :input (open-input input-designator) :fail-fast fail-fast))
 
+(defun fail-fast! (state &optional (should-fail-fast t))
+  "Returns true if the scanner is in fail-fast mode. In fail-fast mode the scanner will signal a `scan-error' condition when it encounters an illegal token."
+  (with-slots (fail-fast) state
+    (setf fail-fast should-fail-fast)))
+
 (-> next-token (state) token:token)
 (defun next-token (state)
   "Reads the next available token from the input stream. Unless something catastrophic happens this function will always
