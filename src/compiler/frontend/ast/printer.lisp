@@ -20,10 +20,10 @@
   "Prints the give `AST' to  `STREAM' in a human readable format."
   (let ((printer (make-instance 'ast-printer :stream stream :print-spans-p print-spans-p)))
     (with-preorder-traversal
-      (walk printer ast))))
+        (walk printer ast))))
 
-(defmethod development:debug-print ((obj ast:node) &key (stream *standard-output*))
-  (print-ast obj :stream stream :print-spans-p nil))
+(defmethod development:debug-print ((obj ast:node))
+  (print-ast obj :stream *debug-io* :print-spans-p nil))
 
 (defun format-span (span stream)
   (format stream " [~A:~A ~A:~A]"

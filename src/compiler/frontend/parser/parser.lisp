@@ -97,7 +97,8 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
     (handler-bind ((error-detail (lambda (c)
                                    (if fail-fast
                                        (invoke-debugger c)
-                                       (invoke-restart 'synchronize)))))
+                                       (when (find-restart 'synchronize)
+                                         (invoke-restart 'synchronize))))))
       (advance! state)
       (let ((stmts (parse-statement-list state)))
         (consume! state token:@EOF "Expected end of file")

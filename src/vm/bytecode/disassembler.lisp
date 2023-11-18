@@ -26,8 +26,8 @@
           (column-operands instr isa)
           (column-comment instr isa chunk)))
 
-(defmethod development:debug-print ((obj chunk) &key (stream *standard-output*))
-  (disass obj :stream stream))
+(defmethod development:debug-print ((obj chunk))
+  (disass obj :stream *debug-io*))
 
 (defun column-pc (pc)
   (format nil "~3,'0X" pc))

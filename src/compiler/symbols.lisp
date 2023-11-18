@@ -128,13 +128,13 @@ It searchs from high to low scopes, so it finds the hightest scope that is <= `C
 "
   (find-if (lambda (sym) (<= (scope sym) current-scope)) candidates))
 
-(defmethod dev:debug-print ((obj symbol-table) &key (stream *standard-output*))
+(defmethod dev:debug-print ((obj symbol-table))
   (with-slots (symbols-by-name) obj
     (let ((all-symbols (alexandria:hash-table-alist symbols-by-name)))
       (setf all-symbols (sort all-symbols #'string< :key #'car))
-      (format stream "~20,a ~15,a ~7,a ~20,a~%" "Name" "Denotation" "Scope" "ID")
+      (format *debug-io* "~20,a ~15,a ~7,a ~20,a~%" "Name" "Denotation" "Scope" "ID")
       (dolist (entry all-symbols)
         (destructuring-bind (name . symbols) entry
           (declare (ignore name))
           (dolist (sym symbols)
-            (format stream "~20,a ~15,a ~7,a ~20,a~%" (name sym) (denotation sym) (scope sym) (id sym))))))))
+            (format *debug-io* "~20,a ~15,a ~7,a ~20,a~%" (name sym) (denotation sym) (scope sym) (id sym))))))))
