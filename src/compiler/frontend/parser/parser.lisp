@@ -215,6 +215,7 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 ;;; IfStmt = "if" [ SimpleStmt ";" ] Expression Block [ "else" ( IfStmt | Block ) ] .
 ;;;
 (-> parse-if-statement (state) (or null ast:node))
+;; TODO: clean-up this mess
 (defun parse-if-statement (state)
   (guard-parse state
     (with-slots (cur-token) state
@@ -285,7 +286,10 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
       (when-let ((identifiers (parse-identifier-list state)))
         (consume! state token:@COLON_EQUAL "Expected ':=' in short variable declaration")
         (if-let ((expressions (parse-expression-list state)))
-          (accept state 'ast:short-variable-declaration :identifiers identifiers :expressions expressions)
+          (progn
+            (unless (= (length (ast:expression-list-expressions expressions)) (length (ast:identifier-list-identifiers identifiers)))
+              (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
+            (accept state 'ast:short-variable-declaration :identifiers identifiers :expressions expressions))
           (signal-parse-error state "Expected expression list"))))))
 
 ;;; IdentifierList = identifier { "," identifier } .

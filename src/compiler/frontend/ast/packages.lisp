@@ -25,7 +25,7 @@
    :binary-expression-rhs
 
    :expression-list
-   :experssion-list-expressions
+   :expression-list-expressions
 
    :declaration
    :bad-declaration
@@ -49,6 +49,7 @@
    :identifier-token
    :identifier-name
    :identifier-list
+   :identifier-list-identifiers
 
    :block
    :block-statements

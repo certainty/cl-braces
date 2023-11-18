@@ -140,7 +140,7 @@
                (if-statement-condition node)
                (if-statement-consequence node))))
     (when (if-statement-alternative node)
-      (push (if-statement-alternative node) base))
+      (setf base (append base (list (if-statement-alternative node)))))
     base))
 
 (defmethod location:span-for ((node if-statement))
