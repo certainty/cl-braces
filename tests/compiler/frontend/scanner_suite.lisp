@@ -36,21 +36,19 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as "12" token:@INTEGER :with-value 12)
   (assert-scans-as "0" token:@INTEGER :with-value 0))
 
-(define-test scan-boolean-literal ()
-  "Scans the boolean literals"
-  (assert-scans-as "true" token:@TRUE)
-  (assert-scans-as "false" token:@FALSE))
-
 (define-test location-tracking ()
   "Scan multiple tokens and track the location correctly for each"
   (let* ((s (scanner:open-scanner (format nil "   3~%4   5")))
          (t1 (scanner:next-token s))
+         (semi (scanner:next-token s)) ;injected by scanner
          (t2 (scanner:next-token s))
          (t3 (scanner:next-token s)))
 
     (assert-equal 1 (location:line (token:location t1)))
     (assert-equal 4 (location:column (token:location t1)))
     (assert-equal 3 (location:offset (token:location t1)))
+
+    (assert-eql token:@SEMICOLON (token:class semi))
 
     (assert-equal 2 (location:line (token:location t2)))
     (assert-equal 1 (location:column (token:location t2)))
@@ -62,8 +60,21 @@ where the car is the expected token class and the cadr is a keyword argument :wi
 
 (define-test scan-unary-ops ()
   "Scan unary operators"
+  (assert-scans-as "--"token:@MINUS_MINUS)
+  (assert-scans-as "++"token:@PLUS_PLUS)
   (assert-scan-all-as "+ -" token:@PLUS token:@MINUS)
   (assert-scan-all-as "+3" token:@PLUS token:@INTEGER))
+
+(define-test scan-binary-ops ()
+  "Scan binary operators"
+  (assert-scans-as "+" token:@PLUS)
+  (assert-scans-as "-" token:@MINUS)
+  (assert-scans-as "*" token:@STAR)
+  (assert-scans-as "/" token:@SLASH)
+  (assert-scans-as "<" token:@LT)
+  (assert-scans-as "<=" token:@LE)
+  (assert-scans-as ">" token:@GT)
+  (assert-scans-as ">=" token:@GE))
 
 (define-test scan-colon-equal ()
   "Scan the colon equal operator"
@@ -73,13 +84,15 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   "Scan identifiers"
   (assert-scans-as "foobar" token:@IDENTIFIER :with-value "foobar")
   (assert-scans-as "someVariable" token:@IDENTIFIER :with-value "someVariable")
-  (assert-scans-as "some-function" token:@IDENTIFIER :with-value "some-function"))
+  (assert-scans-as "some_function" token:@IDENTIFIER :with-value "some_function"))
 
 (define-test scan-punctuation ()
   "Scan various punctuation tokens"
   (assert-scans-as " ;" token:@SEMICOLON)
   (assert-scans-as " ( " token:@LPAREN)
   (assert-scans-as ") " token:@RPAREN)
+  (assert-scans-as "[" token:@LBRACKET)
+  (assert-scans-as "]" token:@RBRACKET)
   (assert-scans-as "{" token:@LBRACE)
   (assert-scans-as "}" token:@RBRACE))
 
@@ -87,6 +100,12 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   "Scan various key words"
   (assert-scans-as "if" token:@IF)
   (assert-scans-as "iffy" token:@IDENTIFIER :with-value "iffy")
-
   (assert-scans-as "else" token:@ELSE)
-  (assert-scans-as "welser" token:@IDENTIFIER :with-value "welser"))
+  (assert-scans-as "welser" token:@IDENTIFIER :with-value "welser")
+  (assert-scans-as "break" token:@BREAK)
+  (assert-scans-as "breaker" token:@IDENTIFIER :with-value "breaker")
+  (assert-scans-as "continue" token:@CONTINUE)
+  (assert-scans-as "discontinued" token:@IDENTIFIER :with-value "discontinued")
+
+  (assert-scans-as "fallthrough" token:@FALLTHROUGH)
+  (assert-scans-as "afallthroughb" token:@IDENTIFIER :with-value "afallthroughb"))
