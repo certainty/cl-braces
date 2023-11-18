@@ -87,6 +87,24 @@
     :type expression))
   (:documentation "A statement that is an expression."))
 
+(defclass if-statement (statement)
+  ((condition
+    :reader if-statement-condition
+    :initarg :condition
+    :initform (error "must provide condition")
+    :type expression)
+   (consequence
+    :reader if-statement-consequence
+    :initarg :consequence
+    :initform (error "must provide then-block")
+    :type block)
+   (alternative
+    :reader if-statement-alternative
+    :initarg :alternative
+    :initform nil
+    :type (or null block)))
+  (:documentation "A statement that is an expression."))
+
 (defclass declaration (statement) ())
 
 (defclass bad-declaration (declaration)
@@ -285,3 +303,8 @@
 
 (defmethod children ((node block))
   (block-statements node))
+
+(defmethod children ((node if-statement))
+  (list (if-statement-condition node)
+        (if-statement-consequence node)
+        (if-statement-alternative node)))

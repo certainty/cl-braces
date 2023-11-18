@@ -32,6 +32,7 @@
 
    :statement
    :bad-statement
+   :if-statement
    :expression-statement
    :expression-statement-expression
 

@@ -110,16 +110,18 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
      (t ,@body)))
 
 (defun synchronize (state)
+
   (with-slots (cur-token) state
     (loop
       (cond
-        ((eofp state) (return))
+        ((eofp state)
+         (return-from synchronize))
         ((token:class= cur-token token:@SEMICOLON)
          (advance! state)
-         (return))
-        ((token:class cur-token token:@RBRACE)
+         (return-from synchronize))
+        ((token:class= cur-token token:@RBRACE)
          (advance! state)
-         (return))
+         (return-from synchronize))
         (t (advance! state))))))
 
 ;; This is the main driver of the parsing process
@@ -154,6 +156,7 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 (defun parse-statement (state)
   (guard-parse state
     (or (parse-block state)
+        (parse-if-statement state)
         (parse-expression-statement state))))
 
 (defun parse-block (state)
@@ -161,6 +164,24 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
     (when (match-any state token:@LBRACE)
       (let ((stmts (loop until (or (eofp state) (match-any state token:@RBRACE)) collect (parse-declaration state))))
         (accept state 'ast:block :statements stmts)))))
+
+(defun parse-if-statement (state)
+  (guard-parse state
+    (when-token state token:@IF
+      (consume! state token:@IF "Expected 'if'")
+      ;; parse conditional expression
+      (let ((conditional (parse-expression state)))
+        (unless conditional
+          (signal-parse-error state "Expected expression in if"))
+        (let ((consequence (parse-block state)))
+          (unless consequence
+            (signal-parse-error state "Expected block after if"))
+          (unless (match-any state token:@ELSE)
+            (return-from parse-if-statement (accept state 'ast:if-statement :condition conditional :consequence consequence)))
+          (let ((alternative (parse-block state)))
+            (unless alternative
+              (signal-parse-error state "Expected block after else"))
+            (accept state 'ast:if-statement :condition conditional :consequence consequence :alternative alternative)))))))
 
 (-> parse-expression-statement (state) (or null ast:node))
 (defun parse-expression-statement (state)
@@ -189,6 +210,10 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
      token:@PLUS   (cons +precedence-term+ +associativity-left+)
      token:@SLASH  (cons +precedence-factor+ +associativity-left+)
      token:@STAR   (cons +precedence-factor+ +associativity-left+)
+     token:@LT     (cons +precedence-term+ +associativity-left+)
+     token:@LE     (cons +precedence-term+ +associativity-left+)
+     token:@GT     (cons +precedence-term+ +associativity-left+)
+     token:@GE     (cons +precedence-term+ +associativity-left+)
      token:@LPAREN (cons +precedence-none+ +associativity-none+))
   :test #'equalp)
 
@@ -256,7 +281,18 @@ Example:
 (defun parse-literal (state)
   "Recognizes a literal expression"
   (guard-parse state
-    (or (parse-number-literal state))))
+    (or
+     (parse-boolean-literal state)
+     (parse-number-literal state))))
+
+(-> parse-boolean-literal (state) (or null ast:literal))
+(defun parse-boolean-literal (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (let ((token cur-token))
+        (when (or (token:class= token token:@TRUE) (token:class= token token:@FALSE))
+          (advance! state)
+          (accept state 'ast:literal :token token))))))
 
 (-> parse-number-literal (state) (or null ast:literal))
 (defun parse-number-literal (state)

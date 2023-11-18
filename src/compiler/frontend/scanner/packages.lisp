@@ -60,4 +60,5 @@
    :call-with-scanner
    :with-input
    :next-token
+   :fail-fast!
    :state))

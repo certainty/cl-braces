@@ -75,6 +75,14 @@
       (incf indentation-level)
       (terpri stream))))
 
+(defmethod enter ((printer ast-printer) (node ast:if-statement))
+  (with-slots (stream print-spans-p indentation-level) printer
+    (format stream "~A~A" (connective indentation-level) "if-statement")
+    (when print-spans-p
+      (format-span (location:span-for node) stream))
+    (incf indentation-level)
+    (terpri stream)))
+
 (defmethod leave ((printer ast-printer) (node ast:block))
   (with-slots (indentation-level) printer
     (decf indentation-level)))
@@ -135,8 +143,8 @@
     (decf indentation-level)))
 
 (defmethod enter ((printer ast-printer) (node bad-declaration))
-  (with-slots (stream print-spans-p) printer
-    (format stream "~A~A" (indent printer) "<bad-declaration>")
+  (with-slots (stream print-spans-p indentation-level) printer
+    (format stream "~A~A" (connective indentation-level) "<bad-declaration>")
     (when print-spans-p
       (format-span (location:span-for node) stream))
     (terpri stream)))
