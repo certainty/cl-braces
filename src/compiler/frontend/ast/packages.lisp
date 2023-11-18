@@ -35,6 +35,7 @@
 
    :statement
    :bad-statement
+   :empty-statement
    :if-statement
    :expression-statement
    :expression-statement-expression

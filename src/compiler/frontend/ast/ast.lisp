@@ -63,6 +63,17 @@
                    :from location
                    :to location)))
 
+(defclass empty-statement (statement) ())
+
+(defmethod children ((node empty-statement))
+  nil)
+
+(defmethod location:span-for ((node empty-statement))
+  (with-slots (location) node
+    (make-instance 'span
+                   :from location
+                   :to location)))
+
 (defclass statement-list (statement)
   ((statements
     :reader statement-list-statements
@@ -102,7 +113,7 @@
     :reader if-statement-init
     :initarg :init
     :initform nil
-    :type (or null simple-statement))
+    :type (or empty-statement simple-statement))
 
    (condition
     :reader if-statement-condition
@@ -124,9 +135,13 @@
   (:documentation "A statement that is an expression."))
 
 (defmethod children ((node if-statement))
-  (list (if-statement-condition node)
-        (if-statement-consequence node)
-        (if-statement-alternative node)))
+  (let ((base (list
+               (if-statement-init node)
+               (if-statement-condition node)
+               (if-statement-consequence node))))
+    (when (if-statement-alternative node)
+      (push (if-statement-alternative node) base))
+    base))
 
 (defmethod location:span-for ((node if-statement))
   (with-slots (condition consequence alternative) node

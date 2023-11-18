@@ -233,7 +233,7 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
               ;; it was a condition, so we just use it
               (progn
                 (setf condition init)
-                (setf init nil)))
+                (setf init (make-instance 'ast:empty-statement :location (token:location cur-token)))))
 
           (unless condition (signal-parse-error state "Expected expression"))
           (let ((consequence (parse-block state)))

@@ -20,7 +20,7 @@
   "Prints the give `AST' to  `STREAM' in a human readable format."
   (let ((printer (make-instance 'ast-printer :stream stream :print-spans-p print-spans-p)))
     (with-preorder-traversal
-        (walk printer ast))))
+      (walk printer ast))))
 
 (defmethod development:debug-print ((obj ast:node))
   (print-ast obj :stream *debug-io* :print-spans-p nil))
@@ -52,6 +52,8 @@
 
 (defmethod leave ((printer ast-printer) (node node))
   nil)
+
+;; add sepcialization for nil using eql specializer
 
 (defmethod enter ((printer ast-printer) (node program))
   (with-slots (stream print-spans-p indentation-level) printer
@@ -86,6 +88,13 @@
 (defmethod leave ((printer ast-printer) (node ast:block))
   (with-slots (indentation-level) printer
     (decf indentation-level)))
+
+(defmethod enter ((printer ast-printer) (node empty-statement))
+  (with-slots (stream print-spans-p indentation-level) printer
+    (format stream "~A~A" (connective indentation-level) "empty-statement")
+    (when print-spans-p
+      (format-span (location:span-for node) stream))
+    (terpri stream)))
 
 ;; specific implementations
 
