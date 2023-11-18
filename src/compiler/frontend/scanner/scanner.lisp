@@ -38,9 +38,6 @@
 ;;;; - Utility functions that are used by the scanner functions
 
 
-;; TODO: do we really need this here? Couldn't the main parse api just accept an argument?
-(defparameter *fail-fast* nil "If true, the scanner will enter the debugger when an error is encountered")
-
 ;;; =============================================================
 ;;; Objects required to represent the scanner state and errors
 ;;; =============================================================
@@ -72,6 +69,13 @@
     :initform nil
     :type (or null token:token)
     :documentation "The preview token that was scanned. This is required to correctly inject semicolons when necessary.")
+
+   (fail-fast
+    :initarg :fail-fast
+    :initform nil
+    :type boolean
+    :documentation "If true then the scanner will signal a `scan-error' condition when it encounters an illegal token.
+                     If false then the scanner will try to recover from an illegal token by skipping over it and continuing to scan.")
 
    (token-offset
     :initarg :token-offset
@@ -125,21 +129,23 @@
 ;;; Main API functions
 ;;; ===================
 
-(-> call-with-scanner (t function &rest args) *)
-(defun call-with-scanner (input-designator function &rest args)
+(-> call-with-scanner (t (function (state) *) &key (:fail-fast boolean))  *)
+(defun call-with-scanner (input-designator function &key (fail-fast nil))
   "Calls the given `function' with a new `scanner' that is initialized with the input stream of the `input-designator'.
+   If `fail-fast' is true then the scanner will signal a `scan-error' condition when it encounters an illegal token.
    The scanner makes sure that the input stream is closed correctly on error or when the scan has finished.
    It uses `call-with-input' which inturn ensures that.
   "
   (call-with-input input-designator
                    (lambda (input)
-                     (let ((state (make-instance 'state :input input)))
-                       (apply function state args)))))
+                     (let ((state (make-instance 'state :input input :fail-fast fail-fast)))
+                       (funcall function state)))))
 
-(defun open-scanner (input-designator)
+(defun open-scanner (input-designator &key (fail-fast nil))
   "Opens a new scanner that is initialized with the input stream of the `input-designator'.
+   If `fail-fast' is true then the scanner will signal a `scan-error' condition when it encounters an illegal token.
    Returns a fresh instance of `scanner'."
-  (make-instance 'state :input (open-input input-designator)))
+  (make-instance 'state :input (open-input input-designator) :fail-fast fail-fast))
 
 (-> next-token (state) token:token)
 (defun next-token (state)
@@ -163,13 +169,14 @@
         (otherwise (print token))))))
    ```
   "
-  (handler-bind
-      ((scan-error (lambda (e)
-                     (if *fail-fast*
-                         (invoke-debugger e)
-                         (when (find-restart 'continue)
-                           (invoke-restart 'continue))))))
-    (%next-token state)))
+  (with-slots (fail-fast) state
+    (handler-bind
+        ((scan-error (lambda (e)
+                       (if fail-fast
+                           (invoke-debugger e)
+                           (when (find-restart 'continue)
+                             (invoke-restart 'continue))))))
+      (%next-token state))))
 
 (-> %next-token (state) token:token)
 (defun %next-token (state)
