@@ -30,6 +30,14 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   "Scan unknown characters as illegal tokens"
   (assert-scans-as "#unknown#" token:@ILLEGAL))
 
+(define-test scan-inject-semicolon ()
+  "Scan intertoken space and inject semicolon if required"
+  (assert-scan-all-as (format nil "x := 3~% y") token:@IDENTIFIER token:@COLON_EQUAL token:@INTEGER token:@SEMICOLON token:@IDENTIFIER)
+  (assert-scan-all-as (format nil "x~% y") token:@IDENTIFIER token:@SEMICOLON token:@IDENTIFIER)
+  (assert-scan-all-as (format nil "break~% y") token:@BREAK token:@SEMICOLON token:@IDENTIFIER)
+  (assert-scan-all-as (format nil "continue~% y") token:@CONTINUE token:@SEMICOLON token:@IDENTIFIER)
+  (assert-scan-all-as (format nil "fallthrough~% y") token:@FALLTHROUGH token:@SEMICOLON token:@IDENTIFIER))
+
 (define-test scan-integer ()
   "Scan an integer literal"
   (assert-scans-as "1234"  token:@INTEGER :with-value 1234)
