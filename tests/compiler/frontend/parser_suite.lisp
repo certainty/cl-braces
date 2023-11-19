@@ -97,14 +97,14 @@
     (declare (ignore ast))
     (assert-false had-errors)))
 
-;; (define-test pares-if-else-conditional ()
-;;   "Parse simple if conditional with else"
-;;   (multiple-value-bind (ast had-errors) (parser:parse "if true { 1 } else { 2 }")
-;;     (declare (ignore ast))
-;;     (assert-false had-errors)))
+(define-test pares-if-else-conditional ()
+  "Parse simple if conditional with else"
+  (multiple-value-bind (ast had-errors) (parser:parse "if x { 1 } else { 2 }")
+    (declare (ignore ast))
+    (assert-false had-errors)))
 
-;; (define-test parse-if-with-short-statement ()
-;;   "Parse if conditional with short statement"
-;;   (multiple-value-bind (ast had-errors) (parser:parse " if x := 10; x < 20 { x }")
-;;     (declare (ignore ast))
-;;     (assert-false had-errors)))
+(define-test parse-if-with-short-statement ()
+  "Parse if conditional with short statement"
+  (multiple-value-bind (ast had-errors) (parser:parse " if x := 10; x < 20 { x }")
+    (declare (ignore ast))
+    (assert-false had-errors)))

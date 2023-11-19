@@ -223,38 +223,41 @@ When `is-required' is false, the block is optional and nil is returned when it i
 (-> parse-if-statement (state) (or null ast:if-statement))
 (defun parse-if-statement (state)
   (guard-parse state
-    (when-token state token:@IF
-      (advance! state)
-      ;; committed to parsing an if statement
-      (let* ((init (parse-simple-statement state))
-             (condition nil)
-             (consequence nil)
-             (alternative nil))
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@IF)
+        (advance! state)
+        ;; committed to parsing an if statement
+        (let* ((init (parse-simple-statement state))
+               (condition nil)
+               (consequence nil)
+               (alternative nil))
 
-        ;; [init] condition
-        (cond
-          ((and init (token:class= cur-token token:@SEMICOLON))
-           ;; it was an initform, so we consume the token and expect another expression for the condition
-           (advance! state)
-           (setf condition (expect state parse-expression "Expected condition expression")))
-          (init
-           (setf condition init)
-           (setf init (make-instance 'ast:empty-statement :location (token:location cur-token))))
-          (t (signal-parse-error state "Expected init or condition expression")))
+          (when (null init)
+            (signal-parse-error state "Expected init or condition statement"))
 
-        ;; consequence
-        (setf consequence (expect state parse-block "Expected consequence block"))
+          ;; [init] condition
+          (cond
+            ((and init (token:class= cur-token token:@SEMICOLON))
+             ;; it was an initform, so we consume the token and expect another expression for the condition
+             (advance! state)
+             (setf condition (expect state parse-expression "Expected condition expression")))
+            (t
+             (setf condition init)
+             (setf init (make-instance 'ast:empty-statement :location (token:location cur-token)))))
 
-        ;; [alternative]
-        (when (token:class= cur-token token:@ELSE)
-          (advance! state)
-          (setf alternative (if (token:class= cur-token token:@IF)
-                                (parse-if-statement state)
-                                (parse-block state)))
-          (unless alternative
-            (signal-parse-error state "Expected else block")))
+          ;; consequence
+          (setf consequence (expect state parse-block "Expected consequence block"))
 
-        (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative alternative)))))
+          ;; [alternative]
+          (when (token:class= cur-token token:@ELSE)
+            (advance! state)
+            (setf alternative (if (token:class= cur-token token:@IF)
+                                  (parse-if-statement state)
+                                  (parse-block state)))
+            (when (null alternative)
+              (signal-parse-error state "Expected else block")))
+
+          (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative alternative))))))
 
 ;;;
 ;;; SimpleStmt = EmptyStmt | ExpressionStmt | SendStmt | IncDecStmt | Assignment | ShortVarDecl .
@@ -410,9 +413,10 @@ Example:
 
 (defun parse-identifier (state)
   (guard-parse state
-    (when-token state token:@IDENTIFIER
-      (let ((tok (consume! state token:@IDENTIFIER "Expected identifier")))
-        (accept state 'ast:identifier :token tok)))))
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@IDENTIFIER)
+        (let ((tok (consume! state token:@IDENTIFIER "Expected identifier")))
+          (accept state 'ast:identifier :token tok))))))
 
 (defun parse-literal (state)
   "Recognizes a literal expression"
