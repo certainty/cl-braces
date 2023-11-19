@@ -141,7 +141,7 @@
 ;;; Ref: https://golang.org/ref/spec#Blocks
 ;;; Ref: https://golang.org/ref/spec#Statements
 
-(-> parse-block (state &optional boolean) (or null ast:node))
+(-> parse-block (state &optional boolean) (or null ast:block))
 (defun parse-block (state &optional (is-required nil))
   "Parses a block block and returns an `ast:block' node.
 
@@ -158,7 +158,7 @@ When `is-required' is false, the block is optional and nil is returned when it i
 ;;;
 ;;; StatementList = { Statement ";" } .
 ;;;
-(-> parse-statement-list (state) (or null list))
+(-> parse-statement-list (state) (or null ast:statement-list))
 (defun parse-statement-list (state)
   "Parse, a possibly empty, list of statements"
   (guard-parse state
@@ -179,7 +179,7 @@ When `is-required' is false, the block is optional and nil is returned when it i
 ;;;   FallthroughStmt | Block | IfStmt | SwitchStmt | SelectStmt | ForStmt |
 ;;;   DeferStmt .
 ;;;
-(-> parse-statement (state) (or null ast:node))
+(-> parse-statement (state) (or null ast:statement))
 (defun parse-statement (state)
   (restart-case (%parse-statement state)
     (synchronize ()
@@ -195,44 +195,67 @@ When `is-required' is false, the block is optional and nil is returned when it i
      (parse-simple-statement state)
      (parse-block state))))
 
+
+;; expect works like this
+;; (expect-let state
+;;   ((condition parse-block "expected block"))
+;;   ((condition parse-if-statement "expected if statement"))
+;;   ((condition parse-simple-statement "expected simple statement")))
+
+(defmacro expect (state parser error-message)
+  `(let ((result (,parser ,state)))
+     (unless result
+       (signal-parse-error ,state ,error-message))
+     result))
+
+(defmacro expect-let (state (&rest clauses) &body body)
+  (let ((bindings (mapcar
+                   (lambda (clause)
+                     (destructuring-bind (var parser error-message) clause
+                       `(,var (expect ,state ,parser ,error-message))))
+                   clauses)))
+    `(let* (,@bindings)
+       ,@body)))
+
 ;;;
 ;;; IfStmt = "if" [ SimpleStmt ";" ] Expression Block [ "else" ( IfStmt | Block ) ] .
 ;;;
-(-> parse-if-statement (state) (or null ast:node))
-;; TODO: clean-up this mess
+(-> parse-if-statement (state) (or null ast:if-statement))
 (defun parse-if-statement (state)
   (guard-parse state
-    (with-slots (cur-token) state
-      (when (token:class= cur-token token:@IF)
-        (consume! state token:@IF "Expected 'if'")
-        (let ((init (parse-simple-statement state))
-              (condition nil))
-          ;; at this point init may either already be the condition or a simple statement.
-          ;; the only way to finde out is to check whether the next token is a semicolon
-          ;; TODO: find an abstraction parse, bind the result and fail if the parser returns nil
-          (if (token:class= cur-token token:@SEMICOLON)
-              ;; it was an initform, so we consume the token and expect another expression for the condition
-              (progn
-                (consume! state token:@SEMICOLON "Expected ';' after init form")
-                (setf condition (parse-expression state)))
-              ;; it was a condition, so we just use it
-              (progn
-                (setf condition init)
-                (setf init (make-instance 'ast:empty-statement :location (token:location cur-token)))))
-          (unless condition (signal-parse-error state "Expected expression"))
-          (let ((consequence (parse-block state)))
-            (unless consequence
-              (signal-parse-error state "Expected block"))
-            (unless (token:class= cur-token token:@ELSE)
-              (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative nil))
-            (advance! state)
-            (let ((alternative
-                    (if (token:class= cur-token token:@IF)
-                        (parse-if-statement state)
-                        (parse-block state))))
-              (unless alternative
-                (signal-parse-error state "Expected block or if statement"))
-              (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative alternative))))))))
+    (when-token state token:@IF
+      (advance! state)
+      ;; committed to parsing an if statement
+      (let* ((init (parse-simple-statement state))
+             (condition nil)
+             (consequence nil)
+             (alternative nil))
+
+        ;; [init] condition
+        (cond
+          ((and init (token:class= cur-token token:@SEMICOLON))
+           ;; it was an initform, so we consume the token and expect another expression for the condition
+           (advance! state)
+           (setf condition (expect state parse-expression "Expected condition expression")))
+          (init
+           (setf condition init)
+           (setf init (make-instance 'ast:empty-statement :location (token:location cur-token))))
+          (t (signal-parse-error state "Expected init or condition expression")))
+
+        ;; consequence
+        (setf consequence (expect state parse-block "Expected consequence block"))
+
+        ;; [alternative]
+        (when (token:class= cur-token token:@ELSE)
+          (advance! state)
+          (setf alternative (if (token:class= cur-token token:@IF)
+                                (parse-if-statement state)
+                                (parse-block state)))
+          (unless alternative
+            (signal-parse-error state "Expected else block")))
+
+        (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative alternative)))))
+
 ;;;
 ;;; SimpleStmt = EmptyStmt | ExpressionStmt | SendStmt | IncDecStmt | Assignment | ShortVarDecl .
 ;;;
@@ -248,7 +271,7 @@ When `is-required' is false, the block is optional and nil is returned when it i
 ;;;
 ;;; ExpressionStmt = Expression .
 ;;;
-(-> parse-expression-statement (state) (or null ast:node))
+(-> parse-expression-statement (state) (or null ast:expression-statement))
 (defun parse-expression-statement (state)
   (guard-parse state
     (a:when-let ((expr (parse-expression state)))

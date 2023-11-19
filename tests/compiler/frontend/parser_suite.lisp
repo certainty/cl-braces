@@ -91,11 +91,11 @@
     (declare (ignore ast))
     (assert-false had-errors)))
 
-;; (define-test parse-if-conditional ()
-;;   "Parse simple if conditional without else"
-;;   (multiple-value-bind (ast had-errors) (parser:parse "if true { 1 } ")
-;;     (declare (ignore ast))
-;;     (assert-false had-errors)))
+(define-test parse-if-conditional ()
+  "Parse simple if conditional without else"
+  (multiple-value-bind (ast had-errors) (parser:parse "if 3 { 1 } ")
+    (declare (ignore ast))
+    (assert-false had-errors)))
 
 ;; (define-test pares-if-else-conditional ()
 ;;   "Parse simple if conditional with else"
