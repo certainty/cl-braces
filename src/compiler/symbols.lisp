@@ -75,6 +75,11 @@
   ""
   (eql :type (denotation symbol)))
 
+(-> place-holder-p (<symbol>) boolean)
+(defun place-holder-p (sym)
+  (and (denotes-variable-p sym)
+       (string= (name sym) "_")))
+
 (-> add-symbol (symbol-table string denotation-t &key (:scope scope-t) (:location (or null location:source-location))) string)
 (defun add-symbol (table name denotation &key (scope 0) (location nil))
   "Add the symbol with the given `NAME' and `DENOTATION' to the `TABLE' and return its `id'"

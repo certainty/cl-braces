@@ -81,9 +81,8 @@
   (with-slots (chunk-builder register-allocator operand-stack) generator
     (let ((const-address (add-constant chunk-builder (value:box (ast:literal-value node))))
           (register (next-register register-allocator)))
-      (prog1 register
-        (push register operand-stack)
-        (add-instructions chunk-builder (bytecode:instr 'bytecode:loada register const-address))))))
+      (push register operand-stack)
+      (add-instructions chunk-builder (bytecode:instr 'bytecode:loada register const-address)))))
 
 (defmethod ast:leave ((generator bytecode-generator) (node ast:unary-expression))
   (with-slots (operand-stack chunk-builder) generator
@@ -106,40 +105,48 @@
       (assert right)
       (with-slots (register-allocator chunk-builder) generator
         (let ((dst (next-register register-allocator)))
-          (prog1 dst
-            (push dst operand-stack)
-            (cond
-              ((token:class= op token:@PLUS)
-               (add-instructions chunk-builder (bytecode:instr 'bytecode:add dst left right)))
-              ((token:class= op token:@MINUS)
-               (add-instructions chunk-builder (bytecode:instr 'bytecode:sub dst left right)))
-              ((token:class= op token:@STAR)
-               (add-instructions chunk-builder (bytecode:instr 'bytecode:mul dst left right)))
-              ((token:class= op token:@SLASH)
-               (add-instructions chunk-builder (bytecode:instr 'bytecode:div dst left right)))
-              (t (todo! "binary operator")))))))))
+          (push dst operand-stack)
+          (cond
+            ((token:class= op token:@PLUS)
+             (add-instructions chunk-builder (bytecode:instr 'bytecode:add dst left right)))
+            ((token:class= op token:@MINUS)
+             (add-instructions chunk-builder (bytecode:instr 'bytecode:sub dst left right)))
+            ((token:class= op token:@STAR)
+             (add-instructions chunk-builder (bytecode:instr 'bytecode:mul dst left right)))
+            ((token:class= op token:@SLASH)
+             (add-instructions chunk-builder (bytecode:instr 'bytecode:div dst left right)))
+            (t (todo! "binary operator"))))))))
+
+
+(defmethod pop-n ((generator bytecode-generator) (n integer))
+  (with-slots (operand-stack) generator
+    (loop repeat n collect (pop operand-stack))))
 
 ;; TODO: we need to support multiple values
+;; the operand stack has all the value registers on top
+;; and then all the variable registers
 (defmethod ast:leave ((generator bytecode-generator) (node ast:short-variable-declaration))
   (with-slots (operand-stack chunk-builder) generator
-    (let* ((initializer (pop operand-stack))
-           (variable (ast:short-variable-declaration-identifiers node))
-           (variable-name (ast:identifier-name variable)))
-      (assert initializer)
-      ;; pop the register of the variable-name or nil
-      (pop operand-stack)
-      (let ((var-id (find-scoped-variable generator variable-name)))
-        (assert var-id)
+    (let* ((identifier-list (ast:short-variable-declaration-identifiers node))
+           (number-of-variables (length (ast:identifier-list-identifiers identifier-list)))
+           (value-regs  (pop-n generator number-of-variables))
+           (variable-regs (reverse (pop-n generator number-of-variables))))
 
-        (let ((var-reg (create-register-for generator var-id)))
-          (push var-reg operand-stack)
-          (add-instructions chunk-builder (bytecode:instr 'bytecode:mov var-reg initializer)))))))
+      (loop for identifier in (ast:identifier-list-identifiers identifier-list)
+            for val in value-regs
+            for var in variable-regs
+            for var-id = (find-scoped-variable generator (ast:identifier-name identifier))
+            do
+               (assert var-id)
+               (let ((var-reg (or var (create-register-for generator var-id))))
+                 (push var-reg operand-stack)
+                 (add-instructions chunk-builder (bytecode:instr 'bytecode:mov var-reg val)))))))
 
-(defmethod ast:enter ((generator bytecode-generator) (node ast:variable))
+(defmethod ast:enter ((generator bytecode-generator) (node ast:identifier))
   (with-slots (operand-stack) generator
-    (let* ((variable-name (token:lexeme (ast:variable-identifier node)))
-           (variable-id (find-scoped-variable generator variable-name))
-           (variable-reg (find-register-for generator variable-id)))
-      ;; when we're in the context of a declaration, the definition is allowed to be null
-      ;; should we set the generator state to indicate this and raise and error otherwise?
-      (push variable-reg operand-stack))))
+    (let ((name (ast:identifier-name node)))
+      (a:when-let ((variable-id (find-scoped-variable generator name)))
+        (let ((variable-reg (find-register-for generator variable-id)))
+          ;; when we're in the context of a declaration, the definition is allowed to be null
+          ;; should we set the generator state to indicate this and raise and error otherwise?
+          (push variable-reg operand-stack))))))

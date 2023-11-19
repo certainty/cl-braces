@@ -3,19 +3,25 @@
 (defun compile-and-run (code)
   (value:unbox (machine:execute (compiler:compile-this code))))
 
-;; (define-test simple-variables ()
-;;   (assert-equal
-;;    10
-;;    (compile-and-run
-;;     "x := 3
-;;      y := 3
-;;      x + y + 4")))
+(define-test simple-variables ()
+  (assert-equal
+   7
+   (compile-and-run
+    "x := 3
+     y := 4
+     x + y")))
+
+(define-test statement-list ()
+  (assert-equal
+   7
+   (compile-and-run
+    "x := 3; y := 4; x + y")))
 
 ;; (define-test conditional-if ()
 ;;   (assert-equal
 ;;    10
 ;;    (compile-and-run "
-;;    if true  {
+;;    if 10  {
 ;;      10
 ;;    } else {
 ;;      20

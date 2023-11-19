@@ -23,6 +23,7 @@
    #:denotes-variable-p
    #:denotes-function-p
    #:denotes-type-p
+   #:place-holder-p
    #:add-symbol
    #:scope-t
 

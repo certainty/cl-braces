@@ -55,15 +55,15 @@
   (with-slots (current-scope) resolver
     (decf current-scope)))
 
-;; we need to handle all the identifiers
 (defmethod ast:enter ((resolver resolver) (node ast:short-variable-declaration))
   (with-slots (symbol-table current-scope errors) resolver
-    (let* ((variables   (ast:short-variable-declaration-identifiers node)))
-      (dolist (variable variables)
+    (let* ((variables (ast:short-variable-declaration-identifiers node)))
+      (dolist (variable (ast:identifier-list-identifiers variables))
         (let ((identifier (ast:identifier-name variable)))
-          (if (symbols:find-by-name symbol-table identifier :denotation #'symbols:denotes-variable-p :scope<= current-scope)
-              (push (make-condition 'variable-already-defined :symbol identifier :location (ast:location variable)) errors)
-              (symbols:add-symbol symbol-table identifier :variable :scope current-scope :location (ast:location variable))))))))
+          (a:if-let ((existing (symbols:find-by-name symbol-table identifier :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
+            (unless (symbols:place-holder-p existing)
+              (push (make-condition 'variable-already-defined :symbol identifier :location (ast:location variable)) errors))
+            (symbols:add-symbol symbol-table identifier :variable :scope current-scope :location (ast:location variable))))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:identifier))
   (with-slots (current-scope errors symbol-table) resolver

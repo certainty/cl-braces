@@ -3,7 +3,7 @@
 (defpackage :cl-braces.compiler.middleend.semantic.symbol-resolver
   (:nicknames :semantic.symbol-resolver :symbol-resolver)
   (:use :cl :cl-braces.development)
+  (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
-  (:import-from :alexandria :when-let)
   (:export
    #:resolve-symbols))
