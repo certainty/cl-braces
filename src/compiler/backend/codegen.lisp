@@ -67,8 +67,7 @@
 
 (defun generate-chunk (ast symbol-table)
   (let ((generator (make-bytecode-generator symbol-table)))
-    (ast:with-preorder-traversal
-      (ast:walk generator ast))
+    (ast:walk generator ast)
     (with-slots (chunk-builder register-allocator) generator
       (chunk-result chunk-builder (registers-used register-allocator)))))
 

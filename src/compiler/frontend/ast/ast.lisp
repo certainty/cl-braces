@@ -9,6 +9,13 @@
     :documentation "The location of the start of the node in the source code."))
   (:documentation "The base class for all AST nodes in the highlevel AST."))
 
+;;; ===========================================================================
+;;; AST traversal via the visitor pattern
+;;; ===========================================================================
+
+(defgeneric walk (visitor node)
+  (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'. The tree is traversed inorder."))
+
 (defgeneric children (node)
   (:documentation "Returns a list of the children of `NODE'"))
 
@@ -18,6 +25,21 @@
 (defgeneric leave (visitor node)
   (:documentation "Dispatches to the appropriate leave method for the node and visitor"))
 
+(defun stop-walking-p (visitor-result)
+  (and visitor-result (eq visitor-result :stop)))
+
+(defun continue-walking-p (visitor-result)
+  (not (stop-walking-p visitor-result)))
+
+(defmethod walk (visitor (node node))
+  (when (continue-walking-p (enter visitor node))
+    (dolist (child (children node))
+      (walk visitor child))
+    (leave visitor node)))
+
+;;; ===========================================================================
+;;; Program
+;;; ===========================================================================
 
 (defclass program (node)
   ((declarations
@@ -397,43 +419,3 @@
                      :from (token:location first-identifier)
                      :to (token:location last-identifier)))))
 
-;;; ===========================================================================
-;;; AST traversal via the visitor pattern
-;;; ===========================================================================
-
-(deftype traversal () '(member inorder postorder))
-
-(declaim (type traversal *traversal*))
-(defparameter *traversal* 'inorder "Specifies the way the AST will be traversed. It's a dynamic variable so you can even change the traversal strategy while we traverse")
-
-(defmacro with-preorder-traversal (&body body)
-  "Executes `BODY' with the traversal strategy set to preorder. This is really only useful when body is a call to `walk'"
-  `(let ((*traversal* 'inorder))
-     ,@body))
-
-(defmacro with-postorder-traversal (&body body)
-  "Executes `BODY' with the traversal strategy set to postorder. This is really only useful when body is a call to `walk'"
-  `(let ((*traversal* 'postorder))
-     ,@body))
-
-(defgeneric walk (visitor node)
-  (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'. The order in which the nodes are visited is determined by the value of `*traversal*'"))
-
-(defun stop-walking-p (visitor-result)
-  (and visitor-result (eq visitor-result :stop)))
-
-(defun continue-walking-p (visitor-result)
-  (not (stop-walking-p visitor-result)))
-
-(defmethod walk (visitor (node node))
-  (case *traversal*
-    (inorder
-     (when (continue-walking-p (enter visitor node))
-       (dolist (child (children node))
-         (walk visitor child))
-       (leave visitor node)))
-    (postorder
-     (dolist (child (children node))
-       (walk visitor child))
-     (enter visitor node)
-     (leave visitor node))))

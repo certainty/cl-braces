@@ -43,18 +43,23 @@
 ;;; =============================================================
 
 (define-condition scan-error (error)
-  ((message :initarg :message :reader scan-error-message)
-   (location :initarg :location :reader scan-error-location))
+  ((message
+    :reader scan-error-message
+    :initarg :message )
+   (location
+    :reader scan-error-location
+    :initarg :location ))
   (:report (lambda (condition stream)
              (format stream "Illegal token at ~a" (scan-error-location condition)))))
 
 (defclass state ()
-  ((input :reader
-          state-input
-          :initarg :input
-          :initform (error "no input given")
-          :type source-input
-          :documentation "The input that the scanner reads from.")
+  ((input
+    :reader state-input
+    :initarg :input
+    :initform (error "no input given")
+    :type source-input
+    :documentation "The input that the scanner reads from.")
+
    (input-stream
     :initform nil
     :type (or null stream)
@@ -148,7 +153,7 @@
   (make-instance 'state :input (open-input input-designator) :fail-fast fail-fast))
 
 (defun fail-fast! (state &optional (should-fail-fast t))
-  "Returns true if the scanner is in fail-fast mode. In fail-fast mode the scanner will signal a `scan-error' condition when it encounters an illegal token."
+  "Sets the `fail-fast' slot of the `state' to `should-fail-fast'"
   (with-slots (fail-fast) state
     (setf fail-fast should-fail-fast)))
 
@@ -222,7 +227,7 @@
   (loop for (c1 c2) = (multiple-value-list (peek2 state)) until (null c1) do
     (cond
       ((inject-semicolon-p state c1)
-       (return-from scan-inter-token-space (accept state token:@SEMICOLON #'identity)))
+       (return-from scan-inter-token-space (accept state token:@SEMICOLON)))
       ((inter-token-space-p c1) (advance! state :skip-p t)) ; just skip over whitespace
       ((and (eql #\/ c1) (eql #\/ c2)) ; comments
        (advance! state :skip-p t)
@@ -270,7 +275,7 @@
         (let ((identifier (coerce lexeme 'string)))
           (a:if-let ((keyword (gethash identifier +keywords+)))
             (accept state keyword)
-            (accept state token:@IDENTIFIER #'identity)))))))
+            (accept state token:@IDENTIFIER)))))))
 
 (a:define-constant +keywords+
     ;; dictionary mapping keyword lexemes to their class

@@ -19,8 +19,7 @@
 (defun print-ast (ast &key (stream *standard-output*) (print-spans-p nil))
   "Prints the give `AST' to  `STREAM' in a human readable format."
   (let ((printer (make-instance 'ast-printer :stream stream :print-spans-p print-spans-p)))
-    (with-preorder-traversal
-      (walk printer ast))))
+    (walk printer ast)))
 
 (defmethod development:debug-print ((obj ast:node))
   (print-ast obj :stream *debug-io* :print-spans-p nil))

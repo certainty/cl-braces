@@ -34,3 +34,9 @@
 
 (defgeneric debug-print (obj)
   (:documentation "Prints a debug representation of OBJ to STREAM."))
+
+(deftype list-of (type)
+  `(or null (cons ,type ,type)))
+
+(deftype none-empty-list-of (type)
+  `(cons ,type ,type))

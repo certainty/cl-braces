@@ -10,7 +10,9 @@
    #:returning
    #:domap
    #:define-enum
-   #:debug-print))
+   #:debug-print
+   #:list-of
+   #:non-empty-list-of))
 
 (defpackage :cl-braces.tests.snapshots
   (:nicknames :cl-braces.tests.snapshots :snapshots)
