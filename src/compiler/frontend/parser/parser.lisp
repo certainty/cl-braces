@@ -63,7 +63,7 @@
 ;;; Main API for the parser
 ;;; ====================================================================================================
 
-(-> parse (scanner:input-designator &key (:fail-fast boolean)) (values (or null ast:node) boolean state))
+(-> parse (scanner:input-designator &key (:fail-fast boolean)) (values (or null ast:node) boolean state &optional))
 (defun parse (input-designator &key (fail-fast nil))
   "Parses the source code denoted by `input-designator' and returns 3 values
    1. the AST
@@ -72,13 +72,10 @@
 
    See `scanner:source-input' for the supported input designators
    When `fail-fast' is true, the parser will signal an error when an error is encountered, otherwise it will collect all errors and return them in the AST.
-"
-  (call-with-parser
-   #'%parse
-   input-designator
-   :fail-fast fail-fast))
+  "
+  (call-with-parser #'%parse input-designator :fail-fast fail-fast))
 
-(-> %parse (state) (values (or null ast:node) boolean state))
+(-> %parse (state) (values (or null ast:node) boolean state &optional))
 (defun %parse (state)
   (with-slots (fail-fast had-errors-p) state
     (handler-bind ((error-detail (lambda (c)
@@ -93,12 +90,12 @@
 
 (-> call-with-parser ((function (state) *) scanner:input-designator &key (:fail-fast boolean)) *)
 (defun call-with-parser (fn input-designator &key (fail-fast nil))
-  (scanner:call-with-scanner
-   (lambda (scanner)
-     (let ((state (make-instance 'state :scanner scanner :fail-fast fail-fast)))
-       (funcall fn state)))
-   input-designator
-   :fail-fast fail-fast))
+  (scanner:with (scanner input-designator :fail-fast fail-fast)
+    (let ((state (make-instance 'state :scanner scanner :fail-fast fail-fast)))
+      (funcall fn state))))
+
+(defmacro with ((state input-designator &key (fail-fast nil)) &body body)
+  `(call-with-parser (lambda (,state) ,@body) ,input-designator :fail-fast ,fail-fast))
 
 ;;; ====================================================================================================
 ;;; Utility functions to deal with various states of the parser

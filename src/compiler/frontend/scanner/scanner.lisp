@@ -147,6 +147,9 @@
        (funcall function state)))
    input-designator))
 
+(defmacro with ((state input-designator &key (fail-fast nil)) &body body)
+  `(call-with-scanner (lambda (,state) ,@body) ,input-designator :fail-fast ,fail-fast))
+
 (defun open-scanner (input-designator &key (fail-fast nil))
   "Opens a new scanner that is initialized with the input stream of the `input-designator'.
    If `fail-fast' is true then the scanner will signal a `scan-error' condition when it encounters an illegal token.

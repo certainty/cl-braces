@@ -61,6 +61,7 @@
    #:open-scanner
    #:close-scanner
    #:call-with-scanner
+   #:with
    #:with-input
    #:next-token
    #:fail-fast!

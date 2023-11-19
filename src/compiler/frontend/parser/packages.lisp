@@ -7,4 +7,5 @@
   (:import-from :serapeum :->)
   (:export
    #:parse
+   #:with
    #:parse-errors))

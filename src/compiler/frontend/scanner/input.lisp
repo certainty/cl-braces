@@ -68,8 +68,11 @@
 (defun call-with-input (fn input-designator)
   "Constructs a `source-input' from the given input designator and calls the provided `function' with that input.
 The `input' is closed automatically after the `function' has been called."
-
   (let ((input (open-input input-designator)))
     (unwind-protect
          (funcall fn input)
       (close-input input))))
+
+(defmacro with-input ((input input-designator) &body body)
+  "Constructs a `source-input' from the given input designator and binds the given variables to the input."
+  `(call-with-input (lambda (,input) ,@body) ,input-designator))
