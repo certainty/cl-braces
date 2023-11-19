@@ -179,7 +179,7 @@
     :reader block-statements
     :initarg :statements
     :initform (error "must provide statements")
-    :type list))
+    :type statement-list))
   (:documentation "A block of statements"))
 
 (defmethod children ((node block))

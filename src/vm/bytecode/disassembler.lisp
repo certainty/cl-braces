@@ -16,11 +16,11 @@
    PC: [LABEL] ENCODED-INSTRUCTION OPCODE OPERANDS [COMMENT] "
   (do-instructions (pc instr chunk)
     (format stream "~3a: " (column-pc pc))
-    (disass-instruction instr chunk :isa isa :stream stream)))
+    (disass-instruction pc instr chunk :isa isa :stream stream)))
 
-(defun disass-instruction (instr chunk &key (isa *current-isa*) (stream *standard-output*))
+(defun disass-instruction (pc instr chunk &key (isa *current-isa*) (stream *standard-output*))
   (format stream "~a ~8,a ~8,a ~15,a ~a~%"
-          (column-label instr isa chunk)
+          (column-label pc instr isa chunk)
           (column-encoded-instruction instr isa)
           (column-opcode instr isa)
           (column-operands instr isa)
@@ -32,10 +32,11 @@
 (defun column-pc (pc)
   (format nil "~3,'0X" pc))
 
-(defun column-label (instr isa ch)
+(defun column-label (pc instr isa ch)
   "Prints the label for the given instruction."
   (declare (ignore instr isa ch))
-  "")
+  (let ((blocklabels (chunk-blocklabels ch)))
+    (gethash pc blocklabels "")))
 
 (defun column-encoded-instruction (instr isa)
   "Return the instruction it its encoded form. It's opcode followed by operands"

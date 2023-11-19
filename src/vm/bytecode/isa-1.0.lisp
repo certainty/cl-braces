@@ -24,15 +24,18 @@
 
    ;; unary instructions #x40 - #x7f
    (#x40 neg   ((reg dst))                     "Negatate value in register $dst. The result is written directly to $dst.")
+   (#x41 jmp   ((addr dst))                    "Unconditionally jump to $dst")
 
    ;; binary instructions #x80 - #xbf
    (#x80 loada ((reg dst) (addr src))          "Loads the constant from $src into $dst")
-   (#x81 mov   ((reg dst) (reg src))            "Moves the value from $src to $dst")
+   (#x81 mov   ((reg dst) (reg src))           "Moves the value from $src to $dst")
+   (#x82 cmp   ((reg lhs) (reg rhs))           "Compares $lhs to $rhs and sets the flags accordingly.")
 
    ;; ternary instructions #xc0 - #xff
-   (#xC0 sub   ((reg dst)  (reg lhs) (reg rhs)) "Subtracts what is in $lhs from $rhs and stores the result in $dst.")
-   (#xC1 add   ((reg dst)  (reg lhs) (reg rhs)) "Add what is in $lhs to $rhs and stores the result in $dst.")
-   (#xC2 mul   ((reg dst)  (reg lhs) (reg rhs)) "Multiplies what is in $lhs by $rhs and stores the result in $dst.")
-   (#xC3 div   ((reg dst)  (reg lhs) (reg rhs)) "Divides what is in $lhs by $rhs and stores the result in $dst.")))
+   (#xC0 br    ((addr iftrue) (addr iffasle) (reg value)) "Branches to $iftrue when $value is true and to $iffalse otherwise")
+   (#xC3 sub   ((reg dst)     (reg lhs)      (reg rhs)) "Subtracts what is in $lhs from $rhs and stores the result in $dst.")
+   (#xC4 add   ((reg dst)     (reg lhs) (reg rhs)) "Add what is in $lhs to $rhs and stores the result in $dst.")
+   (#xC5 mul   ((reg dst)     (reg lhs) (reg rhs)) "Multiplies what is in $lhs by $rhs and stores the result in $dst.")
+   (#xC6 div   ((reg dst)     (reg lhs) (reg rhs)) "Divides what is in $lhs by $rhs and stores the result in $dst.")))
 
 (setf *current-isa* *isa-1.0*)

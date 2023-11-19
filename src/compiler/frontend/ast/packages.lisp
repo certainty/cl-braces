@@ -38,6 +38,10 @@
    #:bad-statement
    #:empty-statement
    #:if-statement
+   #:if-statement-init
+   #:if-statement-condition
+   #:if-statement-consequence
+   #:if-statement-alternative
    #:expression-statement
    #:expression-statement-expression
    #:statement-list

@@ -56,6 +56,9 @@
 
    #:loada
    #:mov
+   #:cmp
+   #:br
+   #:jmp
    #:noop
    #:halt
    #:add

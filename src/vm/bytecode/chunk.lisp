@@ -26,6 +26,7 @@
 
 (s:defconstructor chunk
   (constants constant-table)
+  (blocklabels hash-table)
   (code (vector instruction))
   (registers-used (integer 0 *)))
 

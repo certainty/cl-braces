@@ -13,7 +13,10 @@
    (operands
     :initform nil
     :type list
-    :documentation "The stack of operands we need to keep track of. This is filled when child nodes are processed and consumed when the parent nodes are generated"))
+    :documentation "The stack of operands we need to keep track of. This is filled when child nodes are processed and consumed when the parent nodes are generated")
+   (blocklabels
+    :initform (make-hash-table :test 'equal)
+    :type hash-table))
   (:documentation "Builds a chunk of bytecode"))
 
 (defun make-chunk-builder ()
@@ -31,12 +34,21 @@
   (with-slots (instructions) builder
     (vector-push-extend instruction instructions)
     (dolist (instr more-instructions)
-      (vector-push-extend instr instructions))))
+      (vector-push-extend instr instructions))
+    (1- (length instructions))))
+
+(defun add-label (builder prefix)
+  "Creates a label which points to the next instruction. Returns the address of the label"
+  (with-slots (blocklabels) builder
+    (s:lret ((label-name (format nil "~A_~A" prefix (gensym)))
+             (addr (length (instructions builder))))
+      (setf (gethash label-name blocklabels) addr))))
 
 (defun chunk-result (builder registers-used)
   "Return the chunk of bytecode. All constants will be deduplicated."
-  (with-slots (constants instructions) builder
+  (with-slots (constants instructions blocklabels) builder
     (bytecode:chunk
      (constants-result constants)
+     blocklabels
      instructions
      registers-used)))
