@@ -52,7 +52,7 @@
 
 (defun find-scoped-variable (generator name)
   (with-slots (current-scope variable-registers symbol-table) generator
-    (when-let ((var (symbols:closest-scope current-scope (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p))))
+    (a:when-let ((var (symbols:closest-scope current-scope (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p))))
       (symbols:id var))))
 
 (defun find-register-for (generator variable-id)
@@ -120,11 +120,12 @@
                (add-instructions chunk-builder (bytecode:instr 'bytecode:div dst left right)))
               (t (todo! "binary operator")))))))))
 
+;; TODO: we need to support multiple values
 (defmethod ast:leave ((generator bytecode-generator) (node ast:short-variable-declaration))
   (with-slots (operand-stack chunk-builder) generator
     (let* ((initializer (pop operand-stack))
-           (variable (ast:short-variable-declaration-variable node))
-           (variable-name (token:lexeme (ast:variable-identifier variable))))
+           (variable (ast:short-variable-declaration-identifiers node))
+           (variable-name (ast:identifier-name variable)))
       (assert initializer)
       ;; pop the register of the variable-name or nil
       (pop operand-stack)

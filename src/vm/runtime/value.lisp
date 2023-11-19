@@ -1,6 +1,6 @@
 (in-package :vm.value)
 
-(serapeum:defunion value
+(s:defunion value
   none ; the nil value
   (int (n integer))) ; numbers
 

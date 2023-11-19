@@ -5,4 +5,5 @@
   (:use :cl :cl-braces.development)
   (:import-from :serapeum :->)
   (:import-from :alexandria :when-let)
-  (:export :resolve-symbols))
+  (:export
+   #:resolve-symbols))

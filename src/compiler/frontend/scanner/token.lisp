@@ -12,7 +12,7 @@
 ;;; 5. Punctuation
 ;;; 6. Special (i.e. EOF, ILLEGAL)
 
-(serapeum:defunion token-class
+(s:defunion token-class
 
   ;; [Identifiers](https://golang.org/ref/spec#Identifiers)
   @IDENTIFIER

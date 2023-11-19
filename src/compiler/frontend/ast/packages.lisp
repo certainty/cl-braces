@@ -3,70 +3,71 @@
 (defpackage :cl-braces.compiler.frontend.ast
   (:nicknames :frontend.ast :ast)
   (:use :cl)
+  (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   :node
-   :location
-   :expression
-   :bad-expression
-   :literal
-   :literal-value
+   #:node
+   #:location
+   #:expression
+   #:bad-expression
+   #:literal
+   #:literal-value
 
-   :grouping-expression
-   :grouping-expression-expression
+   #:grouping-expression
+   #:grouping-expression-expression
 
-   :unary-expression
-   :unary-expression-operator
-   :unary-expression-operand
+   #:unary-expression
+   #:unary-expression-operator
+   #:unary-expression-operand
 
-   :binary-expression
-   :binary-expression-lhs
-   :binary-expression-operator
-   :binary-expression-rhs
+   #:binary-expression
+   #:binary-expression-lhs
+   #:binary-expression-operator
+   #:binary-expression-rhs
 
-   :expression-list
-   :expression-list-expressions
+   #:expression-list
+   #:expression-list-expressions
 
-   :declaration
-   :bad-declaration
-   :short-variable-declaration
-   :short-variable-declaration-initializer
-   :short-variable-declaration-variable
+   #:declaration
+   #:bad-declaration
+   #:short-variable-declaration
+   #:short-variable-declaration-expressions
+   #:short-variable-declaration-identifiers
 
-   :statement
-   :bad-statement
-   :empty-statement
-   :if-statement
-   :expression-statement
-   :expression-statement-expression
-   :statement-list
-   :statement-list-statements
+   #:statement
+   #:bad-statement
+   #:empty-statement
+   #:if-statement
+   #:expression-statement
+   #:expression-statement-expression
+   #:statement-list
+   #:statement-list-statements
 
-   :variable
-   :variable-identifier
+   #:variable
+   #:variable-identifier
 
-   :identifier
-   :identifier-token
-   :identifier-name
-   :identifier-list
-   :identifier-list-identifiers
+   #:identifier
+   #:identifier-token
+   #:identifier-name
+   #:identifier-list
+   #:identifier-list-identifiers
 
-   :block
-   :block-statements
+   #:block
+   #:block-statements
 
-   :program
-   :program-declarations
-   :make-program
+   #:program
+   #:program-declarations
+   #:make-program
 
-   :span
-   :span-from
-   :span-to
+   #:span
+   #:span-from
+   #:span-to
 
-   :walk
-   :enter
-   :leave
-   :with-preorder-traversal
-   :with-postorder-traversal
-   :*traversal*
-   :print-ast)
+   #:walk
+   #:enter
+   #:leave
+   #:with-preorder-traversal
+   #:with-postorder-traversal
+   #:*traversal*
+   #:print-ast)
   (:shadow :declaration :variable :block))

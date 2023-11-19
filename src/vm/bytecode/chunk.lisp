@@ -14,7 +14,7 @@
 (deftype operand-t () '(or register-t address-t))
 
 ;; A machine instruction as loaded and executed by the vm.
-(serapeum:defconstructor instruction
+(s:defconstructor instruction
   (opcode opcode-t)
   (operands (vector operand-t)))
 
@@ -24,12 +24,12 @@
 
 (deftype constant-table () '(vector value:value))
 
-(serapeum:defconstructor chunk
+(s:defconstructor chunk
   (constants constant-table)
   (code (vector instruction))
   (registers-used (integer 0 *)))
 
-(serapeum:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
+(s:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
   (let ((code (gensym)))
     `(let ((,code (chunk-code ,chunk)))
        (loop for ,pc from 0 below (length ,code)

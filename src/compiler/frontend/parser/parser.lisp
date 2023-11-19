@@ -182,7 +182,7 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
       (loop
         (when (eofp state)
           (return (accept state 'ast:statement-list :statements (nreverse stmts))))
-        (if-let ((stmt (parse-statement state)))
+        (a:if-let ((stmt (parse-statement state)))
           (progn
             (push stmt stmts)
             (match-any state token:@SEMICOLON))
@@ -267,7 +267,7 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 (-> parse-expression-statement (state) (or null ast:node))
 (defun parse-expression-statement (state)
   (guard-parse state
-    (when-let ((expr (parse-expression state)))
+    (a:when-let ((expr (parse-expression state)))
       (prog1 (accept state 'ast:expression-statement :expression expr)
         ;; optionally consume the semicolon
         (match-any state token:@SEMICOLON)))))
@@ -283,9 +283,9 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
   "Parse a short variable declaration of the form <variable> := <expression>"
   (guard-parse state
     (with-slots (cur-token next-token) state
-      (when-let ((identifiers (parse-identifier-list state)))
+      (a:when-let ((identifiers (parse-identifier-list state)))
         (consume! state token:@COLON_EQUAL "Expected ':=' in short variable declaration")
-        (if-let ((expressions (parse-expression-list state)))
+        (a:if-let ((expressions (parse-expression-list state)))
           (progn
             (unless (= (length (ast:expression-list-expressions expressions)) (length (ast:identifier-list-identifiers identifiers)))
               (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
@@ -294,20 +294,20 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 
 ;;; IdentifierList = identifier { "," identifier } .
 (defun parse-identifier-list (state)
-  (when-let ((identifiers  (parse-comma-separated state #'parse-identifier)))
+  (a:when-let ((identifiers  (parse-comma-separated state #'parse-identifier)))
     (accept state 'ast:identifier-list :identifiers identifiers)))
 
 ;;;
 ;;; ExpressionList = Expression { "," Expression } .
 ;;;
 (defun parse-expression-list (state)
-  (when-let ((expressions (parse-comma-separated state #'parse-expression)))
+  (a:when-let ((expressions (parse-comma-separated state #'parse-expression)))
     (accept state 'ast:expression-list :expressions expressions)))
 
 (defun parse-comma-separated (state parser)
   "Parse a comma separated list of nodes using the given parser."
   (guard-parse state
-    (when-let ((node (funcall parser state)))
+    (a:when-let ((node (funcall parser state)))
       (with-slots (cur-token) state
         (let ((result (list node)))
           (loop
@@ -333,8 +333,8 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
   left
   right)
 
-(define-constant +operator-rules+
-    (serapeum:dict
+(a:define-constant +operator-rules+
+    (s:dict
      token:@MINUS  (cons +precedence-term+ +associativity-left+)
      token:@PLUS   (cons +precedence-term+ +associativity-left+)
      token:@SLASH  (cons +precedence-factor+ +associativity-left+)

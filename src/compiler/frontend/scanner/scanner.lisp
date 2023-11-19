@@ -203,7 +203,7 @@
 ;;; Functions that deal with whitespace, comments and semicolons
 ;;; =============================================================
 
-(define-constant +whitespace+ (list #\Space #\Tab #\Return #\Newline) :test #'equalp)
+(a:define-constant +whitespace+ (list #\Space #\Tab #\Return #\Newline) :test #'equalp)
 
 (declaim (inline inter-token-space-p))
 (defun inter-token-space-p (c)
@@ -263,18 +263,18 @@
 (defun scan-identifier (state)
   "Scan an identifier which is either a user-defined identifier or a keyword."
   (with-slots (lexeme) state
-    (when-let ((c (peek state)))
+    (a:when-let ((c (peek state)))
       (when (letter-p c)
         (advance! state)
         (scan-while state #'identifier-char-p)
         (let ((identifier (coerce lexeme 'string)))
-          (if-let ((keyword (gethash identifier +keywords+)))
+          (a:if-let ((keyword (gethash identifier +keywords+)))
             (accept state keyword)
             (accept state token:@IDENTIFIER #'identity)))))))
 
-(define-constant +keywords+
+(a:define-constant +keywords+
     ;; dictionary mapping keyword lexemes to their class
-    (serapeum:dict
+    (s:dict
      "if" token:@IF
      "else" token:@ELSE
      "break" token:@BREAK

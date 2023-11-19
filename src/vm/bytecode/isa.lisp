@@ -14,7 +14,7 @@
 (deftype version-component () '(integer 0 *))
 
 (-> version (version-component version-component) version)
-(serapeum:defstruct-read-only (version (:constructor version (major minor)))
+(s:defstruct-read-only (version (:constructor version (major minor)))
   (major 0 :type version-component)
   (minor 0 :type version-component))
 
@@ -54,17 +54,17 @@
 
 (defun mnemonic-for-instruction (opcode &optional (isa *current-isa*))
   "Returns the mnemonic for the given opcode."
-  (when-let ((instruction (instruction-by-opcode opcode isa)))
+  (a:when-let ((instruction (instruction-by-opcode opcode isa)))
     (isa-instruction-mnemonic instruction)))
 
 ;; A type that is only used during construction of instuctions to make the operations more typesafe
 ;; In the final instruction we only encode the raw value
 (-> register (register-t) register)
-(serapeum:defconstructor register
+(s:defconstructor register
   (value register-t))
 
 (-> address (integer) address)
-(serapeum:defconstructor address
+(s:defconstructor address
   (value address-t))
 
 (-> operand-value ((or register address)) operand-t)

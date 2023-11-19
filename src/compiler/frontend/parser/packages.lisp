@@ -3,8 +3,8 @@
 (defpackage :cl-braces.compiler.frontend.parser
   (:nicknames :frontend.parser :parser)
   (:use :cl :cl-braces.development)
+  (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
-  (:import-from :alexandria :define-constant :when-let :if-let)
   (:export
-   :parse
-   :parse-errors))
+   #:parse
+   #:parse-errors))
