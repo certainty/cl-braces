@@ -10,17 +10,18 @@ where the car is the expected token class and the cadr is a keyword argument :wi
 
 (defmacro assert-scans-as (input &rest args)
   (let ((token-var (gensym)))
-    `(let ((,token-var (scanner:call-with-scanner ,input #'scanner:next-token)))
+    `(let ((,token-var (scanner:call-with-scanner #'scanner:next-token ,input)))
        (assert-token ,token-var ,@args))))
 
 (defmacro assert-scan-all-as (input &body token-matchers)
   "Scan input and assert that the tokens match the given matchers"
   (let ((scanner-var (gensym)))
-    `(scanner:call-with-scanner ,input
+    `(scanner:call-with-scanner
       (lambda (,scanner-var)
         ,@(mapcar (lambda (matcher)
                     `(assert-token (scanner:next-token ,scanner-var) ,matcher))
-                  token-matchers)))))
+                  token-matchers))
+      ,input)))
 
 (define-test scan-eof ()
   "Scan the end of file"

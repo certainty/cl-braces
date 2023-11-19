@@ -57,6 +57,7 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
+   #:input-designator
    #:open-scanner
    #:close-scanner
    #:call-with-scanner

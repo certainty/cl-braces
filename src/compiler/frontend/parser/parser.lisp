@@ -63,32 +63,19 @@
 ;;; Main API for the parser
 ;;; ====================================================================================================
 
-(-> parse (t &key (:fail-fast boolean)) (values (or null ast:node) boolean state))
-(defun parse (input-desginator &key (fail-fast nil))
+(-> parse (scanner:input-designator &key (:fail-fast boolean)) (values (or null ast:node) boolean state))
+(defun parse (input-designator &key (fail-fast nil))
   "Parses the source code denoted by `input-designator' and returns 3 values
-1. the AST
-2. a boolean indicating if any errors have been encountered
-3. the parser state
+   1. the AST
+   2. a boolean indicating if any errors have been encountered
+   3. the parser state
 
-See `scanner:source-input' for the supported input designators
-Bind the dynamic variable `*fail-fast*' to true to signal a continuable parse-error condition when an error is encountered.
-By default it is bound to nil, which will cause the parser to insert a sentinel node into the AST and continue parsing.
+   See `scanner:source-input' for the supported input designators
+   When `fail-fast' is true, the parser will signal an error when an error is encountered, otherwise it will collect all errors and return them in the AST.
 "
-  (call-with-parse-state input-desginator #'%parse :fail-fast fail-fast))
-
-(-> parse-with (t (function (state) (or null ast:node)) &key (:fail-fast boolean)) (values (or null ast:node) boolean state &optional))
-(defun parse-with (input parser &key (fail-fast nil))
-  (call-with-parse-state
-   input
-   (lambda (state)
-     (with-slots (fail-fast) state
-       (handler-bind
-           ((error-detail (lambda (c)
-                            (if fail-fast
-                                (invoke-debugger c)
-                                (invoke-restart 'continue)))))
-         (advance! state)
-         (funcall parser state))))
+  (call-with-parser
+   #'%parse
+   input-designator
    :fail-fast fail-fast))
 
 (-> %parse (state) (values (or null ast:node) boolean state))
@@ -104,14 +91,14 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
         (consume! state token:@EOF "Expected end of file")
         (values (ast:make-program stmts) had-errors-p state)))))
 
-(defun call-with-parse-state (input-desginator fn &key (fail-fast nil))
+(-> call-with-parser ((function (state) *) scanner:input-designator &key (:fail-fast boolean)) *)
+(defun call-with-parser (fn input-designator &key (fail-fast nil))
   (scanner:call-with-scanner
-   input-desginator
    (lambda (scanner)
      (let ((state (make-instance 'state :scanner scanner :fail-fast fail-fast)))
        (funcall fn state)))
+   input-designator
    :fail-fast fail-fast))
-
 
 ;;; ====================================================================================================
 ;;; Utility functions to deal with various states of the parser
@@ -161,9 +148,9 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 (defun parse-block (state &optional (is-required nil))
   "Parses a block block and returns an `ast:block' node.
 
-   When `is-required' is true, the block is mandatory and an error is signaled when it is not present.
-   When `is-required' is false, the block is optional and nil is returned when it is not present.
-  "
+When `is-required' is true, the block is mandatory and an error is signaled when it is not present.
+When `is-required' is false, the block is optional and nil is returned when it is not present.
+"
   (guard-parse state
     (when (or (and is-required (consume! state token:@LBRACE "Expected block"))
               (match-any state token:@LBRACE))

@@ -134,17 +134,18 @@
 ;;; Main API functions
 ;;; ===================
 
-(-> call-with-scanner (t (function (state) *) &key (:fail-fast boolean))  *)
-(defun call-with-scanner (input-designator function &key (fail-fast nil))
+(-> call-with-scanner ((function (state) *) input-designator &key (:fail-fast boolean))  *)
+(defun call-with-scanner (function input-designator &key (fail-fast nil))
   "Calls the given `function' with a new `scanner' that is initialized with the input stream of the `input-designator'.
    If `fail-fast' is true then the scanner will signal a `scan-error' condition when it encounters an illegal token.
    The scanner makes sure that the input stream is closed correctly on error or when the scan has finished.
    It uses `call-with-input' which inturn ensures that.
   "
-  (call-with-input input-designator
-                   (lambda (input)
-                     (let ((state (make-instance 'state :input input :fail-fast fail-fast)))
-                       (funcall function state)))))
+  (call-with-input
+   (lambda (input)
+     (let ((state (make-instance 'state :input input :fail-fast fail-fast)))
+       (funcall function state)))
+   input-designator))
 
 (defun open-scanner (input-designator &key (fail-fast nil))
   "Opens a new scanner that is initialized with the input stream of the `input-designator'.
