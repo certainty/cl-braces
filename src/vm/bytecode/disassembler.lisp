@@ -15,27 +15,29 @@
    The format of the disassembly is as follows:
    PC: [LABEL] ENCODED-INSTRUCTION OPCODE OPERANDS [COMMENT] "
   (do-instructions (pc instr chunk)
-    (format stream "~3a: " (column-pc pc))
+    (a:when-let ((label (column-label pc instr isa chunk)))
+      (format stream "~%~a:~%" label))
+    (format stream "%~10a " (column-pc pc))
     (disass-instruction instr chunk :isa isa :stream stream)))
 
 (defun disass-instruction (instr chunk &key (isa *current-isa*) (stream *standard-output*))
-  (format stream "~a ~8,a ~8,a ~15,a ~a~%"
-          (column-label instr isa chunk)
+  (format stream "~16,a ~8,a ~30,a ~a~%"
           (column-encoded-instruction instr isa)
           (column-opcode instr isa)
           (column-operands instr isa)
           (column-comment instr isa chunk)))
 
-(defmethod development:debug-print ((obj chunk) &key (stream *standard-output*))
-  (disass obj :stream stream))
+(defmethod development:debug-print ((obj chunk))
+  (disass obj :stream *debug-io*))
 
 (defun column-pc (pc)
-  (format nil "~3,'0X" pc))
+  (format nil "0x~X" pc))
 
-(defun column-label (instr isa ch)
+(defun column-label (pc instr isa ch)
   "Prints the label for the given instruction."
-  (declare (ignore instr isa ch))
-  "")
+  (declare (ignore instr isa))
+  (let ((blocklabels (chunk-blocklabels ch)))
+    (gethash pc blocklabels)))
 
 (defun column-encoded-instruction (instr isa)
   "Return the instruction it its encoded form. It's opcode followed by operands"
@@ -59,9 +61,9 @@
   (let* ((operand-values (instruction-operands instr))
          (isa-instr (instruction-by-opcode (instruction-opcode instr) isa))
          (isa-operands (isa-instruction-operands isa-instr)))
-    (format nil "~{~a~^, ~}" (loop :for isa-op :across isa-operands
-                                   :for op :across operand-values
-                                   :collect (format-operand op (isa-operand-type isa-op))))))
+    (format nil "~{~8,A~^ ~}" (loop :for isa-op :across isa-operands
+                                    :for op :across operand-values
+                                    :collect (format-operand op (isa-operand-type isa-op))))))
 
 (defun format-operand (value op-type)
   "Formats the given operand value according to the given operand type.
@@ -69,6 +71,7 @@
   (cond
     ((eq op-type 'register) (format nil "$~a" value))
     ((eq op-type 'address) (format nil "@~a" value))
+    ((eq op-type 'label)   (format nil "%0x~X" value))
     (t (unreachable! "Unknown operand type"))))
 
 (defun column-comment (instr isa chunk)
@@ -85,15 +88,20 @@
         "")))
 
 (defun comment-for (value op-type chunk)
-  (case op-type
-    (register nil)
-    (address
-     (let* ((constants (chunk-constants chunk))
-            (constant (aref constants (the address-t value))))
-       (format nil "~a = ~a" (format-operand value op-type) (format-constant constant))))
-    (t (unreachable! "Unknown operand type"))))
+  (let ((constants (chunk-constants chunk))
+        (blocklabels (chunk-blocklabels chunk)))
+    (case op-type
+      (register nil)
+      (label
+       (a:when-let ((blocklabel (gethash value blocklabels)))
+         (format nil "~a = ~a" (format-operand value op-type) blocklabel)))
+      (address
+       (let ((constant (aref constants value)))
+         (format nil "~a = ~a" (format-operand value op-type) (format-constant constant))))
+      (t (unreachable! "Unknown operand type")))))
 
 (defun format-constant (constant)
   (trivia:match constant
-    ((value:none) "none")
-    ((value:int n) (format nil "i~A" n))))
+    ((value:nilv) "nil")
+    ((value:boolv b) (if b (format nil "true") (format nil "false")))
+    ((value:intv n) (format nil "i~A" n))))

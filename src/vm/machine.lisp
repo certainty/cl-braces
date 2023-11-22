@@ -27,8 +27,9 @@
 
 (defun format-register (reg)
   (trivia:match reg
-    ((value:none) "none")
-    ((value:int n) (format nil "i~A" n))
+    ((value:nilv) "nil")
+    ((value:boolv b) (if b "true" "false"))
+    ((value:intv n) (format nil "i~A" n))
     (_ (format nil "R~A" reg))))
 
 (defmacro binary-op (operation instruction registers result-register)
@@ -50,9 +51,9 @@
          (instruction-count (length instructions))
          (instruction nil)
          (result-reg nil)
-         (opcode (the fixnum 0))
+         (zero-flag nil)
          (constants (bytecode:chunk-constants chunk))
-         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or value:value bytecode:register-t) :initial-element value:none)))
+         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or value:value bytecode:register-t) :initial-element value:nilv)))
 
 
     #-cl-braces-vm-release
@@ -72,36 +73,43 @@
         #-cl-braces-vm-release
         (dump-machine-state "Execute instruction" pc chunk registers :disass-chunk nil :dump-instruction t)
 
-        (cond
-          ((= bytecode:noop opcode) t)
+        (s:select opcode
+          (bytecode:noop t)
+          (bytecode:halt (return))
 
-          ((= bytecode:halt opcode) (return))
-
-          ((= bytecode:loada opcode)
+          (bytecode:loada
            (with-operands (dst addr) instruction
              (setf result-reg dst)
              (setf (aref registers dst) (aref constants addr))))
 
-          ((= bytecode:mov opcode)
+          (bytecode:mov
            (with-operands (dst src) instruction
              (setf result-reg dst)
              (setf (aref registers dst) (aref registers src))))
 
-          ((= bytecode:add opcode)
-           (binary-op + instruction registers result-reg))
+          (bytecode:test
+           (with-operands (dst) instruction
+             (setf zero-flag (value:falsep (aref registers dst)))))
 
-          ((= bytecode:sub opcode)
-           (binary-op - instruction registers result-reg))
+          (bytecode:jmp
+           (with-operands (addr) instruction
+             (setf pc addr)))
 
-          ((= bytecode:mul opcode)
-           (binary-op * instruction registers result-reg))
+          (bytecode:jz
+           (with-operands (addr) instruction
+             (when zero-flag
+               (setf pc addr))))
 
-          ((= bytecode:div opcode)
-           (binary-op / instruction registers result-reg))
+          (bytecode:jnz
+           (with-operands (addr) instruction
+             (unless zero-flag
+               (setf pc addr))))
 
-          ((= bytecode:neg opcode)
-           (unary-op - instruction registers result-reg))
-
+          (bytecode:add (binary-op + instruction registers result-reg))
+          (bytecode:sub (binary-op - instruction registers result-reg))
+          (bytecode:mul (binary-op * instruction registers result-reg))
+          (bytecode:div (binary-op / instruction registers result-reg))
+          (bytecode:neg (unary-op - instruction registers result-reg))
           (t (todo! "unsupported opcode")))))
 
     #-cl-braces-vm-release

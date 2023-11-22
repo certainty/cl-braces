@@ -52,7 +52,7 @@
 
 (defun find-scoped-variable (generator name)
   (with-slots (current-scope variable-registers symbol-table) generator
-    (when-let ((var (symbols:closest-scope current-scope (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p))))
+    (a:when-let ((var (symbols:closest-scope current-scope (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p))))
       (symbols:id var))))
 
 (defun find-register-for (generator variable-id)
@@ -67,79 +67,156 @@
 
 (defun generate-chunk (ast symbol-table)
   (let ((generator (make-bytecode-generator symbol-table)))
-    (ast:with-preorder-traversal
-      (ast:walk generator ast))
+    (generate generator ast)
     (with-slots (chunk-builder register-allocator) generator
       (chunk-result chunk-builder (registers-used register-allocator)))))
 
-(defmethod ast:enter ((generator bytecode-generator) (node ast:node))
-  :continue)
+;; At a later point, when we only generate from simplified code in SSA we can switch to using ast:walk.
+;; For now we implement the traversal ourselves to have full control
+(defgeneric generate (generator node)
+  (:documentation "Generate code for a node"))
 
-(defmethod ast:leave ((generator bytecode-generator) (node ast:node))
-  :continue)
+(defmethod generate ((generator bytecode-generator) (node ast:node))
+  (declare (ignore node generator))
+  t)
 
-(defmethod ast:enter ((generator bytecode-generator) (node ast:literal))
-  (with-slots (chunk-builder register-allocator operand-stack) generator
-    (let ((const-address (add-constant chunk-builder (value:box (ast:literal-value node))))
-          (register (next-register register-allocator)))
-      (prog1 register
-        (push register operand-stack)
-        (add-instructions chunk-builder (bytecode:instr 'bytecode:loada register const-address))))))
+(defmethod generate ((generator bytecode-generator) (node ast:program))
+  (with-slots (chunk-builder) generator
+    (let ((statements (ast:program-declarations node)))
+      (generate generator statements))))
 
-(defmethod ast:leave ((generator bytecode-generator) (node ast:unary-expression))
-  (with-slots (operand-stack chunk-builder) generator
-    (let ((op (ast:unary-expression-operator node))
-          (operand (pop operand-stack)))
+(defmethod generate ((generator bytecode-generator) (node ast:statement-list))
+  (with-slots (chunk-builder) generator
+    (let ((statements (ast:statement-list-statements node)))
+      (loop for statement in statements
+            for stmt-reg = (generate generator statement)
+            finally (return stmt-reg)))))
+
+(defmethod generate ((generator bytecode-generator) (node ast:expression-list))
+  (with-slots (chunk-builder) generator
+    (let ((expressions (ast:expression-list-expressions node)))
+      (loop for expression in expressions
+            for expr-reg = (generate generator expression)
+            finally (return expr-reg)))))
+
+(defmethod generate ((generator bytecode-generator) (node ast:expression-statement))
+  (with-slots (chunk-builder) generator
+    (let ((expression (ast:expression-statement-expression node)))
+      (generate generator expression))))
+
+(defmethod generate ((generator bytecode-generator) (node ast:grouping-expression))
+  (generate generator (ast:grouping-expression-expression node)))
+
+(defmethod generate ((generator bytecode-generator) (node ast:literal))
+  (with-slots (chunk-builder register-allocator) generator
+    (s:lret* ((const-address (add-constant chunk-builder (value:box (ast:literal-value node))))
+              (register (next-register register-allocator)))
+      (add-instructions chunk-builder (bytecode:instr 'bytecode:loada register const-address)))))
+
+(defmethod generate ((generator bytecode-generator) (node ast:unary-expression))
+  (with-slots (chunk-builder register-allocator) generator
+    (s:lret ((op (ast:unary-expression-operator node))
+             (operand (generate generator (ast:unary-expression-operand node))))
       (assert operand)
-      (push operand operand-stack)
       (cond
         ((token:class= op token:@MINUS)
          (add-instructions chunk-builder (bytecode:instr 'bytecode:neg operand)))
-        ((token:class= op token:@PLUS) nil)
+        ((token:class= op token:@PLUS) t)
         (t (todo! "unary operator"))))))
 
-(defmethod ast:leave ((generator bytecode-generator) (node ast:binary-expression))
-  (with-slots (operand-stack chunk-builder) generator
-    (let ((op (ast:binary-expression-operator node))
-          (right (pop operand-stack))
-          (left (pop operand-stack)))
+(defmethod generate ((generator bytecode-generator) (node ast:binary-expression))
+  (with-slots (chunk-builder register-allocator) generator
+    (s:lret* ((op (ast:binary-expression-operator node))
+              (left  (generate generator (ast:binary-expression-lhs node)))
+              (right (generate generator (ast:binary-expression-rhs node)))
+              (dst   (next-register register-allocator)))
       (assert left)
       (assert right)
-      (with-slots (register-allocator chunk-builder) generator
-        (let ((dst (next-register register-allocator)))
-          (prog1 dst
-            (push dst operand-stack)
-            (cond
-              ((token:class= op token:@PLUS)
-               (add-instructions chunk-builder (bytecode:instr 'bytecode:add dst left right)))
-              ((token:class= op token:@MINUS)
-               (add-instructions chunk-builder (bytecode:instr 'bytecode:sub dst left right)))
-              ((token:class= op token:@STAR)
-               (add-instructions chunk-builder (bytecode:instr 'bytecode:mul dst left right)))
-              ((token:class= op token:@SLASH)
-               (add-instructions chunk-builder (bytecode:instr 'bytecode:div dst left right)))
-              (t (todo! "binary operator")))))))))
+      (cond
+        ((token:class= op token:@PLUS)
+         (add-instructions chunk-builder (bytecode:instr 'bytecode:add dst left right)))
+        ((token:class= op token:@MINUS)
+         (add-instructions chunk-builder (bytecode:instr 'bytecode:sub dst left right)))
+        ((token:class= op token:@STAR)
+         (add-instructions chunk-builder (bytecode:instr 'bytecode:mul dst left right)))
+        ((token:class= op token:@SLASH)
+         (add-instructions chunk-builder (bytecode:instr 'bytecode:div dst left right)))
+        (t (todo! "binary operator"))))))
 
-(defmethod ast:leave ((generator bytecode-generator) (node ast:short-variable-declaration))
-  (with-slots (operand-stack chunk-builder) generator
-    (let* ((initializer (pop operand-stack))
-           (variable (ast:short-variable-declaration-variable node))
-           (variable-name (token:lexeme (ast:variable-identifier variable))))
-      (assert initializer)
-      ;; pop the register of the variable-name or nil
-      (pop operand-stack)
-      (let ((var-id (find-scoped-variable generator variable-name)))
-        (assert var-id)
+(defmethod generate ((generator bytecode-generator) (node ast:short-variable-declaration))
+  (with-slots (chunk-builder register-allocator) generator
+    (let* ((expression-list (ast:short-variable-declaration-expressions node))
+           (identifier-list (ast:short-variable-declaration-identifiers node)))
+      (loop for src-reg in (generate generator expression-list)
+            for dst-reg in (registers-for-identifiers generator identifier-list :create-if-missing t)
+            do (add-instructions chunk-builder (bytecode:instr 'bytecode:mov dst-reg src-reg))
+            finally (return dst-reg)))))
 
-        (let ((var-reg (create-register-for generator var-id)))
-          (push var-reg operand-stack)
-          (add-instructions chunk-builder (bytecode:instr 'bytecode:mov var-reg initializer)))))))
+(defmethod generate ((generator bytecode-generator) (node ast:expression-list))
+  (with-slots (chunk-builder register-allocator) generator
+    (let ((expressions (ast:expression-list-expressions node)))
+      (loop for expression in expressions
+            for reg = (generate generator expression)
+            collect reg))))
 
-(defmethod ast:enter ((generator bytecode-generator) (node ast:variable))
-  (with-slots (operand-stack) generator
-    (let* ((variable-name (token:lexeme (ast:variable-identifier node)))
-           (variable-id (find-scoped-variable generator variable-name))
-           (variable-reg (find-register-for generator variable-id)))
-      ;; when we're in the context of a declaration, the definition is allowed to be null
-      ;; should we set the generator state to indicate this and raise and error otherwise?
-      (push variable-reg operand-stack))))
+(defun registers-for-identifiers (generator identifier-list &key (create-if-missing nil))
+  (with-slots (variable-registers) generator
+    (loop for identifier in (ast:identifier-list-identifiers identifier-list)
+          for id = (find-scoped-variable generator (ast:identifier-name identifier))
+          for reg = (find-register-for generator id)
+          do (when (and create-if-missing (null reg))
+               (setf reg (create-register-for generator id)))
+          collect reg)))
+
+(defmethod generate ((generator bytecode-generator) (node ast:identifier))
+  (let ((name (ast:identifier-name node)))
+    (a:when-let ((variable-id (find-scoped-variable generator name)))
+      (find-register-for generator variable-id))))
+
+(defmethod generate ((generator bytecode-generator) (node ast:empty-statement))
+  (declare (ignore node generator))
+  t)
+
+(defmethod generate ((generator bytecode-generator) (node ast:if-statement))
+  (with-slots (chunk-builder) generator
+    (let* ((init-stmt (ast:if-statement-init node))
+           (condition (ast:if-statement-condition node))
+           (condition-reg nil)
+           (consequence (ast:if-statement-consequence node))
+           (alternative (ast:if-statement-alternative node))
+           (jz-addr 0)
+           (cons-jmp-addr 0)
+           (label-alternative nil)
+           (patch-this-address (bytecode:label #xDEADBEEF)))
+
+      (generate generator init-stmt)
+      (setf condition-reg (generate generator condition))
+
+      (add-instructions chunk-builder (bytecode:instr 'bytecode:test condition-reg))
+      (setf jz-addr (add-instructions chunk-builder (bytecode:instr 'bytecode:jz patch-this-address condition-reg)))
+
+      (generate generator consequence)
+      (setf cons-jmp-addr (add-instructions chunk-builder (bytecode:instr 'bytecode:jmp patch-this-address)))
+
+      (when alternative
+        (setf label-alternative (add-label chunk-builder "__else"))
+        (generate generator alternative))
+
+      (setf label-end (add-label chunk-builder "__end"))
+
+      (if alternative
+          (replace-instruction chunk-builder jz-addr (bytecode:instr 'bytecode:jz label-alternative condition-reg))
+          (replace-instruction chunk-builder jz-addr (bytecode:instr 'bytecode:jz label-end condition-reg)))
+
+      (replace-instruction chunk-builder cons-jmp-addr (bytecode:instr 'bytecode:jmp label-end)))))
+
+(defun patch-instruction (chunk-builder address instruction)
+  (with-slots (chunk) chunk-builder
+    (setf (aref chunk address) instruction)))
+
+(defmethod generate ((generator bytecode-generator) (node ast:block))
+  (enter-scope generator)
+  (with-slots (chunk-builder) generator
+    (let ((statements (ast:block-statements node)))
+      (generate generator statements)))
+  (leave-scope generator))

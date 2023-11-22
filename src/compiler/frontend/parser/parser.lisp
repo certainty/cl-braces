@@ -5,8 +5,6 @@
 ;;; When a parse fails, the parse will insert a sentinel node into the AST and continue parsing.
 ;;; The recovery is relatively simple and attempts to synchronize to the next statement boundary.
 
-(defparameter *fail-fast* nil "If true the parser will signal a continuable parse-error condition when an error is encountered. When continued the parser will attempt to synchronize to the next statement boundary.")
-
 (define-condition parse-errors (error)
   ((details
     :reader error-detail
@@ -43,6 +41,11 @@
     :initform nil
     :type (or null token:token)
     :documentation "The next token to be read")
+   (fail-fast
+    :initarg :fail-fast
+    :initform nil
+    :type boolean
+    :documentation "A flag indicating if the parser should fail fast when an error is encountered")
    (errors
     :reader parse-errors
     :initarg :errors
@@ -56,44 +59,47 @@
     :documentation "A flag indicating if any errors have been encountered"))
   (:documentation "The state of the parser which is threaded through all parsing methods"))
 
-(defun parse-with (input parser &rest args)
-  (call-with-parse-state
-   input
-   (lambda (state)
-     (handler-bind ((error-detail (lambda (c) (if *fail-fast* (invoke-debugger c) (invoke-restart 'continue)))))
-       (advance! state)
-       (apply #'funcall parser state args)))))
+;;; ====================================================================================================
+;;; Main API for the parser
+;;; ====================================================================================================
 
-(-> parse (t) (values (or null ast:node) boolean state))
-(defun parse (input-desginator)
+(-> parse (scanner:input-designator &key (:fail-fast boolean)) (values (or null ast:node) boolean state &optional))
+(defun parse (input-designator &key (fail-fast nil))
   "Parses the source code denoted by `input-designator' and returns 3 values
-1. the AST
-2. a boolean indicating if any errors have been encountered
-3. the parser state
+   1. the AST
+   2. a boolean indicating if any errors have been encountered
+   3. the parser state
 
-See `scanner:source-input' for the supported input designators
-Bind the dynamic variable `*fail-fast*' to true to signal a continuable parse-error condition when an error is encountered.
-By default it is bound to nil, which will cause the parser to insert a sentinel node into the AST and continue parsing.
-"
-  (call-with-parse-state input-desginator #'%parse))
+   See `scanner:source-input' for the supported input designators
+   When `fail-fast' is true, the parser will signal an error when an error is encountered, otherwise it will collect all errors and return them in the AST.
+  "
+  (call-with-parser #'%parse input-designator :fail-fast fail-fast))
 
-
-(-> %parse (state) (values (or null ast:node) boolean state))
+(-> %parse (state) (values (or null ast:node) boolean state &optional))
 (defun %parse (state)
-  (handler-bind ((error-detail (lambda (c) (if *fail-fast* (invoke-debugger c) (invoke-restart 'synchronize)))))
-    (with-slots (had-errors-p) state
+  (with-slots (fail-fast had-errors-p) state
+    (handler-bind ((error-detail (lambda (c)
+                                   (if fail-fast
+                                       (invoke-debugger c)
+                                       (when (find-restart 'synchronize)
+                                         (invoke-restart 'synchronize))))))
       (advance! state)
-      (let ((decls (loop until (eofp state) collect (parse-declaration state))))
+      (let ((stmts (parse-statement-list state)))
         (consume! state token:@EOF "Expected end of file")
-        (values (ast:make-program decls) had-errors-p state)))))
+        (values (ast:make-program stmts) had-errors-p state)))))
 
-(defun call-with-parse-state (input-desginator fn)
-  (scanner:call-with-scanner
-   input-desginator
-   (lambda (scanner)
-     (let ((state (make-instance 'state :scanner scanner)))
-       (funcall fn state)))))
+(-> call-with-parser ((function (state) *) scanner:input-designator &key (:fail-fast boolean)) *)
+(defun call-with-parser (fn input-designator &key (fail-fast nil))
+  (scanner:with (scanner input-designator :fail-fast fail-fast)
+    (let ((state (make-instance 'state :scanner scanner :fail-fast fail-fast)))
+      (funcall fn state))))
 
+(defmacro with ((state input-designator &key (fail-fast nil)) &body body)
+  `(call-with-parser (lambda (,state) ,@body) ,input-designator :fail-fast ,fail-fast))
+
+;;; ====================================================================================================
+;;; Utility functions to deal with various states of the parser
+;;;
 ;;; Every individual parse has to deal with a couple of base cases
 ;;; 1. The error cases
 ;;;     a. The current token is illegal, in which case we signal a parse-error, which will be handled at the top level declaration-parser, which attempts to synchronize to the next statement boundary.
@@ -101,74 +107,228 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
 ;;; 2. The parse doesn't apply
 ;;;    a. The parse is optional, in which case we return nil
 ;;;    b. The parse is mandatory, in which case we signal an error
+
 (defmacro guard-parse (state &body body)
-  `(cond
-     ((illegal-token-p ,state)
-      (signal-parse-error ,state "Illegal token"))
-     ((eofp ,state)
-      (signal-parse-error ,state "Unexpected end of file"))
-     (t ,@body)))
+  `(with-slots (cur-token) ,state
+     (when cur-token
+       (cond
+         ((illegal-token-p ,state)
+          (signal-parse-error ,state "Illegal token"))
+         (t ,@body)))))
 
 (defun synchronize (state)
-  (with-slots (cur-token) state
+  "Synchronize the parser to the next statement boundary."
+  (with-slots (cur-token next-token) state
     (loop
       (cond
         ((eofp state) (return))
-        ((token:class= cur-token token:@SEMICOLON)
+        ((token:class-any-p cur-token token:@SEMICOLON token:@RBRACE)
          (advance! state)
-         (return))
-        ((token:class cur-token token:@RBRACE)
+         (return-from synchronize))
+        ((token:class-any-p next-token token:@IF token:@RETURN)
          (advance! state)
-         (return))
+         (return-from synchronize))
         (t (advance! state))))))
 
-;; This is the main driver of the parsing process
-(-> parse-declaration (state) ast:node)
-(defun parse-declaration (state)
-  (restart-case (%parse-declaration state)
+;;; ====================================================================================================
+;;; Parse implementation for the various language constructs
+;;; ====================================================================================================
+
+;;; Blocks are one of the most used and most basic units in the language
+;;;
+;;; Block = "{" StatementList "}" .
+;;;
+;;; Ref: https://golang.org/ref/spec#Blocks
+;;; Ref: https://golang.org/ref/spec#Statements
+
+(-> parse-block (state &optional boolean) (or null ast:block))
+(defun parse-block (state &optional (is-required nil))
+  "Parses a block block and returns an `ast:block' node.
+
+When `is-required' is true, the block is mandatory and an error is signaled when it is not present.
+When `is-required' is false, the block is optional and nil is returned when it is not present.
+"
+  (guard-parse state
+    (when (or (and is-required (consume! state token:@LBRACE "Expected block"))
+              (match-any state token:@LBRACE))
+      (let ((stmts (parse-statement-list state)))
+        (consume! state token:@RBRACE "Expected '}'")
+        (accept state 'ast:block :statements stmts)))))
+
+;;;
+;;; StatementList = { Statement ";" } .
+;;;
+(-> parse-statement-list (state) (or null ast:statement-list))
+(defun parse-statement-list (state)
+  "Parse, a possibly empty, list of statements"
+  (guard-parse state
+    (let ((stmts nil))
+      (loop
+        (when (eofp state)
+          (return (accept state 'ast:statement-list :statements (nreverse stmts))))
+        (a:if-let ((stmt (parse-statement state)))
+          (progn
+            (push stmt stmts)
+            (match-any state token:@SEMICOLON))
+          (return (accept state 'ast:statement-list :statements (nreverse stmts))))))))
+
+;;;
+;;; Statement =
+;;;   Declaration | LabeledStmt | SimpleStmt |
+;;;   GoStmt | ReturnStmt | BreakStmt | ContinueStmt | GotoStmt |
+;;;   FallthroughStmt | Block | IfStmt | SwitchStmt | SelectStmt | ForStmt |
+;;;   DeferStmt .
+;;;
+(-> parse-statement (state) (or null ast:statement))
+(defun parse-statement (state)
+  (restart-case (%parse-statement state)
     (synchronize ()
       :report "Record the error and attempt to resume parsing after the next statement boundary"
       (ignore-errors (synchronize state))
-      (return-from parse-declaration (accept state 'ast:bad-declaration :message "Expected declaration")))))
+      (return-from parse-statement (accept state 'ast:bad-statement :message "Expected statement")))))
 
-(-> %parse-declaration (state) (or null ast:node))
-(defun %parse-declaration (state)
+(-> %parse-statement (state) (or null ast:node))
+(defun %parse-statement (state)
   (guard-parse state
-    (or (parse-short-variable-declaration state)
-        (parse-statement state)
-        (signal-parse-error state "Expected declaration"))))
+    (or
+     (parse-if-statement state)
+     (parse-simple-statement state)
+     (parse-block state))))
 
+
+;; expect works like this
+;; (expect-let state
+;;   ((condition parse-block "expected block"))
+;;   ((condition parse-if-statement "expected if statement"))
+;;   ((condition parse-simple-statement "expected simple statement")))
+
+(defmacro expect (state parser error-message)
+  `(let ((result (,parser ,state)))
+     (unless result
+       (signal-parse-error ,state ,error-message))
+     result))
+
+(defmacro expect-let (state (&rest clauses) &body body)
+  (let ((bindings (mapcar
+                   (lambda (clause)
+                     (destructuring-bind (var parser error-message) clause
+                       `(,var (expect ,state ,parser ,error-message))))
+                   clauses)))
+    `(let* (,@bindings)
+       ,@body)))
+
+;;;
+;;; IfStmt = "if" [ SimpleStmt ";" ] Expression Block [ "else" ( IfStmt | Block ) ] .
+;;;
+(-> parse-if-statement (state) (or null ast:if-statement))
+(defun parse-if-statement (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@IF)
+        (advance! state)
+        ;; committed to parsing an if statement
+        (let* ((init (parse-simple-statement state))
+               (condition nil)
+               (consequence nil)
+               (alternative nil))
+
+          (when (null init)
+            (signal-parse-error state "Expected init or condition statement"))
+
+          ;; [init] condition
+          (cond
+            ((and init (token:class= cur-token token:@SEMICOLON))
+             ;; it was an initform, so we consume the token and expect another expression for the condition
+             (advance! state)
+             (setf condition (expect state parse-expression "Expected condition expression")))
+            (t
+             (setf condition init)
+             (setf init (make-instance 'ast:empty-statement :location (token:location cur-token)))))
+
+          ;; consequence
+          (setf consequence (expect state parse-block "Expected consequence block"))
+
+          ;; [alternative]
+          (when (token:class= cur-token token:@ELSE)
+            (advance! state)
+            (setf alternative (if (token:class= cur-token token:@IF)
+                                  (parse-if-statement state)
+                                  (parse-block state)))
+            (when (null alternative)
+              (signal-parse-error state "Expected else block")))
+
+          (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative alternative))))))
+
+;;;
+;;; SimpleStmt = EmptyStmt | ExpressionStmt | SendStmt | IncDecStmt | Assignment | ShortVarDecl .
+;;;
+(-> parse-simple-statement (state) (or null ast:node))
+(defun parse-simple-statement (state)
+  (guard-parse state
+    (with-slots (cur-token next-token) state
+      (when (token:class= cur-token token:@IDENTIFIER)
+        (when (or (token:class= next-token token:@COLON_EQUAL) (token:class= next-token token:@COMMA))
+          (return-from parse-simple-statement (parse-short-variable-declaration state))))
+      (parse-expression-statement state))))
+
+;;;
+;;; ExpressionStmt = Expression .
+;;;
+(-> parse-expression-statement (state) (or null ast:expression-statement))
+(defun parse-expression-statement (state)
+  (guard-parse state
+    (a:when-let ((expr (parse-expression state)))
+      (prog1 (accept state 'ast:expression-statement :expression expr)
+        ;; optionally consume the semicolon
+        (match-any state token:@SEMICOLON)))))
+
+;;;
+;;; ShortVarDecl = IdentifierList ":=" ExpressionList .
+;;;
+;;; Is is shorthand for:
+;;;
+;;; "var" IdentifierList "=" ExpressionList .
+;;;
 (defun parse-short-variable-declaration (state)
   "Parse a short variable declaration of the form <variable> := <expression>"
   (guard-parse state
     (with-slots (cur-token next-token) state
-      (when (and (token:class= cur-token token:@IDENTIFIER) (token:class= next-token token:@COLON_EQUAL))
-        (let* ((ident (consume! state token:@IDENTIFIER "Expected identifier"))
-               (variable (accept state 'ast:variable :identifier ident)))
-          (consume! state token:@COLON_EQUAL "Expected ':='")
-          (if-let ((expr (parse-expression-statement state)))
-            (accept state 'ast:short-variable-declaration :variable variable :initializer expr)
-            (signal-parse-error state "Expected expression")))))))
+      (a:when-let ((identifiers (parse-identifier-list state)))
+        (consume! state token:@COLON_EQUAL "Expected ':=' in short variable declaration")
+        (a:if-let ((expressions (parse-expression-list state)))
+          (progn
+            (unless (= (length (ast:expression-list-expressions expressions)) (length (ast:identifier-list-identifiers identifiers)))
+              (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
+            (accept state 'ast:short-variable-declaration :identifiers identifiers :expressions expressions))
+          (signal-parse-error state "Expected expression list"))))))
 
-(-> parse-statement (state) (or null ast:node))
-(defun parse-statement (state)
-  (guard-parse state
-    (or (parse-block state)
-        (parse-expression-statement state))))
+;;; IdentifierList = identifier { "," identifier } .
+(defun parse-identifier-list (state)
+  (a:when-let ((identifiers  (parse-comma-separated state #'parse-identifier)))
+    (accept state 'ast:identifier-list :identifiers identifiers)))
 
-(defun parse-block (state)
-  (guard-parse state
-    (when (match-any state token:@LBRACE)
-      (let ((stmts (loop until (or (eofp state) (match-any state token:@RBRACE)) collect (parse-declaration state))))
-        (accept state 'ast:block :statements stmts)))))
+;;;
+;;; ExpressionList = Expression { "," Expression } .
+;;;
+(defun parse-expression-list (state)
+  (a:when-let ((expressions (parse-comma-separated state #'parse-expression)))
+    (accept state 'ast:expression-list :expressions expressions)))
 
-(-> parse-expression-statement (state) (or null ast:node))
-(defun parse-expression-statement (state)
+(defun parse-comma-separated (state parser)
+  "Parse a comma separated list of nodes using the given parser."
   (guard-parse state
-    (when-let ((expr (parse-expression state)))
-      (prog1 (accept state 'ast:expression-statement :expression expr)
-        ;; optionally consume the semicolon
-        (match-any state token:@SEMICOLON)))))
+    (a:when-let ((node (funcall parser state)))
+      (with-slots (cur-token) state
+        (let ((result (list node)))
+          (loop
+            (when (eofp state)
+              (return (nreverse result)))
+            (unless (match-any state token:@COMMA)
+              (return (nreverse result)))
+            (let ((next (funcall parser state)))
+              (if next
+                  (push next result)
+                  (signal-parse-error state "Expected expression")))))))))
 
 (define-enum precedence
   none
@@ -183,12 +343,16 @@ By default it is bound to nil, which will cause the parser to insert a sentinel 
   left
   right)
 
-(define-constant +operator-rules+
-    (serapeum:dict
+(a:define-constant +operator-rules+
+    (s:dict
      token:@MINUS  (cons +precedence-term+ +associativity-left+)
      token:@PLUS   (cons +precedence-term+ +associativity-left+)
      token:@SLASH  (cons +precedence-factor+ +associativity-left+)
      token:@STAR   (cons +precedence-factor+ +associativity-left+)
+     token:@LT     (cons +precedence-term+ +associativity-left+)
+     token:@LE     (cons +precedence-term+ +associativity-left+)
+     token:@GT     (cons +precedence-term+ +associativity-left+)
+     token:@GE     (cons +precedence-term+ +associativity-left+)
      token:@LPAREN (cons +precedence-none+ +associativity-none+))
   :test #'equalp)
 
@@ -235,7 +399,7 @@ Example:
 
 (defmacro when-token (state expected-class &body body)
   `(with-slots (cur-token) ,state
-     (when (token:class= cur-token ,expected-class)
+     (when (and cur-token (token:class= cur-token ,expected-class))
        ,@body)))
 
 (defun parse-primary-expression (state)
@@ -244,19 +408,31 @@ Example:
     (or
      (parse-literal state)
      (parse-unary-expression state)
-     (parse-variable state)
+     (parse-identifier state)
      (parse-grouping-expression state))))
 
-(defun parse-variable (state)
+(defun parse-identifier (state)
   (guard-parse state
-    (when-token state token:@IDENTIFIER
-      (let ((tok (consume! state token:@IDENTIFIER "Expected identifier")))
-        (accept state 'ast:variable :identifier tok)))))
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@IDENTIFIER)
+        (let ((tok (consume! state token:@IDENTIFIER "Expected identifier")))
+          (accept state 'ast:identifier :token tok))))))
 
 (defun parse-literal (state)
   "Recognizes a literal expression"
   (guard-parse state
-    (or (parse-number-literal state))))
+    (or
+     (parse-boolean-literal state)
+     (parse-number-literal state))))
+
+(-> parse-boolean-literal (state) (or null ast:literal))
+(defun parse-boolean-literal (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (let ((token cur-token))
+        (when (or (token:class= token token:@TRUE) (token:class= token token:@FALSE))
+          (advance! state)
+          (accept state 'ast:literal :token token))))))
 
 (-> parse-number-literal (state) (or null ast:literal))
 (defun parse-number-literal (state)
@@ -331,12 +507,11 @@ Example:
 (-> match-any (state token:token-class &rest token:token-class) (or null token:token-class))
 (defun match-any (state token-class &rest other-token-classes)
   "Checks if the next token matches any of the given token classes. If so it consumes the token and return true, otherwise it tries the next class."
-  (with-slots (cur-token) state
-    (let ((all-classes (cons token-class other-token-classes)))
-      (dolist (next-class all-classes)
-        (when (token:class= cur-token next-class)
-          (advance! state)
-          (return next-class))))))
+  (let ((all-classes (cons token-class other-token-classes)))
+    (dolist (next-class all-classes)
+      (when-token state next-class
+        (advance! state)
+        (return next-class)))))
 
 (-> signal-parse-error (state string &rest t) null)
 (defun signal-parse-error (state format-string &rest args)

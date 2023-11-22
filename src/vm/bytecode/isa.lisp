@@ -13,8 +13,7 @@
 
 (deftype version-component () '(integer 0 *))
 
-(-> version (version-component version-component) version)
-(serapeum:defstruct-read-only (version (:constructor version (major minor)))
+(s:defstruct-read-only (version (:constructor version (major minor)))
   (major 0 :type version-component)
   (minor 0 :type version-component))
 
@@ -54,35 +53,30 @@
 
 (defun mnemonic-for-instruction (opcode &optional (isa *current-isa*))
   "Returns the mnemonic for the given opcode."
-  (when-let ((instruction (instruction-by-opcode opcode isa)))
+  (a:when-let ((instruction (instruction-by-opcode opcode isa)))
     (isa-instruction-mnemonic instruction)))
 
 ;; A type that is only used during construction of instuctions to make the operations more typesafe
 ;; In the final instruction we only encode the raw value
-(-> register (register-t) register)
-(serapeum:defconstructor register
-  (value register-t))
+;; TODO: how about we define a union for this?
+(s:defunion operand
+  (register (value register-t))
+  (address (value address-t))
+  (label (value label-t)))
 
-(-> address (integer) address)
-(serapeum:defconstructor address
-  (value address-t))
-
-(-> operand-value ((or register address)) operand-t)
-(defgeneric operand-value (operand)
-  (:documentation "Returns the value of the given operand"))
-
-(defmethod operand-value ((operand register))
-  (register-value operand))
-
-(defmethod operand-value ((operand address))
-  (address-value operand))
+(-> operand-value (operand) (or register-t address-t label-t))
+(defun operand-value (operand)
+  (trivia:match operand
+    ((register value) value)
+    ((address value) value)
+    ((label value) value)))
 
 (defclass isa-operand ()
   ((type-description
     :reader isa-operand-type-description
     :initarg
     :type-description
-    :type (member :register :address))
+    :type (member :register :address :label))
    (type-guard
     :reader isa-operand-type-guard
     :initarg :type-guard
@@ -158,8 +152,9 @@
     :description ,description
     :operands (vector ,@(mapcar (lambda (operand)
                                   (case (first operand)
-                                    (reg `(make-instance 'isa-operand :type-description :register :type-guard 'register :name ,(format nil "$~a" (second operand))))
-                                    (addr `(make-instance 'isa-operand :type-description :address :type-guard 'address :name ,(format nil "@~a" (second operand))))
+                                    (reg   `(make-instance 'isa-operand :type-description :register :type-guard 'register :name ,(format nil "$~a" (second operand))))
+                                    (addr  `(make-instance 'isa-operand :type-description :address :type-guard 'address :name ,(format nil "@~a" (second operand))))
+                                    (label `(make-instance 'isa-operand :type-description :label :type-guard 'label :name ,(format nil "%~a" (second operand))))
                                     (t (error "Unknown operand type ~A" (first operand)))))
                                 operands))))
 

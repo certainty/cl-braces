@@ -2,7 +2,7 @@
 
 (defun parse-as-expression (input)
   (when-let ((program (parser:parse input)))
-    (when-let ((declarations (ast:program-declarations program)))
+    (when-let ((declarations (ast:statement-list-statements (ast:program-declarations program))))
       (when (= 1 (length declarations))
         (ast:expression-statement-expression (car declarations))))))
 
@@ -88,5 +88,23 @@
 
 (define-test parse-short-assignment ()
   (multiple-value-bind (ast had-errors) (parser:parse "a := 3")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+(define-test parse-if-conditional ()
+  "Parse simple if conditional without else"
+  (multiple-value-bind (ast had-errors) (parser:parse "if 3 { 1 } ")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+(define-test pares-if-else-conditional ()
+  "Parse simple if conditional with else"
+  (multiple-value-bind (ast had-errors) (parser:parse "if x { 1 } else { 2 }")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+(define-test parse-if-with-short-statement ()
+  "Parse if conditional with short statement"
+  (multiple-value-bind (ast had-errors) (parser:parse " if x := 10; x < 20 { x }")
     (declare (ignore ast))
     (assert-false had-errors)))

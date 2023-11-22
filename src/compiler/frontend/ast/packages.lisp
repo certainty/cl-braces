@@ -3,57 +3,72 @@
 (defpackage :cl-braces.compiler.frontend.ast
   (:nicknames :frontend.ast :ast)
   (:use :cl)
+  (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   :node
-   :location
-   :expression
-   :bad-expression
-   :literal
-   :literal-value
+   #:node
+   #:location
+   #:expression
+   #:bad-expression
+   #:literal
+   #:literal-value
 
-   :grouping-expression
-   :grouping-expression-expression
+   #:grouping-expression
+   #:grouping-expression-expression
 
-   :unary-expression
-   :unary-expression-operator
-   :unary-expression-operand
+   #:unary-expression
+   #:unary-expression-operator
+   #:unary-expression-operand
 
-   :binary-expression
-   :binary-expression-lhs
-   :binary-expression-operator
-   :binary-expression-rhs
+   #:binary-expression
+   #:binary-expression-lhs
+   #:binary-expression-operator
+   #:binary-expression-rhs
 
-   :declaration
-   :bad-declaration
-   :short-variable-declaration
-   :short-variable-declaration-initializer
-   :short-variable-declaration-variable
+   #:expression-list
+   #:expression-list-expressions
 
-   :statement
-   :bad-statement
-   :expression-statement
-   :expression-statement-expression
+   #:declaration
+   #:bad-declaration
+   #:short-variable-declaration
+   #:short-variable-declaration-expressions
+   #:short-variable-declaration-identifiers
 
-   :variable
-   :variable-identifier
+   #:statement
+   #:bad-statement
+   #:empty-statement
+   #:if-statement
+   #:if-statement-init
+   #:if-statement-condition
+   #:if-statement-consequence
+   #:if-statement-alternative
+   #:expression-statement
+   #:expression-statement-expression
+   #:statement-list
+   #:statement-list-statements
 
-   :block
-   :block-statements
+   #:variable
+   #:variable-identifier
 
-   :program
-   :program-declarations
-   :make-program
+   #:identifier
+   #:identifier-token
+   #:identifier-name
+   #:identifier-list
+   #:identifier-list-identifiers
 
-   :span
-   :span-from
-   :span-to
+   #:block
+   #:block-statements
 
-   :walk
-   :enter
-   :leave
-   :with-preorder-traversal
-   :with-postorder-traversal
-   :*traversal*
-   :print-ast)
+   #:program
+   #:program-declarations
+   #:make-program
+
+   #:span
+   #:span-from
+   #:span-to
+
+   #:walk
+   #:enter
+   #:leave
+   #:print-ast)
   (:shadow :declaration :variable :block))
