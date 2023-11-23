@@ -37,6 +37,10 @@
       (walk visitor child))
     (leave visitor node)))
 
+(defmethod walk (visitor (tok token:token))
+  (enter visitor tok)
+  (leave visitor tok))
+
 ;;; ===========================================================================
 ;;; Program
 ;;; ===========================================================================
@@ -215,6 +219,81 @@
                    :from location
                    :to location)))
 
+(defclass variable-declaration (declaration)
+  ((specifications
+    :reader variable-declaration-specifications
+    :initarg :specifications
+    :initform (error "must provide specifications")
+    :type (dev:list-of variable-specification)))
+  (:documentation "A declaration that declares variables."))
+
+(defmethod children ((node variable-declaration))
+  (variable-declaration-specifications node))
+
+(defmethod location:span-for ((node variable-declaration))
+  (with-slots (specifications) node
+    (make-instance 'span
+                   :from (span-from specifications)
+                   :to (span-to speicfications))))
+
+(defclass variable-specification (declaration)
+  ((identifiers
+    :reader variable-specification-identifiers
+    :initarg :identifiers
+    :initform (error "must provide variables")
+    :type (or identifier-list expression-list)
+    :documentation "The list of variables to declar")
+   (type
+    :reader variable-specification-type
+    :initarg :type
+    :initform nil
+    :type (or null type-specifier)
+    :documentation "The type of the variables. If this is nil it means the type is inferred from the initializer.")
+   (initializer
+    :reader variable-specification-initializer
+    :initarg :initializer
+    :initform nil
+    :type (or null expression-list)
+    :documentation "The initializer for the variables")))
+
+(defmethod children ((node variable-specification))
+  (let ((base (list (variable-specification-identifiers node))))
+    (when (variable-specification-type node)
+      (push (variable-specification-type node) base))
+    (when (variable-specification-initializer node)
+      (push (variable-specification-initializer node) base))
+    (reverse base)))
+
+(defmethod location:span-for ((node variable-specification))
+  (with-slots (identifiers initializer) node
+    (let ((first-identifier (first identifiers))
+          (type (variable-specification-type node))
+          (last-initializer  (first (last initializer))))
+      (make-instance 'span
+                     :from (token:location first-identifier)
+                     :to
+                     (or
+                      (and last-initializer (span-to last-initializer))
+                      (and type (span-to type))
+                      (token:location first-identifier))))))
+
+(defclass type-specifier (node)
+  ((name
+    :reader type-specifier-name
+    :initarg :name
+    :initform (error "must provide name")
+    :type token:token))
+  (:documentation "The base class for all type specifiers in the highlevel AST."))
+
+(defmethod children ((node type-specifier))
+  (list (type-specifier-name node)))
+
+(defmethod location:span-for ((node type-specifier))
+  (with-slots (name) node
+    (make-instance 'span
+                   :from (token:location name)
+                   :to (token:location name))))
+
 (defclass short-variable-declaration (declaration)
   ((identifiers
     :reader short-variable-declaration-identifiers
@@ -258,7 +337,7 @@
   (:documentation "The base class for all literals in the highlevel AST."))
 
 (defmethod children ((node literal))
-  nil)
+  (list (literal-token node)))
 
 (defmethod location:span-for ((node literal))
   (with-slots (token) node
@@ -372,7 +451,7 @@
   (:documentation "The base class for all variables in the highlevel AST."))
 
 (defmethod children ((node variable))
-  nil)
+  (list (variable-identifier node)))
 
 (defmethod location:span-for ((node variable))
   (with-slots (identifier) node
@@ -389,7 +468,7 @@
   (:documentation "The base class for all identifiers in the highlevel AST."))
 
 (defmethod children ((node identifier))
-  nil)
+  (list (identifier-token node)))
 
 (defmethod location:span-for ((node identifier))
   (with-slots (token) node

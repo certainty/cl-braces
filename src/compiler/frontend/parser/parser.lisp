@@ -191,6 +191,7 @@ When `is-required' is false, the block is optional and nil is returned when it i
 (defun %parse-statement (state)
   (guard-parse state
     (or
+     (parse-variable-declaration state)
      (parse-if-statement state)
      (parse-simple-statement state)
      (parse-block state))))
@@ -283,6 +284,54 @@ When `is-required' is false, the block is optional and nil is returned when it i
         (match-any state token:@SEMICOLON)))))
 
 ;;;
+;;; VarDecl     = "var" ( VarSpec | "(" { VarSpec ";" } ")" ) .
+;;; VarSpec     = IdentifierList ( Type [ "=" ExpressionList ] | "=" ExpressionList ) .
+;;;
+(defun parse-variable-declaration (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@VAR)
+        (advance! state)
+        (let ((var-spec (if (token:class= cur-token token:@LPAREN)
+                            (funcall (parse-parenthized-list (parse-maybe-terminated #'parse-variable-specification)) state)
+                            (parse-variable-specification state))))
+          (when (null var-spec)
+            (signal-parse-error state "Expected variable specification"))
+          (accept state 'ast:variable-declaration :specifications (if (consp var-spec) var-spec (list var-spec))))))))
+
+(defun parse-variable-specification (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (let ((identifiers (parse-identifier-list state))
+            (type nil)
+            (init nil))
+        (when (null identifiers)
+          (signal-parse-error state "Expected identifier list"))
+        (setf type (parse-type state))
+        (when (token:class= cur-token token:@EQUAL)
+          (advance! state))
+        (setf init (parse-expression-list state))
+        (when (and (null init) (null type))
+          (signal-parse-error state "Expected type or expression list"))
+        (accept state 'ast:variable-specification :identifiers identifiers :type type :initializer init)))))
+
+;;;
+;;; Type      = TypeName [ TypeArgs ] | TypeLit | "(" Type ")" .
+;;; TypeName  = identifier | QualifiedIdent .
+;;; TypeArgs  = "[" TypeList [ "," ] "]" .
+;;; TypeList  = Type { "," Type } .
+;;; TypeLit   = ArrayType | StructType | PointerType | FunctionType | InterfaceType |
+;;;            SliceType | MapType | ChannelType .
+;;;
+(defun parse-type (state)
+  ;; we're starting off with the simple case - just an identifier
+  (guard-parse state
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@IDENTIFIER)
+        (prog1 (accept state 'ast:type-specifier :name cur-token)
+          (consume! state token:@IDENTIFIER "Expected identifier"))))))
+
+;;
 ;;; ShortVarDecl = IdentifierList ":=" ExpressionList .
 ;;;
 ;;; Is is shorthand for:
@@ -329,6 +378,37 @@ When `is-required' is false, the block is optional and nil is returned when it i
               (if next
                   (push next result)
                   (signal-parse-error state "Expected expression")))))))))
+
+(defun parse-parenthized-list (parser &key (open-paren token:@LPAREN) (close-paren token:@RPAREN))
+  "Parses a comma separeted list of nodes enclosed by the given tokens"
+  (lambda (state)
+    (guard-parse state
+      (with-slots (cur-token) state
+        (when (token:class= cur-token open-paren)
+          (advance! state)
+          (let ((result nil))
+            (loop
+              (when (eofp state)
+                (signal-parse-error state "Unexpected EOF"))
+              (when (token:class= cur-token close-paren)
+                (advance! state)
+                (return (nreverse result)))
+              (a:when-let ((next (funcall parser state)))
+                (push next result)))))))))
+
+(defun parse-terminated (parser)
+  (lambda (state)
+    (guard-parse state
+      (a:when-let ((result (funcall parser state)))
+        (consume! state token:@SEMICOLON "Expected ';' after statement")
+        result))))
+
+(defun parse-maybe-terminated (parser)
+  (lambda (state)
+    (guard-parse state
+      (a:when-let ((result (funcall parser state)))
+        (match-any state token:@SEMICOLON)
+        result))))
 
 (define-enum precedence
   none

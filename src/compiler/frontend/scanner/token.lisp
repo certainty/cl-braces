@@ -24,6 +24,7 @@
   @CONTINUE
   @FALLTHROUGH
   @RETURN
+  @VAR
 
   ;; [Literals](https://golang.org/ref/spec#Literals)
   @INTEGER
@@ -41,6 +42,8 @@
   @STAR
   @SLASH
   @COLON_EQUAL
+  @EQUAL
+  @EQUAL_EQUAL
   @LT
   @LE
   @GT

@@ -33,6 +33,12 @@
    #:short-variable-declaration
    #:short-variable-declaration-expressions
    #:short-variable-declaration-identifiers
+   #:variable-declaration
+   #:variable-declaration-specifications
+   #:variable-specification
+   #:variable-specification-identifiers
+   #:variable-specification-type
+   #:variable-specification-expressions
 
    #:statement
    #:bad-statement
@@ -49,6 +55,8 @@
 
    #:variable
    #:variable-identifier
+
+   #:type-specifier
 
    #:identifier
    #:identifier-token

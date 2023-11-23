@@ -42,9 +42,19 @@
       (values symbol-table (when errors (nreverse errors))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:node))
+  (declare (ignore resolver node))
   :continue)
 
 (defmethod ast:leave ((resolver resolver) (node ast:node))
+  (declare (ignore resolver node))
+  :continue)
+
+(defmethod ast:enter ((resolver resolver) (tok token:token))
+  (declare (ignore resolver tok))
+  :continue)
+
+(defmethod ast:leave ((resolver resolver) (tok token:token))
+  (declare (ignore resolver tok))
   :continue)
 
 (defmethod ast:enter ((resolver resolver) (node ast:block))

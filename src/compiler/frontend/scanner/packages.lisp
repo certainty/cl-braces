@@ -40,6 +40,8 @@
    #:@SEMICOLON
    #:@COMMA
    #:@COLON_EQUAL
+   #:@EQUAL
+   #:@EQUAL_EQUAL
    #:@IDENTIFIER
    #:@TRUE
    #:@FALSE
@@ -49,7 +51,8 @@
    #:@BREAK
    #:@CONTINUE
    #:@FALLTHROUGH
-   #:@RETURN)
+   #:@RETURN
+   #:@VAR)
   (:shadow :class))
 
 (defpackage :cl-braces.compiler.frontend.scanner

@@ -30,10 +30,10 @@
    ;; binary instructions #x80 - #xbf
    (#x80 loada ((reg dst) (addr src))          "Loads the constant from $src into $dst")
    (#x81 mov   ((reg dst) (reg src))           "Moves the value from $src to $dst")
+   (#x82 jz    ((label dst) (reg value))       "Jump to %dst if $value is zero")
+   (#x83 jnz   ((label dst) (reg value))       "Jump to %dst if $value is non-zero")
 
    ;; ternary instructions #xc0 - #xff
-   (#xC0 jz    ((label dst) (reg value))         "Jump to %dst if $value is zero")
-   (#xC1 jnz   ((label dst) (reg value))         "Jump to %dst if $value is non-zero")
    (#xC3 sub   ((reg dst)   (reg lhs) (reg rhs)) "Subtracts what is in $lhs from $rhs and stores the result in $dst.")
    (#xC4 add   ((reg dst)   (reg lhs) (reg rhs)) "Add what is in $lhs to $rhs and stores the result in $dst.")
    (#xC5 mul   ((reg dst)   (reg lhs) (reg rhs)) "Multiplies what is in $lhs by $rhs and stores the result in $dst.")

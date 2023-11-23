@@ -303,7 +303,8 @@
      "break" token:@BREAK
      "continue" token:@CONTINUE
      "fallthrough" token:@FALLTHROUGH
-     "return" token:@RETURN)
+     "return" token:@RETURN
+     "var" token:@VAR)
   :test #'equalp)
 
 (declaim (inline identifier-char-p))
@@ -339,6 +340,8 @@
       (cond
         ((and (eql c1 #\:) (eql c2 #\=))
          (=> token:@COLON_EQUAL))
+        ((and (eql c1 #\=) (eql c2 #\=))
+         (=> token:@EQUAL_EQUAL))
         ((and (eql c1 #\<) (eql c2 #\=))
          (=> token:@LE))
         ((and (eql c1 #\>) (eql c2 #\=))
@@ -365,7 +368,8 @@
         (#\; (=> token:@SEMICOLON))
         (#\, (=> token:@COMMA))
         (#\< (=> token:@LT))
-        (#\> (=> token:@GT))))))
+        (#\> (=> token:@GT))
+        (#\= (=> token:@EQUAL))))))
 
 ;;; ===================================================
 ;;; Literals

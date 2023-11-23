@@ -108,3 +108,77 @@
   (multiple-value-bind (ast had-errors) (parser:parse " if x := 10; x < 20 { x }")
     (declare (ignore ast))
     (assert-false had-errors)))
+
+(define-test parse-variable-declaration ()
+  "Parse variable declaration for single variable"
+  (multiple-value-bind (ast had-errors) (parser:parse "var x int")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+(define-test parse-variable-declaration-with-assignment ()
+  "Parse variable declaration with assignment"
+  (multiple-value-bind (ast had-errors) (parser:parse "var x int = 10")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+(define-test parse-variable-declaration-with-assignment-and-type-inference ()
+  "Parse variable declaration with assignment and type inference"
+  (multiple-value-bind (ast had-errors) (parser:parse "var x = 10")
+    (assert-false had-errors)
+    (let* ((statements (ast:program-declarations ast))
+           (decl (first (ast:statement-list-statements statements))))
+      (assert-eql 'ast:variable-declaration (type-of decl)))))
+
+(define-test parse-variable-declaration-with-multiple-variables ()
+  "Parse variable declaration with multiple variables"
+  (multiple-value-bind (ast had-errors) (parser:parse "var x, y int")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+(define-test parse-variable-declaration-with-multiple-variables-and-assignment ()
+  "Parse variable declaration with multiple variables and assignment"
+  (multiple-value-bind (ast had-errors) (parser:parse "var x, y int = 10, 20")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+(define-test parse-variable-declaration-with-group-of-variables ()
+  "Parse variable declaration with group of variables"
+  (multiple-value-bind (ast had-errors) (parser:parse "var (x int; y int = 10)")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+(define-test parse-variable-declaration-with-placeholder ()
+  "Parse variable declaration with placeholder"
+  (multiple-value-bind (ast had-errors) (parser:parse "var _, x = 1,2")
+    (declare (ignore ast))
+    (assert-false had-errors)))
+
+;; (define-test parse-assignment ()
+;;   "Parse simple assignment"
+;;   (multiple-value-bind (ast had-errors) (parser:parse "x = 10")
+;;     (declare (ignore ast))
+;;     (assert-false had-errors)))
+
+;; (define-test parse-assignment-with-addition ()
+;;   "Parse assignment with addition"
+;;   (multiple-value-bind (ast had-errors) (parser:parse "x += 10")
+;;     (declare (ignore ast))
+;;     (assert-false had-errors)))
+
+;; (define-test parse-assignment-with-multiplication ()
+;;   "Parse assignment with multiplication"
+;;   (multiple-value-bind (ast had-errors) (parser:parse "x *= 10")
+;;     (declare (ignore ast))
+;;     (assert-false had-errors)))
+
+;; (define-test parse-assignment-with-multiple-values ()
+;;   "Parse assignment with multiple values"
+;;   (multiple-value-bind (ast had-errors) (parser:parse "x, y = 10, 20")
+;;     (declare (ignore ast))
+;;     (assert-false had-errors)))
+
+;; (define-test parse-assigment-with-multiple-values-and-placeholders ()
+;;   "Parse assignment with multiple values and placeholders"
+;;   (multiple-value-bind (ast had-errors) (parser:parse "x, _ = 10, 20")
+;;     (declare (ignore ast))
+;;     (assert-false had-errors)))

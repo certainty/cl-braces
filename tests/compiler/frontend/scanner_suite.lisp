@@ -92,7 +92,9 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as "<" token:@LT)
   (assert-scans-as "<=" token:@LE)
   (assert-scans-as ">" token:@GT)
-  (assert-scans-as ">=" token:@GE))
+  (assert-scans-as ">=" token:@GE)
+  (assert-scans-as "=" token:@EQUAL)
+  (assert-scans-as "==" token:@EQUAL_EQUAL))
 
 (define-test scan-colon-equal ()
   "Scan the colon equal operator"
@@ -124,6 +126,7 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as "breaker" token:@IDENTIFIER :with-value "breaker")
   (assert-scans-as "continue" token:@CONTINUE)
   (assert-scans-as "discontinued" token:@IDENTIFIER :with-value "discontinued")
-
   (assert-scans-as "fallthrough" token:@FALLTHROUGH)
-  (assert-scans-as "afallthroughb" token:@IDENTIFIER :with-value "afallthroughb"))
+  (assert-scans-as "afallthroughb" token:@IDENTIFIER :with-value "afallthroughb")
+  (assert-scans-as "var" token:@VAR)
+  (assert-scans-as "avara" token:@IDENTIFIER :with-value "avara"))
