@@ -127,31 +127,40 @@
     (assert-false had-errors)
     (let* ((statements (ast:program-declarations ast))
            (decl (first (ast:statement-list-statements statements))))
-      (assert-eql 'ast:variable-declaration (type-of decl)))))
+      (assert-eql 'ast:variable-declaration (type-of decl))))
+  )
 
 (define-test parse-variable-declaration-with-multiple-variables ()
   "Parse variable declaration with multiple variables"
   (multiple-value-bind (ast had-errors) (parser:parse "var x, y int")
-    (declare (ignore ast))
-    (assert-false had-errors)))
+    (assert-false had-errors)
+    (let* ((statements (ast:program-declarations ast))
+           (decl (first (ast:statement-list-statements statements))))
+      (assert-eql 'ast:variable-declaration (type-of decl)))))
 
 (define-test parse-variable-declaration-with-multiple-variables-and-assignment ()
   "Parse variable declaration with multiple variables and assignment"
   (multiple-value-bind (ast had-errors) (parser:parse "var x, y int = 10, 20")
-    (declare (ignore ast))
-    (assert-false had-errors)))
+    (assert-false had-errors)
+    (let* ((statements (ast:program-declarations ast))
+           (decl (first (ast:statement-list-statements statements))))
+      (assert-eql 'ast:variable-declaration (type-of decl)))))
 
 (define-test parse-variable-declaration-with-group-of-variables ()
   "Parse variable declaration with group of variables"
   (multiple-value-bind (ast had-errors) (parser:parse "var (x int; y int = 10)")
-    (declare (ignore ast))
-    (assert-false had-errors)))
+    (assert-false had-errors)
+    (let* ((statements (ast:program-declarations ast))
+           (decl (first (ast:statement-list-statements statements))))
+      (assert-eql 'ast:variable-declaration (type-of decl)))))
 
 (define-test parse-variable-declaration-with-placeholder ()
   "Parse variable declaration with placeholder"
   (multiple-value-bind (ast had-errors) (parser:parse "var _, x = 1,2")
-    (declare (ignore ast))
-    (assert-false had-errors)))
+    (assert-false had-errors)
+    (let* ((statements (ast:program-declarations ast))
+           (decl (first (ast:statement-list-statements statements))))
+      (assert-eql 'ast:variable-declaration (type-of decl)))))
 
 ;; (define-test parse-assignment ()
 ;;   "Parse simple assignment"
