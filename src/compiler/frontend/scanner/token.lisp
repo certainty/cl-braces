@@ -44,6 +44,8 @@
   @COLON_EQUAL
   @EQUAL
   @EQUAL_EQUAL
+  @MUL_EQUAL
+  @PLUS_EQUAL
   @LT
   @LE
   @GT

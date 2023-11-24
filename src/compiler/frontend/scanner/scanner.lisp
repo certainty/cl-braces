@@ -349,7 +349,11 @@
         ((and (eql c1 #\-) (eql c2 #\-))
          (=> token:@MINUS_MINUS))
         ((and (eql c1 #\+) (eql c2 #\+))
-         (=> token:@PLUS_PLUS))))))
+         (=> token:@PLUS_PLUS))
+        ((and (eql c1 #\+) (eql c2 #\=))
+         (=> token:@PLUS_EQUAL))
+        ((and (eql c1 #\*) (eql c2 #\=))
+         (=> token:@MUL_EQUAL))))))
 
 (defun scan-one-char-tokens (state)
   (let ((c (peek state)))

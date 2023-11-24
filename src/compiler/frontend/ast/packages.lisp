@@ -53,6 +53,11 @@
    #:statement-list
    #:statement-list-statements
 
+   #:assignment-statement
+   #:assignment-statement-lhs
+   #:assignment-statement-operator
+   #:assignment-statement-rhs
+
    #:variable
    #:variable-identifier
 

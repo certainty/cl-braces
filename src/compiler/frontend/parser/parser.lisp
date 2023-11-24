@@ -196,28 +196,6 @@ When `is-required' is false, the block is optional and nil is returned when it i
      (parse-simple-statement state)
      (parse-block state))))
 
-
-;; expect works like this
-;; (expect-let state
-;;   ((condition parse-block "expected block"))
-;;   ((condition parse-if-statement "expected if statement"))
-;;   ((condition parse-simple-statement "expected simple statement")))
-
-(defmacro expect (state parser error-message)
-  `(let ((result (,parser ,state)))
-     (unless result
-       (signal-parse-error ,state ,error-message))
-     result))
-
-(defmacro expect-let (state (&rest clauses) &body body)
-  (let ((bindings (mapcar
-                   (lambda (clause)
-                     (destructuring-bind (var parser error-message) clause
-                       `(,var (expect ,state ,parser ,error-message))))
-                   clauses)))
-    `(let* (,@bindings)
-       ,@body)))
-
 ;;;
 ;;; IfStmt = "if" [ SimpleStmt ";" ] Expression Block [ "else" ( IfStmt | Block ) ] .
 ;;;
@@ -266,11 +244,8 @@ When `is-required' is false, the block is optional and nil is returned when it i
 (-> parse-simple-statement (state) (or null ast:node))
 (defun parse-simple-statement (state)
   (guard-parse state
-    (with-slots (cur-token next-token) state
-      (when (token:class= cur-token token:@IDENTIFIER)
-        (when (or (token:class= next-token token:@COLON_EQUAL) (token:class= next-token token:@COMMA))
-          (return-from parse-simple-statement (parse-short-variable-declaration state))))
-      (parse-expression-statement state))))
+    (or (parse-assignment-or-short-variable-declaration state)
+        (parse-expression-statement state))))
 
 ;;;
 ;;; ExpressionStmt = Expression .
@@ -293,7 +268,7 @@ When `is-required' is false, the block is optional and nil is returned when it i
       (when (token:class= cur-token token:@VAR)
         (advance! state)
         (let ((var-spec (if (token:class= cur-token token:@LPAREN)
-                            (funcall (parse-parenthized-list (parse-maybe-terminated #'parse-variable-specification)) state)
+                            (funcall (parse-parenthized-many (parse-maybe-terminated #'parse-variable-specification)) state)
                             (parse-variable-specification state))))
           (when (null var-spec)
             (signal-parse-error state "Expected variable specification"))
@@ -333,28 +308,55 @@ When `is-required' is false, the block is optional and nil is returned when it i
 
 ;;
 ;;; ShortVarDecl = IdentifierList ":=" ExpressionList .
+;;; Assignment = ExpressionList assign_op ExpressionList .
+;;; assign_op = [ add_op | mul_op ] "=" .
 ;;;
-;;; Is is shorthand for:
-;;;
-;;; "var" IdentifierList "=" ExpressionList .
-;;;
-(defun parse-short-variable-declaration (state)
-  "Parse a short variable declaration of the form <variable> := <expression>"
+(defun parse-assignment-or-short-variable-declaration (state)
   (guard-parse state
     (with-slots (cur-token next-token) state
-      (a:when-let ((identifiers (parse-identifier-list state)))
-        (consume! state token:@COLON_EQUAL "Expected ':=' in short variable declaration")
-        (a:if-let ((expressions (parse-expression-list state)))
-          (progn
-            (unless (= (length (ast:expression-list-expressions expressions)) (length (ast:identifier-list-identifiers identifiers)))
-              (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
-            (accept state 'ast:short-variable-declaration :identifiers identifiers :expressions expressions))
-          (signal-parse-error state "Expected expression list"))))))
+      (a:when-let ((lhs (parse-expression-list state)))
+        (cond
+          ((token:class= cur-token token:@COLON_EQUAL)
+           ;; short variable declaration
+           (consume! state token:@COLON_EQUAL "Expected ':=' in short variable declaration")
+           (a:if-let ((rhs (parse-expression-list state)))
+             (progn
+               (unless (= (length (ast:expression-list-expressions rhs)) (length (ast:expression-list-expressions lhs)))
+                 (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
+               (accept state 'ast:short-variable-declaration :identifiers (expression-list->identifier-list state lhs) :expressions rhs))
+             (signal-parse-error state "Expected expression list")))
+          ((token:class-any-p cur-token token:@EQUAL token:@MUL_EQUAL token:@PLUS_EQUAL)
+           (let ((operator cur-token))
+             (advance! state)
+             (a:if-let ((rhs (parse-expression-list state)))
+               (progn
+                 (unless (= (length (ast:expression-list-expressions lhs)) (length (ast:expression-list-expressions rhs)))
+                   (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
+                 (accept state 'ast:assignment-statement :lhs lhs :operator operator :rhs rhs))
+               (signal-parse-error state "Expected expression list")))))))))
+
+(defun expression-list->identifier-list (state expression-list)
+  (let ((expressions (ast:expression-list-expressions expression-list)))
+    (unless (every #'(lambda (expr) (eql (type-of expr) 'ast:identifier)) expressions)
+      (signal-parse-error state "Expected identifier list"))
+    (make-instance 'ast:identifier-list :identifiers expressions :location (ast:location expression-list))))
 
 ;;; IdentifierList = identifier { "," identifier } .
 (defun parse-identifier-list (state)
   (a:when-let ((identifiers  (parse-comma-separated state #'parse-identifier)))
     (accept state 'ast:identifier-list :identifiers identifiers)))
+
+;;;
+;;;
+(defun parse-assingment-statement (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@IDENTIFIER)
+        (let ((lhs (parse-expression-list state)))
+          (when (token:class= cur-token token:@EQUAL)
+            (advance! state)
+            (let ((rhs (parse-expression-list state)))
+              (accept state 'ast:assignment-statement :lhs lhs :rhs rhs))))))))
 
 ;;;
 ;;; ExpressionList = Expression { "," Expression } .
@@ -379,8 +381,8 @@ When `is-required' is false, the block is optional and nil is returned when it i
                   (push next result)
                   (signal-parse-error state "Expected expression")))))))))
 
-(defun parse-parenthized-list (parser &key (open-paren token:@LPAREN) (close-paren token:@RPAREN))
-  "Parses a comma separeted list of nodes enclosed by the given tokens"
+(defun parse-parenthized-many (parser &key (open-paren token:@LPAREN) (close-paren token:@RPAREN))
+  "Parses first the `OPEN-PAREN', then the provided `PARSER' repeatedly until the `CLOSE-PAREN' token is encountered."
   (lambda (state)
     (guard-parse state
       (with-slots (cur-token) state

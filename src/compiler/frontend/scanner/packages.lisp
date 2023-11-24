@@ -40,6 +40,8 @@
    #:@SEMICOLON
    #:@COMMA
    #:@COLON_EQUAL
+   #:@PLUS_EQUAL
+   #:@MUL_EQUAL
    #:@EQUAL
    #:@EQUAL_EQUAL
    #:@IDENTIFIER

@@ -178,6 +178,37 @@
                      :from (span-from condition)
                      :to (span-to (or alternative consequence))))))
 
+(defclass assignment-statement (statement)
+  ((lhs
+    :reader assignment-statement-lhs
+    :initarg :lhs
+    :initform (error "must provide lhs")
+    :type expression-list)
+   (operator
+    :reader assignment-statement-operator
+    :initarg :operator
+    :initform (error "must provide op")
+    :type token:token)
+   (rhs
+    :reader assignment-statement-rhs
+    :initarg :rhs
+    :initform (error "must provide rhs")
+    :type expression-list))
+  (:documentation "A statement that is an assignment."))
+
+(defmethod children ((node assignment-statement))
+  (list (assignment-statement-lhs node)
+        (assignment-statement-operator node)
+        (assignment-statement-rhs node)))
+
+(defmethod location:span-for ((node assignment-statement))
+  (with-slots (lhs op rhs) node
+    (let ((lhs (location:span-for lhs))
+          (rhs (location:span-for rhs)))
+      (make-instance 'span
+                     :from (span-from lhs)
+                     :to (span-to rhs)))))
+
 (defclass block (node)
   ((statements
     :reader block-statements
