@@ -601,7 +601,6 @@ Example:
          (setf next-token (read-token scanner))))
     (when (token:class= cur-token token:@EOF)
       (setf next-token cur-token))
-
     (values cur-token next-token)))
 
 (-> consume! (state token:token-class string &rest list) (or null token:token))
