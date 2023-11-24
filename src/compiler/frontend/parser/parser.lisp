@@ -29,7 +29,7 @@
   ((scanner
     :initarg :scanner
     :initform (error "must provide scanner")
-    :type scanner:state
+    :type parse-buffer
     :documentation "The scanner to read tokens from")
    (cur-token
     :initarg :cur-token
@@ -58,6 +58,11 @@
     :type boolean
     :documentation "A flag indicating if any errors have been encountered"))
   (:documentation "The state of the parser which is threaded through all parsing methods"))
+
+(defmethod print-object ((state state) stream)
+  (print-unreadable-object (state stream :type t)
+    (with-slots (cur-token next-token) state
+      (format stream "cur-token: ~A, next-token: ~A" (and cur-token (token:class cur-token)) (and next-token (token:class next-token))))))
 
 ;;; ====================================================================================================
 ;;; Main API for the parser
@@ -91,7 +96,7 @@
 (-> call-with-parser ((function (state) *) scanner:input-designator &key (:fail-fast boolean)) *)
 (defun call-with-parser (fn input-designator &key (fail-fast nil))
   (scanner:with (scanner input-designator :fail-fast fail-fast)
-    (let ((state (make-instance 'state :scanner scanner :fail-fast fail-fast)))
+    (let ((state (make-instance 'state :scanner (make-parse-buffer scanner) :fail-fast fail-fast)))
       (funcall fn state))))
 
 (defmacro with ((state input-designator &key (fail-fast nil)) &body body)
@@ -119,6 +124,7 @@
 (defun synchronize (state)
   "Synchronize the parser to the next statement boundary."
   (with-slots (cur-token next-token) state
+    ;; TODO: clean-up save-points
     (loop
       (cond
         ((eofp state) (return))
@@ -129,6 +135,37 @@
          (advance! state)
          (return-from synchronize))
         (t (advance! state))))))
+
+
+;;; parser API
+;;; each parser has one of three possible outcomes
+;;; 1. it succeeds and returns the parsed node
+;;; 2. it figures out it doesn't apply and returns nil
+;;; 3. it fails and signals an error
+;;;
+;;; Parser usee backtracking to deal with the first two cases.
+;;; We still try to use backtracking sparringly and only when it's really necessary, because it makes the error reporting more difficult.
+;;; We also only introduce the bare minimum of combinators to build new parsers.
+
+(defun try (parser state)
+  (guard-parse state
+    (with-slots (scanner cur-token next-token) state
+      (let ((ctok cur-token)
+            (ntok next-token))
+        (save-point scanner)
+        (a:if-let ((result (funcall parser state))) ; when this exits non-locally via an error, we'll have a save-point hanging
+          (prog1 result
+            (commit-save-point scanner))
+          (prog1 nil
+            (rollback-to-save-point scanner)
+            (setf cur-token ctok)
+            (setf next-token ntok)))))))
+
+(defun expect (state parser error-message)
+  (guard-parse state
+    (a:if-let ((result (funcall parser state)))
+      result
+      (signal-parse-error state error-message))))
 
 ;;; ====================================================================================================
 ;;; Parse implementation for the various language constructs
@@ -141,13 +178,13 @@
 ;;; Ref: https://golang.org/ref/spec#Blocks
 ;;; Ref: https://golang.org/ref/spec#Statements
 
+
 (-> parse-block (state &optional boolean) (or null ast:block))
 (defun parse-block (state &optional (is-required nil))
   "Parses a block block and returns an `ast:block' node.
-
-When `is-required' is true, the block is mandatory and an error is signaled when it is not present.
-When `is-required' is false, the block is optional and nil is returned when it is not present.
-"
+   When `is-required' is true, the block is mandatory and an error is signaled when it is not present.
+   When `is-required' is false, the block is optional and nil is returned when it is not present.
+  "
   (guard-parse state
     (when (or (and is-required (consume! state token:@LBRACE "Expected block"))
               (match-any state token:@LBRACE))
@@ -191,11 +228,10 @@ When `is-required' is false, the block is optional and nil is returned when it i
 (defun %parse-statement (state)
   (guard-parse state
     (or
-     (parse-variable-declaration state)
-     (parse-if-statement state)
-     (parse-simple-statement state)
-     (parse-block state))))
-
+     (try #'parse-variable-declaration state)
+     (try #'parse-if-statement state)
+     (try #'parse-simple-statement state)
+     (try #'parse-block state))))
 ;;;
 ;;; IfStmt = "if" [ SimpleStmt ";" ] Expression Block [ "else" ( IfStmt | Block ) ] .
 ;;;
@@ -219,13 +255,13 @@ When `is-required' is false, the block is optional and nil is returned when it i
             ((and init (token:class= cur-token token:@SEMICOLON))
              ;; it was an initform, so we consume the token and expect another expression for the condition
              (advance! state)
-             (setf condition (expect state parse-expression "Expected condition expression")))
+             (setf condition (expect state #'parse-expression "Expected condition expression")))
             (t
              (setf condition init)
              (setf init (make-instance 'ast:empty-statement :location (token:location cur-token)))))
 
           ;; consequence
-          (setf consequence (expect state parse-block "Expected consequence block"))
+          (setf consequence (expect state #'parse-block "Expected consequence block"))
 
           ;; [alternative]
           (when (token:class= cur-token token:@ELSE)
@@ -244,8 +280,10 @@ When `is-required' is false, the block is optional and nil is returned when it i
 (-> parse-simple-statement (state) (or null ast:node))
 (defun parse-simple-statement (state)
   (guard-parse state
-    (or (parse-assignment-or-short-variable-declaration state)
-        (parse-expression-statement state))))
+    (or
+     (try #'parse-short-variable-declaration state)
+     (try #'parse-assignment state)
+     (try #'parse-expression-statement state))))
 
 ;;;
 ;;; ExpressionStmt = Expression .
@@ -255,7 +293,6 @@ When `is-required' is false, the block is optional and nil is returned when it i
   (guard-parse state
     (a:when-let ((expr (parse-expression state)))
       (prog1 (accept state 'ast:expression-statement :expression expr)
-        ;; optionally consume the semicolon
         (match-any state token:@SEMICOLON)))))
 
 ;;;
@@ -308,32 +345,20 @@ When `is-required' is false, the block is optional and nil is returned when it i
 
 ;;
 ;;; ShortVarDecl = IdentifierList ":=" ExpressionList .
-;;; Assignment = ExpressionList assign_op ExpressionList .
-;;; assign_op = [ add_op | mul_op ] "=" .
 ;;;
-(defun parse-assignment-or-short-variable-declaration (state)
+(defun parse-short-variable-declaration (state)
   (guard-parse state
     (with-slots (cur-token next-token) state
-      (a:when-let ((lhs (parse-expression-list state)))
-        (cond
-          ((token:class= cur-token token:@COLON_EQUAL)
-           ;; short variable declaration
-           (consume! state token:@COLON_EQUAL "Expected ':=' in short variable declaration")
-           (a:if-let ((rhs (parse-expression-list state)))
-             (progn
-               (unless (= (length (ast:expression-list-expressions rhs)) (length (ast:expression-list-expressions lhs)))
-                 (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
-               (accept state 'ast:short-variable-declaration :identifiers (expression-list->identifier-list state lhs) :expressions rhs))
-             (signal-parse-error state "Expected expression list")))
-          ((token:class-any-p cur-token token:@EQUAL token:@MUL_EQUAL token:@PLUS_EQUAL)
-           (let ((operator cur-token))
-             (advance! state)
-             (a:if-let ((rhs (parse-expression-list state)))
-               (progn
-                 (unless (= (length (ast:expression-list-expressions lhs)) (length (ast:expression-list-expressions rhs)))
-                   (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
-                 (accept state 'ast:assignment-statement :lhs lhs :operator operator :rhs rhs))
-               (signal-parse-error state "Expected expression list")))))))))
+      (a:when-let ((lhs (parse-identifier-list state)))
+        (when (token:class= cur-token token:@COLON_EQUAL)
+          ;; short variable declaration
+          (consume! state token:@COLON_EQUAL "Expected ':=' in short variable declaration")
+          (a:if-let ((rhs (parse-expression-list state)))
+            (progn
+              (unless (= (length (ast:expression-list-expressions rhs)) (length (ast:identifier-list-identifiers lhs)))
+                (signal-parse-error state "Assignment Mismatch. Expected expression list to have the same length as the identifier list"))
+              (accept state 'ast:short-variable-declaration :identifiers lhs  :expressions rhs))
+            (signal-parse-error state "Expected expression list")))))))
 
 (defun expression-list->identifier-list (state expression-list)
   (let ((expressions (ast:expression-list-expressions expression-list)))
@@ -347,16 +372,20 @@ When `is-required' is false, the block is optional and nil is returned when it i
     (accept state 'ast:identifier-list :identifiers identifiers)))
 
 ;;;
+;;; Assignment = ExpressionList assign_op ExpressionList .
+;;; assign_op = [ add_op | mul_op ] "=" .
 ;;;
-(defun parse-assingment-statement (state)
+(-> parse-assignment (state) (or null ast:assignment-statement))
+(defun parse-assignment (state)
   (guard-parse state
     (with-slots (cur-token) state
-      (when (token:class= cur-token token:@IDENTIFIER)
-        (let ((lhs (parse-expression-list state)))
-          (when (token:class= cur-token token:@EQUAL)
+      (a:when-let ((lhs (parse-expression-list state)))
+        (when (token:class-any-p cur-token token:@EQUAL token:@MUL_EQUAL token:@PLUS_EQUAL)
+          (let ((operator cur-token))
             (advance! state)
-            (let ((rhs (parse-expression-list state)))
-              (accept state 'ast:assignment-statement :lhs lhs :rhs rhs))))))))
+            (a:if-let ((rhs (parse-expression-list state)))
+              (accept state 'ast:assignment-statement :lhs lhs :operator operator :rhs rhs)
+              (signal-parse-error state "Expected expression list"))))))))
 
 ;;;
 ;;; ExpressionList = Expression { "," Expression } .
@@ -488,10 +517,10 @@ Example:
   "Parse a primary expression, which are usually terminal nodes. The prefix `primary-' is often used in parsers to denot these types of productions."
   (guard-parse state
     (or
-     (parse-literal state)
-     (parse-unary-expression state)
-     (parse-identifier state)
-     (parse-grouping-expression state))))
+     (try #'parse-literal state)
+     (try #'parse-unary-expression state)
+     (try #'parse-identifier state)
+     (try #'parse-grouping-expression state))))
 
 (defun parse-identifier (state)
   (guard-parse state
@@ -504,8 +533,8 @@ Example:
   "Recognizes a literal expression"
   (guard-parse state
     (or
-     (parse-boolean-literal state)
-     (parse-number-literal state))))
+     (try #'parse-boolean-literal state)
+     (try #'parse-number-literal state))))
 
 (-> parse-boolean-literal (state) (or null ast:literal))
 (defun parse-boolean-literal (state)
@@ -521,9 +550,7 @@ Example:
   (guard-parse state
     (when-token state token:@INTEGER
       (let ((tok (consume! state token:@INTEGER "Expected number literal")))
-        (when tok
-          (unless (token:class= tok token:@ILLEGAL)
-            (accept state 'ast:literal :token tok)))))))
+        (accept state 'ast:literal :token tok)))))
 
 (defun parse-grouping-expression (state)
   (when-token state token:@LPAREN
@@ -564,15 +591,18 @@ Example:
 (-> advance! (state) (values token:token token:token))
 (defun advance! (state)
   (with-slots (next-token cur-token scanner) state
-    (let ((cur (scanner:next-token scanner)))
-      (if (and cur-token next-token)
-          (rotatef cur-token next-token cur)
-          (progn
-            (setf cur-token cur)
-            (setf next-token (scanner:next-token scanner))))
-      (when (token:class= cur-token token:@ILLEGAL)
-        (signal-parse-error state "Illegal token"))
-      (values cur-token next-token))))
+    (cond
+      ((null cur-token)
+       (setf cur-token (read-token scanner))
+       (setf next-token (read-token scanner)))
+      ((null next-token)
+       (setf next-token (read-token scanner)))
+      (t (setf cur-token next-token)
+         (setf next-token (read-token scanner))))
+    (when (token:class= cur-token token:@EOF)
+      (setf next-token cur-token))
+
+    (values cur-token next-token)))
 
 (-> consume! (state token:token-class string &rest list) (or null token:token))
 (defun consume! (state expected-token-class format-string &rest args)

@@ -106,6 +106,16 @@
     (print-unreadable-object (token stream :type t :identity t)
       (format stream "class: ~a lexeme: ~a value: ~a location: ~a" class lexeme value location))))
 
+(defun synthetic-eof ()
+  "Returns a synthetic EOF token. This is used to mark the end of the input."
+  (make-instance 'token
+                 :class @EOF
+                 :lexeme ""
+                 :location (make-instance 'location:source-location
+                                          :line 0
+                                          :column 0
+                                          :offset 0)))
+
 (-> class= (token token-class) boolean)
 (defun class= (token expected-class)
   "Returns `t' if the `tokens' class is equal to the given `expected-class.'"

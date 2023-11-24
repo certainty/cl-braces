@@ -414,7 +414,9 @@
   (:documentation "An expression for binary relations"))
 
 (defmethod children ((node unary-expression))
-  (list (unary-expression-operand node)))
+  (list
+   (unary-expression-operator node)
+   (unary-expression-operand node)))
 
 (defmethod location:span-for ((node unary-expression))
   (with-slots (operator operand) node
@@ -443,8 +445,10 @@
   (:documentation "An expression for binary relations"))
 
 (defmethod children ((node binary-expression))
-  (list (binary-expression-lhs node)
-        (binary-expression-rhs node)))
+  (list
+   (binary-expression-operator node)
+   (binary-expression-lhs node)
+   (binary-expression-rhs node)))
 
 (defmethod location:span-for ((node binary-expression))
   (with-slots (lhs rhs) node

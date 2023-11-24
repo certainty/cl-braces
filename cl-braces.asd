@@ -50,6 +50,7 @@
                  (:module "parser"
                   :components
                   ((:file "packages")
+                   (:file "buffer")
                    (:file "parser")))))
                (:module "middleend"
                 :components

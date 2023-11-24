@@ -17,6 +17,7 @@
    #:identifier-p
    #:punctuation-p
    #:class-any-p
+   #:synthetic-eof
 
    #:@EOF
    #:@ILLEGAL

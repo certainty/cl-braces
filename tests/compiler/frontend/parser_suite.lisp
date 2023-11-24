@@ -162,32 +162,32 @@
            (decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:variable-declaration (type-of decl)))))
 
-;; (define-test parse-assignment ()
-;;   "Parse simple assignment"
-;;   (multiple-value-bind (ast had-errors) (parser:parse "x = 10")
-;;     (declare (ignore ast))
-;;     (assert-false had-errors)))
+(define-test parse-assignment ()
+  "Parse simple assignment"
+  (multiple-value-bind (ast had-errors) (parser:parse "x = 10")
+    (declare (ignore ast))
+    (assert-false had-errors)))
 
-;; (define-test parse-assignment-with-addition ()
-;;   "Parse assignment with addition"
-;;   (multiple-value-bind (ast had-errors) (parser:parse "x += 10")
-;;     (declare (ignore ast))
-;;     (assert-false had-errors)))
+(define-test parse-assignment-with-addition ()
+  "Parse assignment with addition"
+  (multiple-value-bind (ast had-errors) (parser:parse "x += 10")
+    (declare (ignore ast))
+    (assert-false had-errors)))
 
-;; (define-test parse-assignment-with-multiplication ()
-;;   "Parse assignment with multiplication"
-;;   (multiple-value-bind (ast had-errors) (parser:parse "x *= 10")
-;;     (declare (ignore ast))
-;;     (assert-false had-errors)))
+(define-test parse-assignment-with-multiplication ()
+  "Parse assignment with multiplication"
+  (multiple-value-bind (ast had-errors) (parser:parse "x *= 10")
+    (declare (ignore ast))
+    (assert-false had-errors)))
 
-;; (define-test parse-assignment-with-multiple-values ()
-;;   "Parse assignment with multiple values"
-;;   (multiple-value-bind (ast had-errors) (parser:parse "x, y = 10, 20")
-;;     (declare (ignore ast))
-;;     (assert-false had-errors)))
+(define-test parse-assignment-with-multiple-values ()
+  "Parse assignment with multiple values"
+  (multiple-value-bind (ast had-errors) (parser:parse "x, y = 10, 20")
+    (declare (ignore ast))
+    (assert-false had-errors)))
 
-;; (define-test parse-assigment-with-multiple-values-and-placeholders ()
-;;   "Parse assignment with multiple values and placeholders"
-;;   (multiple-value-bind (ast had-errors) (parser:parse "x, _ = 10, 20")
-;;     (declare (ignore ast))
-;;     (assert-false had-errors)))
+(define-test parse-assigment-with-multiple-values-and-placeholders ()
+  "Parse assignment with multiple values and placeholders"
+  (multiple-value-bind (ast had-errors) (parser:parse "x, _ = 10, 20")
+    (declare (ignore ast))
+    (assert-false had-errors)))

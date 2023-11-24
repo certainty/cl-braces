@@ -93,7 +93,7 @@
 (define-default-printer identifier-list "identifier-list")
 (define-default-printer type-specifier "type-specifier")
 (define-default-printer variable-specification "variable-specification")
-
+(define-default-printer assignment-statement "assignment-statement")
 
 (defmethod enter ((printer ast-printer) (tok token:token))
   (with-slots (indentation-level stream print-spans-p) printer
