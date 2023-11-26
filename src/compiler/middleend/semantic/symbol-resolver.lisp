@@ -27,14 +27,14 @@
    (errors
     :reader errors-of
     :initform nil
-    :type (dev:list-of semantic-error))))
+    :type (support:list-of semantic-error))))
 
 (-> make-resolver () resolver)
 (defun make-resolver ()
   (let ((res (make-instance 'resolver)))
     res))
 
-(-> resolve-symbols (ast:node) (values symbols:symbol-table (dev:list-of semantic-error)))
+(-> resolve-symbols (ast:node) (values symbols:symbol-table (support:list-of semantic-error)))
 (defun resolve-symbols (ast)
   (let ((resolver (make-resolver)))
     (ast:walk resolver ast)

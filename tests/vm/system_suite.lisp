@@ -1,7 +1,7 @@
 (in-package :cl-braces.tests.system)
 
 (defun compile-and-run (code)
-  (value:unbox (machine:execute (compiler:compile-this code))))
+  (runtime.value:unbox (machine:execute (compiler:compile-this code))))
 
 (define-test simple-variables ()
   (assert-equal

@@ -140,7 +140,7 @@ It searchs from high to low scopes, so it finds the hightest scope that is <= `C
 "
   (find-if (lambda (sym) (<= (scope sym) current-scope)) candidates))
 
-(defmethod dev:debug-print ((obj symbol-table))
+(defmethod support:debug-print ((obj symbol-table))
   (with-slots (symbols-by-name) obj
     (let ((all-symbols (a:hash-table-alist symbols-by-name)))
       (setf all-symbols (sort all-symbols #'string< :key #'car))

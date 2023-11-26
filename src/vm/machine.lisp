@@ -27,24 +27,24 @@
 
 (defun format-register (reg)
   (trivia:match reg
-    ((value:nilv) "nil")
-    ((value:boolv b) (if b "true" "false"))
-    ((value:intv n) (format nil "i~A" n))
+    ((runtime.value:nilv) "nil")
+    ((runtime.value:boolv b) (if b "true" "false"))
+    ((runtime.value:intv n) (format nil "i~A" n))
     (_ (format nil "R~A" reg))))
 
 (defmacro binary-op (operation instruction registers result-register)
   `(with-operands (dst lhs rhs) instruction
      (setf ,result-register dst)
      (setf (aref ,registers dst)
-           (value:box (,operation (value:unbox (aref ,registers lhs))
-                                  (value:unbox (aref ,registers rhs)))))))
+           (runtime.value:box (,operation (runtime.value:unbox (aref ,registers lhs))
+                                          (runtime.value:unbox (aref ,registers rhs)))))))
 
 (defmacro unary-op (operation instruction registers result-register)
   `(with-operands (dst) instruction
      (setf ,result-register dst)
-     (setf (aref ,registers dst) (value:box (,operation (value:unbox (aref ,registers dst)))))))
+     (setf (aref ,registers dst) (runtime.value:box (,operation (runtime.value:unbox (aref ,registers dst)))))))
 
-(-> execute (bytecode:chunk) (values value:value &optional))
+(-> execute (bytecode:chunk) (values runtime.value:value &optional))
 (defun execute (chunk)
   (let* ((pc (the fixnum 0))
          (instructions (bytecode:chunk-code chunk))
@@ -53,7 +53,7 @@
          (result-reg nil)
          (zero-flag nil)
          (constants (bytecode:chunk-constants chunk))
-         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or value:value bytecode:register-t) :initial-element value:nilv)))
+         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or runtime.value:value bytecode:register-t) :initial-element runtime.value:nilv)))
 
 
     #-cl-braces-vm-release
@@ -89,7 +89,7 @@
 
           (bytecode:test
            (with-operands (dst) instruction
-             (setf zero-flag (value:falsep (aref registers dst)))))
+             (setf zero-flag (runtime.value:falsep (aref registers dst)))))
 
           (bytecode:jmp
            (with-operands (addr) instruction

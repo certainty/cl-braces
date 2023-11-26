@@ -1,4 +1,4 @@
-(in-package :cl-braces.vm.bytecode)
+(in-package :cl-braces.bytecode)
 
 ;;;; The disassembler gives insights into the encoded instructions.
 ;;;; This is useful for debugging purposes but also during development of the compiler and the VM itself.
@@ -27,7 +27,7 @@
           (column-operands instr isa)
           (column-comment instr isa chunk)))
 
-(defmethod development:debug-print ((obj chunk))
+(defmethod support:debug-print ((obj chunk))
   (disass obj :stream *debug-io*))
 
 (defun column-pc (pc)
@@ -102,6 +102,6 @@
 
 (defun format-constant (constant)
   (trivia:match constant
-    ((value:nilv) "nil")
-    ((value:boolv b) (if b (format nil "true") (format nil "false")))
-    ((value:intv n) (format nil "i~A" n))))
+    ((runtime.value:nilv) "nil")
+    ((runtime.value:boolv b) (if b (format nil "true") (format nil "false")))
+    ((runtime.value:intv n) (format nil "i~A" n))))

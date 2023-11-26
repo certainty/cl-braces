@@ -21,15 +21,15 @@
   (let ((printer (make-instance 'ast-printer :stream stream :print-spans-p print-spans-p)))
     (walk printer ast)))
 
-(defmethod development:debug-print ((obj ast:node))
+(defmethod support:debug-print ((obj ast:node))
   (print-ast obj :stream *debug-io* :print-spans-p nil))
 
 (defun format-span (span stream)
   (format stream " [~A:~A ~A:~A]"
-          (location:line (location:span-from span))
-          (location:column (location:span-from span))
-          (location:line (location:span-to span))
-          (location:column (location:span-to span))))
+          (location:line (span:span-from span))
+          (location:column (span:span-from span))
+          (location:line (span:span-to span))
+          (location:column (span:span-to span))))
 
 (defun connective (indentation-level)
   (let ((connection "├─── "))
@@ -45,7 +45,7 @@
   (with-slots (indentation-level stream print-spans-p) printer
     (format stream "~A~A" (connective indentation-level) caption)
     (when print-spans-p
-      (format-span (location:span-for node) stream))
+      (format-span (span:span-for node) stream))
     (terpri stream)
     (unless leafp
       (incf indentation-level))))
@@ -68,7 +68,7 @@
   (with-slots (indentation-level stream print-spans-p) printer
     (format stream "~A~A" (connective indentation-level) (class-name (class-of node)))
     (when print-spans-p
-      (format-span (location:span-for node) stream))
+      (format-span (span:span-for node) stream))
     (terpri stream)))
 
 (defmethod leave ((printer ast-printer) (node node))
@@ -99,7 +99,7 @@
   (with-slots (indentation-level stream print-spans-p) printer
     (format stream "~A~A"  (connective indentation-level) (string-upcase (token:lexeme tok)))
     (when print-spans-p
-      (format-span (location:span-for tok) stream))
+      (format-span (span:span-for tok) stream))
     (terpri stream)))
 
 (defmethod leave ((printer ast-printer) (tok token:token))

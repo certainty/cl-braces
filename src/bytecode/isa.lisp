@@ -1,4 +1,4 @@
-(in-package :cl-braces.vm.bytecode)
+(in-package :cl-braces.bytecode)
 
 ;;; The instruction set architecture (ISA) is a description of the instructions that are available in the virtual machine.
 ;;; It is used to construct instructions and to print the instructions in a human readable format.
@@ -14,7 +14,7 @@
 (deftype version-component () '(integer 0 *))
 
 (s:defstruct-read-only (version (:constructor version (major minor)))
-  (major 0 :type version-component)
+    (major 0 :type version-component)
   (minor 0 :type version-component))
 
 (defclass isa ()
@@ -60,7 +60,7 @@
 ;; In the final instruction we only encode the raw value
 ;; TODO: how about we define a union for this?
 (s:defunion operand
-  (register (value register-t))
+    (register (value register-t))
   (address (value address-t))
   (label (value label-t)))
 

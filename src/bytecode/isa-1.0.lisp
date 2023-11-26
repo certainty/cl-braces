@@ -1,4 +1,4 @@
-(in-package :cl-braces.vm.bytecode)
+(in-package :cl-braces.bytecode)
 
 ;;;; The default instruction set architecture (ISA) for the bytecode VM
 ;;;; Overall design decisions:

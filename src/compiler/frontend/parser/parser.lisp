@@ -68,14 +68,14 @@
 ;;; Main API for the parser
 ;;; ====================================================================================================
 
-(-> parse (scanner:input-designator &key (:fail-fast boolean)) (values (or null ast:node) boolean state &optional))
+(-> parse (sourcecode:input-designator &key (:fail-fast boolean)) (values (or null ast:node) boolean state &optional))
 (defun parse (input-designator &key (fail-fast nil))
   "Parses the source code denoted by `input-designator' and returns 3 values
    1. the AST
    2. a boolean indicating if any errors have been encountered
    3. the parser state
 
-   See `scanner:source-input' for the supported input designators
+   See `sourcecode:source-input' for the supported input designators
    When `fail-fast' is true, the parser will signal an error when an error is encountered, otherwise it will collect all errors and return them in the AST.
   "
   (call-with-parser #'%parse input-designator :fail-fast fail-fast))
@@ -93,7 +93,7 @@
         (consume! state token:@EOF "Expected end of file")
         (values (ast:make-program stmts) had-errors-p state)))))
 
-(-> call-with-parser ((function (state) *) scanner:input-designator &key (:fail-fast boolean)) *)
+(-> call-with-parser ((function (state) *) sourcecode:input-designator &key (:fail-fast boolean)) *)
 (defun call-with-parser (fn input-designator &key (fail-fast nil))
   (scanner:with (scanner input-designator :fail-fast fail-fast)
     (let ((state (make-instance 'state :scanner (make-parse-buffer scanner) :fail-fast fail-fast)))
@@ -610,7 +610,7 @@ Example:
   (with-slots (cur-token) state
     (if cur-token
         (apply #'make-instance node-class :location (token:location cur-token) args)
-        (dev:unreachable! "No current token"))))
+        (support:unreachable! "No current token"))))
 
 (-> advance! (state) (values token:token token:token))
 (defun advance! (state)

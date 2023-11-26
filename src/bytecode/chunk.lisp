@@ -1,4 +1,4 @@
-(in-package :cl-braces.vm.bytecode)
+(in-package :cl-braces.bytecode)
 
 ;;;; Here we define the in-memory representation of the bytecode instructions.
 ;;;; The objectvie here is use a representation that is cache friendly and easy to decode.
@@ -23,7 +23,7 @@
   (print-unreadable-object (instruction stream :type nil)
     (format stream "INSTRUCTION OPCODE: ~A ~A" (instruction-opcode instruction) (instruction-operands instruction))))
 
-(deftype constant-table () '(vector value:value))
+(deftype constant-table () '(vector runtime.value:value))
 
 (s:defconstructor chunk
   (constants constant-table)

@@ -24,7 +24,7 @@
       #-cl-braces-compiler-release
       (when ast
         (format t "~%## Parse ~%")
-        (dev:debug-print ast)
+        (support:debug-print ast)
         (terpri)))))
 
 (defmethod pass-semantic-analysis (ast)
@@ -36,7 +36,7 @@
       #-cl-braces-compiler-release
       (when symbol-table
         (format t "~%## Symbols ~%")
-        (dev:debug-print symbol-table)))))
+        (support:debug-print symbol-table)))))
 
 (defmethod pass-code-generation (ast symbol-table)
   (let ((chunk (codegen:generate-chunk ast symbol-table)))
@@ -44,4 +44,4 @@
       #-cl-braces-compiler-release
       (progn
         (format t "~%## Bytecode ~%")
-        (dev:debug-print chunk)))))
+        (support:debug-print chunk)))))
