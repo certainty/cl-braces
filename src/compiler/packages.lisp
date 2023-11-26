@@ -49,3 +49,7 @@
    #:span-from
    #:span-to
    #:span-for))
+
+(defpackage :cl-braces.compiler.examples
+  (:nicknames :compiler.examples)
+  (:use :cl :cl-braces.development))

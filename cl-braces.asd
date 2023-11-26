@@ -64,7 +64,8 @@
                  (:file "constants-builder")
                  (:file "chunk-builder")
                  (:file "codegen")))
-               (:file "pipeline")))
+               (:file "pipeline")
+               (:file "examples")))
 
 (defsystem "cl-braces/vm"
   :description "Compiler for cl-braces the minimal go-like programming language"
