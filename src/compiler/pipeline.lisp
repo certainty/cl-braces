@@ -8,15 +8,15 @@
                      (compile-error-message condition)
                      (compile-error-details condition)))))
 
-(defun compile-this (input-designator)
+(defun compile-this (input-designator &key (fail-fast nil))
   "Compile the `input-designator' to a chunk of bytecode."
   (let* ((ast (pass-syntactic-analysis input-designator))
          (symbols (pass-semantic-analysis ast))
          (chunk (pass-code-generation ast symbols)))
     chunk))
 
-(defmethod pass-syntactic-analysis (input-designator)
-  (multiple-value-bind (ast had-errors state) (parser:parse input-designator)
+(defmethod pass-syntactic-analysis (input-designator &key (fail-fast nil))
+  (multiple-value-bind (ast had-errors state) (parser:parse input-designator :fail-fast fail-fast)
     (when had-errors
       (error (make-condition 'compile-error :message "Syntactic analysis failed" :details (parser:parse-errors state))))
 

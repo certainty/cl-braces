@@ -389,4 +389,5 @@
   (:import-from :serapeum :->)
   (:import-from :cl-braces.bytecode)
   (:export
+   #:run
    #:execute))

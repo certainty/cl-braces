@@ -76,7 +76,8 @@
 
    (:module "vm"
     :components
-    ((:file "machine")))))
+    ((:file "debug")
+     (:file "machine")))))
 
 (defclass test-vm-op (asdf:test-op) ())
 (defclass test-compiler-op (asdf:test-op) ())
