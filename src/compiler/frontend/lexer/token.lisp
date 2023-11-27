@@ -91,7 +91,13 @@
     :initarg :span
     :initform nil
     :type (or null span:source-span)
-    :documentation "The span of the token in the source file."))
+    :documentation "The span of the token in the source file.")
+   (location
+    :reader location
+    :initarg :location
+    :initform nil
+    :type (or null location:source-location)
+    :documentation "The location in the source file where this token was found. For tokens that match multiple characters, this is the location of the first character in the token."))
   (:documentation "A token is a single unit of input. It is defined by the `class' and it's `lexeme'.
    The `class' represents the type of the token.
    The `lexeme' represents the actual string that was matched by the scanner.
