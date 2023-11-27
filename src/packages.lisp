@@ -14,7 +14,9 @@
    #:define-enum
    #:debug-print
    #:list-of
-   #:non-empty-list-of))
+   #:non-empty-list-of
+   #:to-plist
+   #:copy-instance))
 
 (defpackage :cl-braces.support.tests.snapshots
   (:nicknames :cl-braces.snapshots :snapshots)
@@ -131,7 +133,9 @@
    #:source-location
    #:offset
    #:line
+   #:line++
    #:column
+   #:column++
    #:make-source-location))
 
 (defpackage :cl-braces.sourcecode.span
@@ -142,23 +146,19 @@
   (:export
    #:source-span
    #:make-span
-   #:span-from
-   #:span-to
-   #:span-for))
+   #:from
+   #:to
+   #:for))
 
 ;;;
 ;;; Compiler
 ;;;
-(defpackage :cl-braces.compiler.ast
-  (:nicknames :cl-braces.ast)
-  (:use :cl)
-  (:local-nicknames (:a :alexandria) (:s :serapeum))
-  (:import-from :serapeum :->))
 
 (defpackage :cl-braces.compiler.frontend.token
   (:nicknames :frontend.token :token)
   (:use :cl)
   (:local-nicknames (:a :alexandria) (:s :serapeum))
+  (:shadow :class)
   (:import-from :serapeum :->)
   (:export
    #:token
@@ -210,8 +210,7 @@
    #:@CONTINUE
    #:@FALLTHROUGH
    #:@RETURN
-   #:@VAR)
-  (:shadow :class))
+   #:@VAR))
 
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :frontend.scanner :scanner :frontend.lexer :lexer)
@@ -219,19 +218,16 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   #:open-scanner
-   #:close-scanner
-   #:call-with-scanner
-   #:with
-   #:next-token
-   #:fail-fast!
-   #:state))
+   #:scan-all
+   #:make-scanner
+   #:next-token))
 
 (defpackage :cl-braces.compiler.frontend.ast
   (:nicknames :compiler.frontend.ast :ast)
   (:use :cl)
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
+  (:shadow :declaration :variable :block)
   (:export
    #:node
    #:location
@@ -303,15 +299,10 @@
    #:program-declarations
    #:make-program
 
-   #:span
-   #:span-from
-   #:span-to
-
    #:walk
    #:enter
    #:leave
-   #:print-ast)
-  (:shadow :declaration :variable :block))
+   #:print-ast))
 
 
 (defpackage :cl-braces.compiler.frontend.parser

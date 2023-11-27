@@ -40,8 +40,6 @@
    (:module "compiler"
     :components
     ((:file "symbols")
-     (:file "ast")
-
      (:module "frontend"
       :components
       ((:module "lexer"

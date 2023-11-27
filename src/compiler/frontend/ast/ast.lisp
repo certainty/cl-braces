@@ -14,7 +14,7 @@
 ;;; ===========================================================================
 
 (defgeneric walk (visitor node)
-  (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'. The tree is traversed inorder."))
+  (:documentation "Walks the AST rooted at `NODE', calling the appropriate `VISIT' and `LEAVE' methods on `VISITOR'. The tree is traversed inorder."))
 
 (defgeneric children (node)
   (:documentation "Returns a list of the children of `NODE'"))
@@ -59,13 +59,13 @@
 (defmethod children ((node program))
   (list (program-declarations node)))
 
-(defmethod span:span-for ((node program))
+(defmethod span:for ((node program))
   (with-slots (declarations) node
     (let ((first-declaration (first declarations))
           (last-declaration  (first (last declarations))))
       (make-instance 'span
-                     :from (span-from first-declaration)
-                     :to (span-to last-declaration)))))
+                     :from (span:from first-declaration)
+                     :to (span:to last-declaration)))))
 
 ;;; ===========================================================================
 ;;; Statements
@@ -83,7 +83,7 @@
 (defmethod children ((node bad-statement))
   nil)
 
-(defmethod span:span-for ((node bad-statement))
+(defmethod span:for ((node bad-statement))
   (with-slots (location) node
     (make-instance 'span
                    :from location
@@ -94,7 +94,7 @@
 (defmethod children ((node empty-statement))
   nil)
 
-(defmethod span:span-for ((node empty-statement))
+(defmethod span:for ((node empty-statement))
   (with-slots (location) node
     (make-instance 'span
                    :from location
@@ -111,13 +111,13 @@
 (defmethod children ((node statement-list))
   (statement-list-statements node))
 
-(defmethod span:span-for ((node statement-list))
+(defmethod span:for ((node statement-list))
   (with-slots (statements) node
     (let ((first-statement (first statements))
           (last-statement  (first (last statements))))
       (make-instance 'span
-                     :from (span-from first-statement)
-                     :to (span-to last-statement)))))
+                     :from (span:from first-statement)
+                     :to (span:to last-statement)))))
 
 (defclass expression-statement (statement)
   ((expression
@@ -130,9 +130,9 @@
 (defmethod children ((node expression-statement))
   (list (expression-statement-expression node)))
 
-(defmethod span:span-for ((node expression-statement))
+(defmethod span:for ((node expression-statement))
   (with-slots (expression) node
-    (span:span-for expression)))
+    (span:for expression)))
 
 (defclass if-statement (statement)
   ((init
@@ -169,14 +169,14 @@
       (setf base (append base (list (if-statement-alternative node)))))
     base))
 
-(defmethod span:span-for ((node if-statement))
+(defmethod span:for ((node if-statement))
   (with-slots (condition consequence alternative) node
-    (let ((condition (span:span-for condition))
-          (consequence (span:span-for consequence))
-          (alternative (span:span-for alternative)))
+    (let ((condition (span:for condition))
+          (consequence (span:for consequence))
+          (alternative (span:for alternative)))
       (make-instance 'span
-                     :from (span-from condition)
-                     :to (span-to (or alternative consequence))))))
+                     :from (span:from condition)
+                     :to (span:to (or alternative consequence))))))
 
 (defclass assignment-statement (statement)
   ((lhs
@@ -201,13 +201,13 @@
         (assignment-statement-operator node)
         (assignment-statement-rhs node)))
 
-(defmethod span:span-for ((node assignment-statement))
+(defmethod span:for ((node assignment-statement))
   (with-slots (lhs op rhs) node
-    (let ((lhs (span:span-for lhs))
-          (rhs (span:span-for rhs)))
+    (let ((lhs (span:for lhs))
+          (rhs (span:for rhs)))
       (make-instance 'span
-                     :from (span-from lhs)
-                     :to (span-to rhs)))))
+                     :from (span:from lhs)
+                     :to (span:to rhs)))))
 
 (defclass block (node)
   ((statements
@@ -220,13 +220,13 @@
 (defmethod children ((node block))
   (list (block-statements node)))
 
-(defmethod span:span-for ((node block))
+(defmethod span:for ((node block))
   (with-slots (statements) node
     (let ((first-statement (first statements))
           (last-statement  (first (last statements))))
       (make-instance 'span
-                     :from (span-from first-statement)
-                     :to (span-to last-statement)))))
+                     :from (span:from first-statement)
+                     :to (span:to last-statement)))))
 
 ;;; ===========================================================================
 ;;; Declarations
@@ -244,7 +244,7 @@
 (defmethod children ((node bad-declaration))
   nil)
 
-(defmethod span:span-for ((node bad-declaration))
+(defmethod span:for ((node bad-declaration))
   (with-slots (location) node
     (make-instance 'span
                    :from location
@@ -261,11 +261,11 @@
 (defmethod children ((node variable-declaration))
   (variable-declaration-specifications node))
 
-(defmethod span:span-for ((node variable-declaration))
+(defmethod span:for ((node variable-declaration))
   (with-slots (specifications) node
     (make-instance 'span
-                   :from (span-from specifications)
-                   :to (span-to speicfications))))
+                   :from (span:from specifications)
+                   :to (span:to speicfications))))
 
 (defclass variable-specification (declaration)
   ((identifiers
@@ -295,7 +295,7 @@
       (push (variable-specification-initializer node) base))
     (reverse base)))
 
-(defmethod span:span-for ((node variable-specification))
+(defmethod span:for ((node variable-specification))
   (with-slots (identifiers initializer) node
     (let ((first-identifier (first identifiers))
           (type (variable-specification-type node))
@@ -304,8 +304,8 @@
                      :from (token:location first-identifier)
                      :to
                      (or
-                      (and last-initializer (span-to last-initializer))
-                      (and type (span-to type))
+                      (and last-initializer (span:to last-initializer))
+                      (and type (span:to type))
                       (token:location first-identifier))))))
 
 (defclass type-specifier (node)
@@ -319,7 +319,7 @@
 (defmethod children ((node type-specifier))
   (list (type-specifier-name node)))
 
-(defmethod span:span-for ((node type-specifier))
+(defmethod span:for ((node type-specifier))
   (with-slots (name) node
     (make-instance 'span
                    :from (token:location name)
@@ -344,13 +344,13 @@
    (short-variable-declaration-identifiers node)
    (short-variable-declaration-expressions node)))
 
-(defmethod span:span-for ((node short-variable-declaration))
+(defmethod span:for ((node short-variable-declaration))
   (with-slots (identifiers expressions) node
     (let ((first-identifier (first identifiers))
           (last-expression  (first (last expressions))))
       (make-instance 'span
                      :from (token:location first-identifier)
-                     :to (span-to last-expression)))))
+                     :to (span:to last-expression)))))
 
 ;;; ===========================================================================
 ;;; Expressions
@@ -370,7 +370,7 @@
 (defmethod children ((node literal))
   (list (literal-token node)))
 
-(defmethod span:span-for ((node literal))
+(defmethod span:for ((node literal))
   (with-slots (token) node
     (make-instance 'span
                    :from (token:location token)
@@ -392,12 +392,12 @@
   (list (grouping-expression-expression node)))
 
 
-(defmethod span:span-for ((node grouping-expression))
+(defmethod span:for ((node grouping-expression))
   (with-slots (expression) node
     (let ((sub-expr-span (span expression)))
       (make-instance 'span
-                     :from (span-from sub-expr-span)
-                     :to (span-to sub-expr-span)))))
+                     :from (span:from sub-expr-span)
+                     :to (span:to sub-expr-span)))))
 
 
 (defclass unary-expression (expression)
@@ -418,12 +418,12 @@
    (unary-expression-operator node)
    (unary-expression-operand node)))
 
-(defmethod span:span-for ((node unary-expression))
+(defmethod span:for ((node unary-expression))
   (with-slots (operator operand) node
     (let ((operand (span operand)))
       (make-instance 'span
                      :from (token:location operator)
-                     :to (span-to operand)))))
+                     :to (span:to operand)))))
 
 
 (defclass binary-expression (expression)
@@ -450,13 +450,13 @@
    (binary-expression-lhs node)
    (binary-expression-rhs node)))
 
-(defmethod span:span-for ((node binary-expression))
+(defmethod span:for ((node binary-expression))
   (with-slots (lhs rhs) node
-    (let ((lhs (span:span-for lhs))
-          (rhs (span:span-for rhs)))
+    (let ((lhs (span:for lhs))
+          (rhs (span:for rhs)))
       (make-instance 'span
-                     :from (span-from lhs)
-                     :to (span-to rhs)))))
+                     :from (span:from lhs)
+                     :to (span:to rhs)))))
 
 (defclass expression-list (expression)
   ((expressions
@@ -469,13 +469,13 @@
 (defmethod children ((node expression-list))
   (expression-list-expressions node))
 
-(defmethod span:span-for ((node expression-list))
+(defmethod span:for ((node expression-list))
   (with-slots (expressions) node
     (let ((first-expression (first expressions))
           (last-expression  (first (last expressions))))
       (make-instance 'span
-                     :from (span-from first-expression)
-                     :to (span-to last-expression)))))
+                     :from (span:from first-expression)
+                     :to (span:to last-expression)))))
 
 (defclass variable (node)
   ((identifier
@@ -488,7 +488,7 @@
 (defmethod children ((node variable))
   (list (variable-identifier node)))
 
-(defmethod span:span-for ((node variable))
+(defmethod span:for ((node variable))
   (with-slots (identifier) node
     (make-instance 'span
                    :from (token:location identifier)
@@ -505,7 +505,7 @@
 (defmethod children ((node identifier))
   (list (identifier-token node)))
 
-(defmethod span:span-for ((node identifier))
+(defmethod span:for ((node identifier))
   (with-slots (token) node
     (make-instance 'span
                    :from (token:location token)
@@ -525,7 +525,7 @@
 (defmethod children ((node identifier-list))
   (identifier-list-identifiers node))
 
-(defmethod span:span-for ((node identifier-list))
+(defmethod span:for ((node identifier-list))
   (with-slots (identifiers) node
     (let ((first-identifier (first identifiers))
           (last-identifier  (first (last identifiers))))

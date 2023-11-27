@@ -86,11 +86,19 @@
     :documentation
     "The value of the token. This is used mostly for literals, which we can evaluate at compile time to lisp values.
     These are not necessarily equivalent to the runtime values we will eventually get.")
+
+   (span
+    :reader span
+    :initarg :span
+    :initform nil
+    :type (or null span:source-span)
+    :documentation "The span of the token in the source file.")
+
    (location
     :reader location
     :initarg :location
-    :initform (error "no location given")
-    :type location:source-location
+    :initform nil
+    :type (or null location:source-location)
     :documentation "The location in the source file where this token was found. For tokens that match multiple characters, this is the location of the first character in the token."))
   (:documentation "A token is a single unit of input. It is defined by the `class' and it's `lexeme'.
    The `class' represents the type of the token.
@@ -102,9 +110,17 @@
    "))
 
 (defmethod print-object ((token token) stream)
-  (with-slots (class lexeme value location) token
+  (with-slots (class lexeme value span) token
     (print-unreadable-object (token stream :type t :identity t)
-      (format stream "class: ~a lexeme: ~a value: ~a location: ~a" class lexeme value location))))
+      (format stream "class: ~a lexeme: ~a value: ~a span: ~a" class lexeme value span))))
+
+(defmethod support:to-plist ((token token))
+  (with-slots (class lexeme value span) token
+    (list :class class :lexeme lexeme :value value :span (support:to-plist span))))
+
+(defmethod span:for ((token token))
+  (with-slots (span) token
+    span))
 
 (defun synthetic-eof ()
   "Returns a synthetic EOF token. This is used to mark the end of the input."

@@ -68,8 +68,8 @@
 ;;; Main API for the parser
 ;;; ====================================================================================================
 
-(-> parse (sourcecode:input-designator &key (:fail-fast boolean)) (values (or null ast:node) boolean state &optional))
-(defun parse (input-designator &key (fail-fast nil))
+(-> parse (string &key (:fail-fast boolean)) (values (or null ast:node) boolean state &optional))
+(defun parse (source-code &key (fail-fast nil))
   "Parses the source code denoted by `input-designator' and returns 3 values
    1. the AST
    2. a boolean indicating if any errors have been encountered
@@ -78,7 +78,7 @@
    See `sourcecode:source-input' for the supported input designators
    When `fail-fast' is true, the parser will signal an error when an error is encountered, otherwise it will collect all errors and return them in the AST.
   "
-  (call-with-parser #'%parse input-designator :fail-fast fail-fast))
+  (call-with-parser #'%parse source-code :fail-fast fail-fast))
 
 (-> %parse (state) (values (or null ast:node) boolean state &optional))
 (defun %parse (state)
@@ -93,14 +93,14 @@
         (consume! state token:@EOF "Expected end of file")
         (values (ast:make-program stmts) had-errors-p state)))))
 
-(-> call-with-parser ((function (state) *) sourcecode:input-designator &key (:fail-fast boolean)) *)
-(defun call-with-parser (fn input-designator &key (fail-fast nil))
-  (scanner:with (scanner input-designator :fail-fast fail-fast)
-    (let ((state (make-instance 'state :scanner (make-parse-buffer scanner) :fail-fast fail-fast)))
-      (funcall fn state))))
+(-> call-with-parser ((function (state) *) string &key (:fail-fast boolean)) *)
+(defun call-with-parser (fn source-code &key (fail-fast nil))
+  (let* ((tokens (scanner:scan-all source-code :fail-fast fail-fast))
+         (state (make-instance 'state :scanner (make-parse-buffer tokens) :fail-fast fail-fast)))
+    (funcall fn state)))
 
-(defmacro with ((state input-designator &key (fail-fast nil)) &body body)
-  `(call-with-parser (lambda (,state) ,@body) ,input-designator :fail-fast ,fail-fast))
+(defmacro with ((state source-code &key (fail-fast nil)) &body body)
+  `(call-with-parser (lambda (,state) ,@body) ,source-code :fail-fast ,fail-fast))
 
 ;;; ====================================================================================================
 ;;; Utility functions to deal with various states of the parser

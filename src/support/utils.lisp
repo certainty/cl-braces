@@ -40,3 +40,18 @@
 
 (deftype none-empty-list-of (type)
   `(cons ,type ,type))
+
+(defgeneric to-plist (obj)
+  (:documentation "Converts OBJ to a plist."))
+
+(defmethod to-plist ((obj list))
+  (apply #'append obj))
+
+(defmethod to-plist ((obj null))
+  nil)
+
+(defmethod to-plist ((obj vector))
+  (map 'vector #'to-plist obj))
+
+(defgeneric copy-instance (obj)
+  (:documentation "Creates a copy of OBJ."))

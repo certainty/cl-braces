@@ -26,6 +26,25 @@
     (print-unreadable-object (location stream :type t :identity t)
       (format stream "line: ~a column: ~a offset: ~a" line column offset))))
 
+(defmethod support:to-plist ((location source-location))
+  (with-slots (line column offset) location
+    (list :line line :column column :offset offset)))
+
 (defun make-source-location (line column offset)
+  "Creates a new source location from the given `line' and `column' and `offset'."
   (make-instance 'source-location :line line :column column :offset offset))
 
+(defun line++ (location)
+  (with-slots (line column offset) location
+    (incf line)
+    (setf column 1)
+    (incf offset)))
+
+(defun column++ (location)
+  (with-slots (column offset) location
+    (incf column)
+    (incf offset)))
+
+(defmethod support:copy-instance ((location source-location))
+  (with-slots (line column offset) location
+    (make-instance 'source-location :line line :column column :offset offset)))

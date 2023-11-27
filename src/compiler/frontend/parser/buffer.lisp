@@ -25,18 +25,8 @@
               for token = (aref excerpt i)
               do (format stream "~a ~a~%" (token:class token) (if (= i cursor) "<*>" "")))))))
 
-(-> make-parse-buffer (scanner:state) parse-buffer)
-(defun make-parse-buffer (scanner)
-  ;; collect all tokens into an array
-  (let ((buffer (make-array 10  :fill-pointer 0 :adjustable t :element-type 'token:token :initial-element (token:synthetic-eof))))
-    (loop for token = (scanner:next-token scanner)
-          if (token:class= token token:@EOF)
-            do
-               (progn
-                 (vector-push-extend token buffer)
-                 (return (make-instance 'parse-buffer :buffer buffer)))
-          else
-            do (vector-push-extend token buffer))))
+(defun make-parse-buffer (tokens)
+  (make-instance 'parse-buffer :buffer tokens))
 
 (-> read-token (parse-buffer) (or null token:token))
 (defun read-token (parse-buffer)
