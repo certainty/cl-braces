@@ -96,6 +96,11 @@
     :documentation "If true then the scanner will signal a `scan-error' condition when it encounters an illegal token.
                      If false then the scanner will try to recover from an illegal token by skipping over it and continuing to scan.")))
 
+;;; ================================
+;;; Main API
+;;; ================================
+
+
 (-> make-scanner (string &key (:fail-fast boolean)) state)
 (defun make-scanner (source-code &key (fail-fast nil))
   "Creates a new scanner that is initialized with the given `source-code'.
@@ -117,6 +122,7 @@
           when (token:class= (slot-value scanner 'last-token) token:@EOF)
             return (values result (slot-value scanner 'had-errors)))))
 
+(-> next-token (state) token:token)
 (defun next-token (state)
   "Reads the next available token from the input stream. Unless something catastrophic happens this function will always
    return a token. There are two special token classes which are used to denote eof and illegal tokens respectively.
@@ -154,8 +160,6 @@
       (scan-identifier state)
       (scan-illegal state)))
 
-
-
 ;;; ============================================================================
 ;;; Whitespace, comments and semicolons
 ;;;
@@ -165,14 +169,16 @@
 
 (a:define-constant +whitespace+ (list #\Space #\Tab #\Return #\Newline) :test #'equalp)
 
+(-> inter-token-space-p (character) boolean)
 (defun inter-token-space-p (c)
   "Returns `t' if `c' is considered inter-token whitespace.
    - space (U+0020)
    - horizontal tab (U+0009)
    - carriage return (U+000D)
    - newlines (U+000A)"
-  (member c +whitespace+))
+  (s:true (member c +whitespace+)))
 
+(-> scan-inter-token-space (state) (or null token:token))
 (defun scan-inter-token-space (state)
   (with-slots (cursor-base cursor-advanced location-base) state
     (when (inject-semicolon-p state)
@@ -195,26 +201,29 @@
 ;;; https://golang.org/ref/spec#Literal
 ;;; ===================================================
 
+(-> scan-literal (state) (or null token:token))
 (defun scan-literal (state)
   (scan-integer state))
 
+(-> scan-integer (state) (or null token:token))
 (defun scan-integer (state)
   "Scans and integer literal."
   (scan-decimal-literal state))
 
+(-> scan-decimal-literal (state) (or null token:token))
 (defun scan-decimal-literal (state)
-  (with-slots (cursor-advanced source-code) state
-    (let ((first-digit (current-char state)))
-      (when (eql first-digit #\0)
-        (advance state)
-        (return-from scan-decimal-literal (accept state token:@INTEGER :coerce-with (constantly 0))))
-      (when (decimal-digit-p first-digit)
-        (advance state)
-        (scan-while state #'decimal-digit-p)
-        (accept state token:@INTEGER :coerce-with #'parse-integer)))))
+  (let ((first-digit (current-char state)))
+    (when (eql first-digit #\0)
+      (advance state)
+      (return-from scan-decimal-literal (accept state token:@INTEGER :coerce-with (constantly 0))))
+    (when (decimal-digit-p first-digit)
+      (advance state)
+      (scan-while state #'decimal-digit-p)
+      (accept state token:@INTEGER :coerce-with #'parse-integer))))
 
+(-> decimal-digit-p (character) (or null boolean))
 (defun decimal-digit-p (c)
-  (and c (or (unicode-digit-p c))))
+  (and c (s:true (unicode-digit-p c))))
 
 ;;; ===================================================
 ;;; Identifier
@@ -252,6 +261,7 @@
      "var" token:@VAR)
   :test #'equalp)
 
+(-> scan-identifier (state) (or null token:token))
 (defun scan-identifier (state)
   "Scan an identifier which is either a user-defined identifier, a literal or a keyword."
   (a:when-let ((first-char (current-char state)))
@@ -267,20 +277,26 @@
                (accept state keyword)
                (accept state token:@IDENTIFIER))))))))
 
+(-> identifier-char-p (character) boolean)
 (defun identifier-char-p (c)
-  (or (letter-p c) (unicode-digit-p c)))
+  (s:true
+   (or (letter-p c)
+       (unicode-digit-p c))))
 
+(-> letter-p (character) boolean)
 (defun letter-p (c)
   "Returns true if `c' is a letter according to the golang language specification"
-  (and c (or (unicode-letter-p c) (eql c #\_))))
+  (s:true (and c (or (unicode-letter-p c) (eql c #\_)))))
 
+(-> unicode-letter-p (character) boolean)
 (defun unicode-letter-p (c)
   "Returns true if `c' is a unicode letter according to the golang language specification"
-  (and c (sb-unicode:alphabetic-p c)))
+  (s:true (and c (sb-unicode:alphabetic-p c))))
 
+(-> unicode-digit-p (character) boolean)
 (defun unicode-digit-p (c)
   "Returns true if `c' is a unicode digit according to the golang language specification"
-  (and c (digit-char-p c)))
+  (s:true (and c (digit-char-p c))))
 
 ;;; ===================================================
 ;;; Operators and punctuation
@@ -288,6 +304,7 @@
 ;;; https://golang.org/ref/spec#Operators_and_punctuation
 ;;; ===================================================
 
+(-> scan-operator/punctuation (state) (or null token:token))
 (defun scan-operator/punctuation (state)
   (cond
     ((match= state ":=") (accept state token:@COLON_EQUAL))
@@ -314,6 +331,7 @@
     ((match= state ">") (accept state token:@GT))
     ((match= state "=") (accept state token:@EQUAL))))
 
+(-> match= (state (or string character)) (or null token:token))
 (defun scan-eof (state)
   "Returns the `token:@EOF' token if the end of the input stream has been reached."
   (with-slots (cursor-advanced source-code) state
@@ -321,16 +339,19 @@
       (setf cursor-advanced (length source-code))
       (return-from scan-eof (accept state token:@EOF)))))
 
+(-> scan-illegal (state) (or null token:token))
 (defun scan-illegal (state)
   (advance state)
   (accept state token:@ILLEGAL))
 
 ;;; Inject semicolons
 ;;; https://golang.org/ref/spec#Semicolons
+
+(-> inject-semicolon-p (state) boolean)
 (defun inject-semicolon-p (state)
   "Returns `t' if the scanner should inject a semicolon at the current position in the input stream.
    This is decided according to the [golang language specification](https://golang.org/ref/spec#Semicolons)."
-  (with-slots (last-token cursor-advanced) state
+  (with-slots (last-token) state
     (when (and (peek= state #\Newline) last-token)
       (or
        (token:literal-p last-token)
@@ -338,11 +359,13 @@
        (token:class-any-p last-token token:@BREAK token:@CONTINUE token:@FALLTHROUGH token:@RETURN)
        (token:class-any-p last-token token:@PLUS_PLUS token:@MINUS_MINUS token:@RPAREN token:@RBRACKET token:@RBRACE)))))
 
+(-> token:literal-p (token) boolean)
 (defun eofp (state)
   "Returns `t' if the scanner has reached the end of the input stream."
   (with-slots (cursor-advanced source-code) state
     (>= cursor-advanced (length source-code))))
 
+(-> match= (state (or string character)) boolean)
 (defun match= (state p)
   "Returns `t' if the next characters in the input stream matches `p' and consumes them"
   (when (peek= state p)
@@ -373,6 +396,7 @@
                   (string= p (subseq source-code cursor-advanced end)))))
       (character (eql (current-char state) p)))))
 
+(-> accept (state token:token-class &key (:coerce-with (function (string) *)) (:synthetic boolean)) token:token)
 (defun accept (state token-class &key (coerce-with #'identity) (synthetic nil))
   "Accept the scanned lexeme and constructs a `token:token' from it using the provided `token-class' "
   (with-slots (cursor-base cursor-advanced location-base source-code last-token had-errors) state
@@ -390,15 +414,19 @@
           (setf had-errors t)
           (cerror "Illegal token" (make-condition 'scan-error :message "Illegal token" :location (span:from span))))))))
 
+(-> current-char (state) (or null character))
 (defun current-char (state)
   (with-slots (cursor-advanced source-code) state
     (unless (eofp state)
       (aref source-code cursor-advanced))))
 
+(-> current-lexeme (state) (or null string))
 (defun current-lexeme (state)
   (with-slots (cursor-base cursor-advanced source-code) state
     (subseq source-code cursor-base cursor-advanced)))
 
+;;; TODO: improve the code for the location tracking. This is really quite difficult to get right.
+(-> update-locations (state) span:source-span)
 (defun update-locations (state)
   "Updates the internal location state and returns the span for the current lexeme."
   (with-slots (cursor-base cursor-advanced location-base source-code) state
@@ -410,7 +438,6 @@
            (end-location (location:make-source-location end-line end-column end-offset))
            (span (span:make-span location-base end-location))
            (newlines (newline-positions lexeme)))
-
       (prog1 span
         (if (null newlines)
             (setf location-base (location:make-source-location
@@ -422,18 +449,21 @@
                                  (- len (car newlines))
                                  (incf end-offset))))))))
 
+(-> newline-positions (string) list)
 (defun newline-positions (lexeme)
   "Returns a list of positions in `lexeme' where a newline character is found."
   (loop for i from 0 below (length lexeme)
         when (eql (aref lexeme i) #\Newline)
           collect i))
 
+(-> scan-while (state (function (character) boolean)) (or null character))
 (defun scan-while (state predicate)
   "Consume the input, returning the list of consumed characters, while `predicate' returns `t'"
   (loop for c = (current-char state)
         while (and c (funcall predicate c))
         do (advance state)))
 
+(-> scan-until (state (function (character) boolean)) (or null character))
 (defun scan-until (state predicate)
   "Consume the input, returning the list of consumed characters, until `predicate' returns `t'"
   (loop for c = (current-char state)
