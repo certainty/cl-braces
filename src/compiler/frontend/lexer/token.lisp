@@ -86,27 +86,19 @@
     :documentation
     "The value of the token. This is used mostly for literals, which we can evaluate at compile time to lisp values.
     These are not necessarily equivalent to the runtime values we will eventually get.")
-
    (span
     :reader span
     :initarg :span
     :initform nil
     :type (or null span:source-span)
-    :documentation "The span of the token in the source file.")
-
-   (location
-    :reader location
-    :initarg :location
-    :initform nil
-    :type (or null location:source-location)
-    :documentation "The location in the source file where this token was found. For tokens that match multiple characters, this is the location of the first character in the token."))
+    :documentation "The span of the token in the source file."))
   (:documentation "A token is a single unit of input. It is defined by the `class' and it's `lexeme'.
    The `class' represents the type of the token.
    The `lexeme' represents the actual string that was matched by the scanner.
    For many tokens, the `lexeme' does not contain any useful information.
    For example, the `lexeme' for the `PLUS' token is the string \"+\".
    However, for some tokens, the `lexeme' is very important.
-   For example, the `lexeme' for an `IDENTIFIER' token is the actual identifier.
+   For example, the `lexeme' for an `identifier' token is the actual identifier.
    "))
 
 (defmethod print-object ((token token) stream)

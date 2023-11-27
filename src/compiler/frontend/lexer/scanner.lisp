@@ -1,4 +1,5 @@
 (in-package :cl-braces.compiler.frontend.scanner)
+;;;;
 ;;;; The scanner is the first stage of the compiler. It takes a stream of characters and produces a stream of tokens.
 ;;;; A token is a representation of a lexeme in the input stream bundled with some metadata about the location and the class of the lexeme.
 ;;;; The token's class is used by the parser to determine how to interpret the token.
@@ -331,7 +332,7 @@
     ((match= state ">") (accept state token:@GT))
     ((match= state "=") (accept state token:@EQUAL))))
 
-(-> match= (state (or string character)) (or null token:token))
+(-> scan-eof (state) (or null token:token))
 (defun scan-eof (state)
   "Returns the `token:@EOF' token if the end of the input stream has been reached."
   (with-slots (cursor-advanced source-code) state
