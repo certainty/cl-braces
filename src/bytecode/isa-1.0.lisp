@@ -13,7 +13,7 @@
 ;;;;    for example if we load a constant from an address or an immediate value, we have two separate opcodes.
 ;;;;
 
-(define-isa *isa-1.0*
+(define-isa +isa-1.0+
   :version (1 0)
   :instructions
   (
@@ -28,7 +28,7 @@
    (#x42 test  ((reg dst))                    "Tests the value in $dst and sets the zero flag if it is falsey (nil or false).")
 
    ;; binary instructions #x80 - #xbf
-   (#x80 loada ((reg dst) (addr src))          "Loads the constant from $src into $dst")
+   (#x80 const ((reg dst) (addr src))          "Loads the constant from $src into $dst")
    (#x81 mov   ((reg dst) (reg src))           "Moves the value from $src to $dst")
    (#x82 jz    ((label dst) (reg value))       "Jump to %dst if $value is zero")
    (#x83 jnz   ((label dst) (reg value))       "Jump to %dst if $value is non-zero")
@@ -39,4 +39,4 @@
    (#xC5 mul   ((reg dst)   (reg lhs) (reg rhs)) "Multiplies what is in $lhs by $rhs and stores the result in $dst.")
    (#xC6 div   ((reg dst)   (reg lhs) (reg rhs)) "Divides what is in $lhs by $rhs and stores the result in $dst.")))
 
-(setf *current-isa* *isa-1.0*)
+(setf *current-isa* +isa-1.0+)

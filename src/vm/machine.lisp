@@ -59,7 +59,7 @@
           (bytecode:noop t)
           (bytecode:halt (return))
 
-          (bytecode:loada
+          (bytecode:const
            (with-operands (dst addr) instruction
              (setf result-reg dst)
              (setf (aref registers dst) (aref constants addr))))

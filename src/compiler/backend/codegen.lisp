@@ -111,7 +111,7 @@
   (with-slots (chunk-builder register-allocator) generator
     (s:lret* ((const-address (add-constant chunk-builder (runtime.value:box (ast:literal-value node))))
               (register (next-register register-allocator)))
-      (add-instructions chunk-builder (bytecode:instr 'bytecode:loada register const-address)))))
+      (add-instructions chunk-builder (bytecode:instr 'bytecode:const register const-address)))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:unary-expression))
   (with-slots (chunk-builder register-allocator) generator

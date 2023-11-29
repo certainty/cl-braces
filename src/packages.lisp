@@ -90,7 +90,7 @@
    #:reg
    #:label
 
-   #:loada
+   #:const
    #:mov
    #:test
    #:jz

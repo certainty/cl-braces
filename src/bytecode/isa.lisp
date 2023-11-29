@@ -14,7 +14,7 @@
 (deftype version-component () '(integer 0 *))
 
 (s:defstruct-read-only (version (:constructor version (major minor)))
-    (major 0 :type version-component)
+  (major 0 :type version-component)
   (minor 0 :type version-component))
 
 (defclass isa ()
@@ -60,7 +60,7 @@
 ;; In the final instruction we only encode the raw value
 ;; TODO: how about we define a union for this?
 (s:defunion operand
-    (register (value register-t))
+  (register (value register-t))
   (address (value address-t))
   (label (value label-t)))
 
@@ -134,11 +134,11 @@
    - reg: A register
    - addr: An address
 "
-  `(progn
-     (defparameter ,isa-name
+  `(a:define-constant ,isa-name
        (make-instance 'isa
                       :version (version ,(first version) ,(second version))
-                      :instructions (make-isa-instruction-set ,@instructions)))))
+                      :instructions (make-isa-instruction-set ,@instructions))
+     :test #'equalp))
 
 (defmacro make-isa-instruction-set (&rest instructions)
   `(vector ,@(mapcar (lambda (instruction)
