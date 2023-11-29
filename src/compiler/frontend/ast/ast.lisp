@@ -465,7 +465,7 @@
   ((identifiers
     :reader parameter-declaration-identifiers
     :initarg :identifiers
-    :initform (error "must provide name")
+    :initform nil
     :type (or null identifier-list))
    (splat
     :reader parameter-declaration-splat

@@ -260,8 +260,7 @@
      "continue" token:@CONTINUE
      "fallthrough" token:@FALLTHROUGH
      "return" token:@RETURN
-     "var" token:@VAR
-     "..." token:@ELLIPSIS)
+     "var" token:@VAR)
   :test #'equalp)
 
 (-> scan-identifier (state) (or null token:token))
@@ -310,6 +309,7 @@
 (-> scan-operator/punctuation (state) (or null token:token))
 (defun scan-operator/punctuation (state)
   (cond
+    ((match= state "...") (accept state token:@ELLIPSIS))
     ((match= state ":=") (accept state token:@COLON_EQUAL))
     ((match= state "==") (accept state token:@EQUAL_EQUAL))
     ((match= state "<=") (accept state token:@LE))

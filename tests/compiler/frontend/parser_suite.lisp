@@ -239,3 +239,11 @@
     (assert-eql 'ast:identifier (type-of (ast:function-declaration-name decl)))
     (assert-eql 'ast:function-signature (type-of (ast:function-declaration-signature decl)))
     (assert-eql 'ast:block (type-of (ast:function-declaration-body decl)))))
+
+(define-test parse-function-with-variadic-arguments ()
+  (multiple-value-bind (decl had-errors) (parser:parse "func f(a int, b ...string) (int, string) { 10 }" :production #'parser::<function-declaration)
+    (assert-false had-errors)
+    (assert-eql 'ast:function-declaration (type-of decl))
+    (assert-eql 'ast:identifier (type-of (ast:function-declaration-name decl)))
+    (assert-eql 'ast:function-signature (type-of (ast:function-declaration-signature decl)))
+    (assert-eql 'ast:block (type-of (ast:function-declaration-body decl)))))

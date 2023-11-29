@@ -527,11 +527,20 @@
 (-> <parameter-declaration (state) (or null ast:parameter-declaration))
 (defun <parameter-declaration (state)
   (guard-parse state
-    (a:if-let ((identifiers-and-types (try (seq #'<identifier-list #'<type) state)))
+    (a:when-let ((identifiers-and-types (try (seq #'<identifier-list #'<splat-parameter #'<type) state)))
+      (destructuring-bind (identifiers splat type) identifiers-and-types
+        (return-from <parameter-declaration (accept state 'ast:parameter-declaration :identifiers identifiers :splat splat :type type))))
+
+    (a:when-let ((identifiers-and-types (try (seq #'<identifier-list #'<type) state)))
       (destructuring-bind (identifiers type) identifiers-and-types
-        (accept state 'ast:parameter-declaration :identifiers identifiers :type type))
-      (a:when-let ((type (try #'<type state)))
-        (accept state 'ast:parameter-declaration :identifiers nil :type type)))))
+        (return-from <parameter-declaration (accept state 'ast:parameter-declaration :identifiers identifiers :type type))))
+
+    (a:when-let ((splat-and-type (try (seq #'<splat-parameter #'<type) state)))
+      (destructuring-bind (splat type) splat-and-type
+        (return-from <parameter-declaration (accept state 'ast:parameter-declaration :splat splat :type type))))
+
+    (a:when-let ((type (try #'<type state)))
+      (accept state 'ast:parameter-declaration :type type))))
 
 (defun <splat-parameter (state)
   (guard-parse state
