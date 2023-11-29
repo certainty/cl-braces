@@ -80,10 +80,10 @@
   (declare (ignore node generator))
   t)
 
-(defmethod generate ((generator bytecode-generator) (node ast:program))
+(defmethod generate ((generator bytecode-generator) (node ast:source-file))
   (with-slots (chunk-builder) generator
-    (let ((statements (ast:program-declarations node)))
-      (generate generator statements))))
+    (let ((decls (ast:source-file-declarations node)))
+      (generate generator decls))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:statement-list))
   (with-slots (chunk-builder) generator

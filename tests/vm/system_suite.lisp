@@ -50,3 +50,19 @@
    a := x + y + z
    a + x + b
    ")))
+
+;; (define-test functions-with-one-return-value ()
+;;   (assert-equal
+;;    10
+;;    (compile-and-run "
+;;    func f() int {
+;;      x := 42
+;;      if true {
+;;         return x
+;;      } else {
+;;        return 33
+;;      }
+;;    }
+;;    f()
+;;    "))
+;;   )

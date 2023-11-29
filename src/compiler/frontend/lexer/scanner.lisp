@@ -253,13 +253,15 @@
 (a:define-constant +keywords+
     ;; dictionary mapping keyword lexemes to their class
     (s:dict
+     "func" token:@FUNC
      "if" token:@IF
      "else" token:@ELSE
      "break" token:@BREAK
      "continue" token:@CONTINUE
      "fallthrough" token:@FALLTHROUGH
      "return" token:@RETURN
-     "var" token:@VAR)
+     "var" token:@VAR
+     "..." token:@ELLIPSIS)
   :test #'equalp)
 
 (-> scan-identifier (state) (or null token:token))

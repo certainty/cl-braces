@@ -116,6 +116,7 @@
     :documentation "A helpful description of the instruction"))
   (:documentation "A description of an instruction that can be used to construct instructions"))
 
+;; TODO: make this a constant
 (defmacro define-isa (isa-name  &key version instructions)
   "Defines a new isa with the given version and instructions.
     The instructions are defined using the following syntax:
@@ -134,11 +135,10 @@
    - reg: A register
    - addr: An address
 "
-  `(a:define-constant ,isa-name
-       (make-instance 'isa
-                      :version (version ,(first version) ,(second version))
-                      :instructions (make-isa-instruction-set ,@instructions))
-     :test #'equalp))
+  `(defparameter ,isa-name
+     (make-instance 'isa
+                    :version (version ,(first version) ,(second version))
+                    :instructions (make-isa-instruction-set ,@instructions))))
 
 (defmacro make-isa-instruction-set (&rest instructions)
   `(vector ,@(mapcar (lambda (instruction)

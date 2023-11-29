@@ -74,7 +74,7 @@
 (defmethod leave ((printer ast-printer) (node node))
   nil)
 
-(define-default-printer program "program")
+(define-default-printer source-file "source-file")
 (define-default-printer block "block")
 (define-default-printer if-statement "if-statement")
 (define-default-printer empty-statement "empty-statement")

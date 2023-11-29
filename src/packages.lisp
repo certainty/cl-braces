@@ -204,13 +204,15 @@
    #:@TRUE
    #:@FALSE
    #:@NIL
+   #:@FUNC
    #:@IF
    #:@ELSE
    #:@BREAK
    #:@CONTINUE
    #:@FALLTHROUGH
    #:@RETURN
-   #:@VAR))
+   #:@VAR
+   #:@ELLIPSIS))
 
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :frontend.scanner :scanner :frontend.lexer :lexer)
@@ -293,12 +295,32 @@
    #:identifier-list
    #:identifier-list-identifiers
 
+   #:function-declaration
+   #:function-declaration-name
+   #:function-declaration-signature
+   #:function-declaration-body
+
+   #:function-signature
+   #:function-signature-parameters
+   #:function-signature-return-type
+   #:function-signature-return-parameters
+
+   #:parameter-declaration
+   #:parameter-declaration-identifiers
+   #:parameter-declaration-splat
+   #:parameter-declaration-type
+
+   #:parameter-splat
+   #:parameter-splat-token
+
+   #:comma
+
    #:block
    #:block-statements
 
-   #:program
-   #:program-declarations
-   #:make-program
+   #:source-file
+   #:source-file-declarations
+   #:make-source-file
 
    #:walk
    #:enter

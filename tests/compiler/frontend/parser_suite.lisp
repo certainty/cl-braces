@@ -1,10 +1,10 @@
 (in-package :tests.frontend.parser)
 
 (defun parse-as-expression (input)
-  (when-let ((program (parser:parse input)))
-    (when-let ((declarations (ast:statement-list-statements (ast:program-declarations program))))
-      (when (= 1 (length declarations))
-        (ast:expression-statement-expression (car declarations))))))
+  (parser:parse input :production #'parser::<expression))
+
+(defun parse-as-statements (input)
+  (parser:parse input :production #'parser::<statement-list))
 
 (define-test parse-integer-literal ()
   "Parse an integer literal"
@@ -82,43 +82,40 @@
         (assert-eql 'ast:literal (type-of (ast:binary-expression-rhs inner)))))))
 
 (define-test parse-reprodcue-bug ()
-  (multiple-value-bind (ast had-errors) (parser:parse "(3 + 3) * 3")
+  (multiple-value-bind (ast had-errors) (parse-as-statements "(3 + 3) * 3")
     (declare (ignore ast))
     (assert-false had-errors)))
 
 (define-test parse-short-assignment ()
-  (multiple-value-bind (ast had-errors) (parser:parse "a := 3")
+  (multiple-value-bind (ast had-errors) (parse-as-statements "a := 3")
     (assert-false had-errors)
-    (let ((statements  (ast:program-declarations ast)))
-      (assert-eql 'ast:statement-list (type-of statements))
-      (assert-eql 1 (length (ast:statement-list-statements statements)))
-      (let ((decl (first (ast:statement-list-statements statements))))
+    (assert-eql 'ast:statement-list (type-of ast))
+    (let ((statements (ast:statement-list-statements ast)))
+      (assert-eql 1 (length statements))
+      (let ((decl (first statements)))
         (assert-eql 'ast:short-variable-declaration (type-of decl))))))
 
 (define-test parse-if-conditional ()
   "Parse simple if conditional without else"
-  (multiple-value-bind (ast had-errors) (parser:parse "if 3 { 1 } ")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "if 3 { 1 } ")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:if-statement (type-of decl)))))
 
 (define-test parse-if-else-conditional ()
   "Parse simple if conditional with else"
-  (multiple-value-bind (ast had-errors) (parser:parse "if x { 1 } else { 2 }")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "if x { 1 } else { 2 }")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:if-statement (type-of decl))
       ;; make sure we have an else statement
       (assert (not (null (ast:if-statement-alternative decl)))))))
 
 (define-test parse-if-with-short-statement ()
   "Parse if conditional with short statement"
-  (multiple-value-bind (ast had-errors) (parser:parse " if x := 10; x < 20 { x }")
+  (multiple-value-bind (statements had-errors) (parse-as-statements " if x := 10; x < 20 { x }")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:if-statement (type-of decl))
       ;; check th init and condition part
       (assert-eql 'ast:short-variable-declaration (type-of (ast:if-statement-init decl)))
@@ -126,10 +123,9 @@
 
 (define-test parse-variable-declaration ()
   "Parse variable declaration for single variable"
-  (multiple-value-bind (ast had-errors) (parser:parse "var x int")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "var x int")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:variable-declaration (type-of decl))
       (assert-eql 1 (length (ast:variable-declaration-specifications decl)))
       (let ((var (first (ast:variable-declaration-specifications decl))))
@@ -137,10 +133,9 @@
 
 (define-test parse-variable-declaration-with-assignment ()
   "Parse variable declaration with assignment"
-  (multiple-value-bind (ast had-errors) (parser:parse "var x int = 10")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "var x int = 10")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:variable-declaration (type-of decl))
       (assert-eql 1 (length (ast:variable-declaration-specifications decl)))
       (let ((var (first (ast:variable-declaration-specifications decl))))
@@ -148,27 +143,24 @@
 
 (define-test parse-variable-declaration-with-assignment-and-type-inference ()
   "Parse variable declaration with assignment and type inference"
-  (multiple-value-bind (ast had-errors) (parser:parse "var x = 10")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "var x = 10")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:variable-declaration (type-of decl))))
   )
 
 (define-test parse-variable-declaration-with-multiple-variables ()
   "Parse variable declaration with multiple variables"
-  (multiple-value-bind (ast had-errors) (parser:parse "var x, y int")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "var x, y int")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:variable-declaration (type-of decl)))))
 
 (define-test parse-variable-declaration-with-multiple-variables-and-assignment ()
   "Parse variable declaration with multiple variables and assignment"
-  (multiple-value-bind (ast had-errors) (parser:parse "var x, y int = 10, 20")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "var x, y int = 10, 20")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:variable-declaration (type-of decl))
       (assert-eql 1 (length (ast:variable-declaration-specifications decl)))
       (let ((spec (first (ast:variable-declaration-specifications decl))))
@@ -178,62 +170,55 @@
 
 (define-test parse-variable-declaration-with-group-of-variables ()
   "Parse variable declaration with group of variables"
-  (multiple-value-bind (ast had-errors) (parser:parse "var (x int; y int = 10)")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "var (x int; y int = 10)")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:variable-declaration (type-of decl))
       (assert-eql 2 (length (ast:variable-declaration-specifications decl))))))
 
 (define-test parse-variable-declaration-with-placeholder ()
   "Parse variable declaration with placeholder"
-  (multiple-value-bind (ast had-errors) (parser:parse "var _, x = 1,2")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "var _, x = 1,2")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:variable-declaration (type-of decl)))))
 
 (define-test parse-assignment ()
   "Parse simple assignment"
-  (multiple-value-bind (ast had-errors) (parser:parse "x = 10")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "x = 10")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:assignment-statement (type-of decl)))))
 
 (define-test parse-assignment-with-addition ()
   "Parse assignment with addition"
-  (multiple-value-bind (ast had-errors) (parser:parse "x += 10")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "x += 10")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:assignment-statement (type-of decl))
       (assert-eql token:@PLUS_EQUAL (token:class (ast:assignment-statement-operator decl))))))
 
 (define-test parse-assignment-with-multiplication ()
   "Parse assignment with multiplication"
-  (multiple-value-bind (ast had-errors) (parser:parse "x *= 10")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "x *= 10")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:assignment-statement (type-of decl))
       (assert-eql token:@MUL_EQUAL (token:class (ast:assignment-statement-operator decl))))))
 
 (define-test parse-assignment-with-multiple-values ()
   "Parse assignment with multiple values"
-  (multiple-value-bind (ast had-errors) (parser:parse "x, y = 10, 20")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "x, y = 10, 20")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements))))
+    (let ((decl (first (ast:statement-list-statements statements))))
       (assert-eql 'ast:assignment-statement (type-of decl))
       (assert-eql 2 (length (ast:expression-list-expressions (ast:assignment-statement-lhs decl)))))))
 
 (define-test parse-assigment-with-multiple-values-and-placeholders ()
   "Parse assignment with multiple values and placeholders"
-  (multiple-value-bind (ast had-errors) (parser:parse "x, _ = 10, 20")
+  (multiple-value-bind (statements had-errors) (parse-as-statements "x, _ = 10, 20")
     (assert-false had-errors)
-    (let* ((statements (ast:program-declarations ast))
-           (decl (first (ast:statement-list-statements statements)))
+    (let* ((decl (first (ast:statement-list-statements statements)))
            (lhs (ast:assignment-statement-lhs decl)))
       (assert-eql 'ast:expression-list (type-of lhs))
       (assert-eql 2 (length (ast:expression-list-expressions lhs))))))

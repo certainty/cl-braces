@@ -25,6 +25,7 @@
   @FALLTHROUGH
   @RETURN
   @VAR
+  @FUNC
 
   ;; [Literals](https://golang.org/ref/spec#Literals)
   @INTEGER
@@ -50,6 +51,7 @@
   @LE
   @GT
   @GE
+  @ELLIPSIS
 
   ;; [Punctuation](https://golang.org/ref/spec#Operators_and_punctuation)
   @LPAREN
