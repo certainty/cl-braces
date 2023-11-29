@@ -314,7 +314,7 @@
     :reader type-specifier-name
     :initarg :name
     :initform (error "must provide name")
-    :type frontend.token:token))
+    :type token:token))
   (:documentation "The base class for all type specifiers in the highlevel AST."))
 
 (defmethod children ((node type-specifier))
@@ -390,7 +390,7 @@
     :reader function-signature-parameters
     :initarg :parameters
     :initform (error "must provide parameters")
-    :type list)
+    :type parameter-list)
    (return-type
     :reader function-signature-return-type
     :initarg :return-type
@@ -401,7 +401,7 @@
     :reader function-signature-return-parameters
     :initarg :return-parameters
     :initform nil
-    :type (or null list)
+    :type (or null parameter-list)
     :documentation "This is set iff the function has named return parameters. It's a list of `parameter-declaration'.")))
 
 (defmethod children ((node function-signature))
@@ -426,6 +426,25 @@
                       (and return-type (span:to return-type))
                       (token:location last-parameter))))))
 
+(defclass parameter-list (declaration)
+  ((parameters
+    :reader parameter-list-parameters
+    :initarg :parameters
+    :initform (error "must provide parameters")
+    :type list))
+  (:documentation "A list of parameters"))
+
+(defmethod children ((node parameter-list))
+  (parameter-list-parameters node))
+
+(defmethod span:for ((node parameter-list))
+  (with-slots (parameters) node
+    (let ((first-parameter (first parameters))
+          (last-parameter  (first (last parameters))))
+      (make-instance 'span
+                     :from (token:location first-parameter)
+                     :to (token:location last-parameter)))))
+
 (defclass parameter-splat (node)
   ((token
     :reader parameter-splat-token
@@ -445,9 +464,9 @@
 (defclass parameter-declaration (declaration)
   ((identifiers
     :reader parameter-declaration-identifiers
-    :initarg :name
+    :initarg :identifiers
     :initform (error "must provide name")
-    :type identifier-list)
+    :type (or null identifier-list))
    (splat
     :reader parameter-declaration-splat
     :initarg :splat
@@ -461,11 +480,13 @@
   (:documentation "A parameter declaration"))
 
 (defmethod children ((node parameter-declaration))
-  (let ((base (list (parameter-declaration-name node))))
-    (when (parameter-declaration-splat node)
-      (push (parameter-declaration-splat node) base))
-    (when (parameter-declaration-type node)
-      (push (parameter-declaration-type node) base))
+  (let ((base nil))
+    (a:when-let ((identifiers (parameter-declaration-identifiers node)))
+      (push identifiers base))
+    (a:when-let ((splat  (parameter-declaration-splat node)))
+      (push splat base))
+    (a:when-let ((type (parameter-declaration-type node)))
+      (push type base))
     (reverse base)))
 
 (defmethod span:for ((node parameter-declaration))

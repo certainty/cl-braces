@@ -72,7 +72,7 @@
 ;;; Main API for the parser
 ;;; ====================================================================================================
 
-(-> parse (string &key (:fail-fast boolean) (:production function)) (values (or null ast:node) boolean state &optional))
+(-> parse (string &key (:fail-fast boolean) (:production function)) (values (or null ast:node list) boolean state &optional))
 (defun parse (source-code &key (production #'<statement-list) (fail-fast nil))
   "Parse the given `SOURCE-CODE' and return values (AST, ERRORS, STATE).
 
@@ -90,7 +90,7 @@
       (advance! state)
       (let ((result (funcall production state)))
         (consume! state token:@EOF "Expected end of file")
-        (values result (parse-errors state) state)))))
+        (values result (s:true (parse-errors state)) state)))))
 
 ;;; ====================================================================================================
 ;;; Utility functions to deal with various states of the parser
@@ -154,6 +154,7 @@
             (setf cur-token ctok)
             (setf next-token ntok)))))))
 
+(-> expect ((function (state) t) string state) t)
 (defun expect (parser error-message state)
   "Execute the parser and if it returns `NIL' signal an error with the given message.
    Return the result of the parser otherwise.
@@ -168,6 +169,16 @@
   (guard-parse state
     (not (null (funcall parser state)))))
 
+(defun seq (&rest parsers)
+  "Execute the given parsers in sequence and return the result of the last parser."
+  (lambda (state)
+    (guard-parse state
+      (loop for p in parsers
+            for n = (funcall p state)
+            unless n
+              do (return nil)
+            collect n))))
+
 (defun preceded-by (parser1 parser2 state)
   "Execute both `PARSER1' and `PARSER2' and return the result of `PARSER2'."
   (guard-parse state
@@ -179,7 +190,8 @@
   (guard-parse state
     (try (lambda (s)
            (a:when-let ((result (funcall parser1 s)))
-             (and (funcall parser2 s) result))))))
+             (and (funcall parser2 s) result)))
+         state)))
 
 ;;; ====================================================================================================
 ;;; Parse implementation for the various language constructs
@@ -189,6 +201,7 @@
 ;;; SourceFile       = PackageClause ";" { ImportDecl ";" } { TopLevelDecl ";" } .
 ;;;
 ;;; https://golang.org/ref/spec#Source_file
+(-> <source-file (state) ast:source-file)
 (defun <source-file (state)
   (let ((decls (<top-level-declaration-list state)))
     (accept state 'ast:source-file :declarations decls)))
@@ -471,7 +484,7 @@
         (advance! state)
         (let ((name (expect #'<identifier "Expected identifier" state))
               (signature (expect #'<function-signature "Expected function signature" state))
-              (body (expect #'<block state "Expected function block")))
+              (body (expect #'<block "Expected function block" state)))
           (accept state 'ast:function-declaration :name name :signature signature :body body))))))
 
 ;;;
@@ -486,38 +499,39 @@
 (-> <function-signature (state) (or null ast:function-signature))
 (defun <function-signature (state)
   (let ((parameter-decls (expect #'<function-parameters "Expected function parameters" state))
-        (return-parameters (try #'<function-return-paramters state))
+        (return-parameters (try #'<function-parameters state))
         (return-type (try #'<type state)))
-    (accept state 'ast:function-signature :parameters parameter-decls :returne-type return-type :return-parameters return-parameters)))
+    (accept state 'ast:function-signature :parameters parameter-decls :return-type return-type :return-parameters return-parameters)))
 
-(-> <function-parameters (state) (or null list))
+(-> <function-parameters (state) (or null ast:parameter-list))
 (defun <function-parameters (state)
   (guard-parse state
     (with-slots (cur-token) state
       (when (token:class= cur-token token:@LPAREN)
         (advance! state)
-        (prog1 (<function-parameter-list state)
-          (match-any state token:@COMMA) ; trailing comma
+        (prog1 (accept state 'ast:parameter-list :parameters (<function-parameter-list state))
+          (try #'<comma state)
           (consume! state token:@RPAREN "Expected ')' after function parameters"))))))
 
 (-> <function-parameter-list (state) (or null list))
 (defun <function-parameter-list (state)
   (guard-parse state
-    (a:when-let ((first-parameter (<parameter-declaration state)))
+    (a:when-let ((first-parameter (try #'<parameter-declaration state)))
       (let ((parameters (list first-parameter)))
         (with-slots (cur-token) state
           (loop
-            (a:if-let ((param (followed-by #'<comma #'<parameter-declaration state)))
+            (a:if-let ((param (preceded-by #'<comma #'<parameter-declaration state)))
               (push param parameters)
               (return (nreverse parameters)))))))))
 
 (-> <parameter-declaration (state) (or null ast:parameter-declaration))
 (defun <parameter-declaration (state)
   (guard-parse state
-    (let ((identifiers (try #'<identifier-list state))
-          (splat (try #'<splat-parameter state))
-          (type (expect #'<type "Expected paramter type" state) ))
-      (accept state 'ast:parameter-declaration :identifiers identifiers :splat splat :type type))))
+    (a:if-let ((identifiers-and-types (try (seq #'<identifier-list #'<type) state)))
+      (destructuring-bind (identifiers type) identifiers-and-types
+        (accept state 'ast:parameter-declaration :identifiers identifiers :type type))
+      (a:when-let ((type (try #'<type state)))
+        (accept state 'ast:parameter-declaration :identifiers nil :type type)))))
 
 (defun <splat-parameter (state)
   (guard-parse state

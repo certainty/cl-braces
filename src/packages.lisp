@@ -313,6 +313,9 @@
    #:parameter-splat
    #:parameter-splat-token
 
+   #:parameter-list
+   #:parameter-list-parameters
+
    #:comma
 
    #:block
@@ -335,7 +338,6 @@
   (:import-from :serapeum :->)
   (:export
    #:parse
-   #:with
    #:parse-errors))
 
 
