@@ -3,8 +3,9 @@
 (defpackage :cl-braces.tests.runner
   (:use :cl :lisp-unit2)
   (:export
-   :run-vm-suites
-   :run-compiler-suites))
+   #:run-suites
+   #:run-vm-suites
+   #:run-compiler-suites))
 
 ;;; Compiler
 (defpackage :cl-braces.tests.compiler.frontend.scanner

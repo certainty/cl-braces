@@ -13,16 +13,20 @@
 (defun system-path ()
   (asdf:system-source-directory "cl-braces/tests"))
 
+(defun run-suites ()
+  (run-vm-suites)
+  (run-compiler-suites))
+
 (defun run-vm-suites ()
   (let ((snapshots:*snapshot-dir* (merge-pathnames "tests/snapshots/vm/" (system-path))))
     (with-env-specific-setup
-      (run-tests
-       :name "vm"
-       :package '(:tests.vm.bytecode :tests.vm.machine :tests.system)))))
+        (run-tests
+         :name "vm"
+         :package '(:tests.vm.bytecode :tests.vm.machine :tests.system)))))
 
 (defun run-compiler-suites ()
   (let ((snapshots:*snapshot-dir* (merge-pathnames "tests/snapshots/compiler/" (system-path))))
     (with-env-specific-setup
-      (run-tests
-       :name "compiler"
-       :package '(:tests.frontend.scanner :tests.frontend.parser :tests.frontend.ast :tests.backend.codegen :tests.middleend.symbols :tests.compiler.pipeline :tests.compiler.symbols)))))
+        (run-tests
+         :name "compiler"
+         :package '(:tests.frontend.scanner :tests.frontend.parser :tests.frontend.ast :tests.backend.codegen :tests.middleend.symbols :tests.compiler.pipeline :tests.compiler.symbols)))))

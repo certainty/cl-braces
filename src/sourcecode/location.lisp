@@ -1,4 +1,4 @@
-(in-package :cl-braces.compiler.location)
+(in-package :cl-braces.sourcecode.location)
 
 (defclass source-location ()
   ((line
@@ -26,28 +26,25 @@
     (print-unreadable-object (location stream :type t :identity t)
       (format stream "line: ~a column: ~a offset: ~a" line column offset))))
 
+(defmethod support:to-plist ((location source-location))
+  (with-slots (line column offset) location
+    (list :line line :column column :offset offset)))
+
 (defun make-source-location (line column offset)
+  "Creates a new source location from the given `line' and `column' and `offset'."
   (make-instance 'source-location :line line :column column :offset offset))
 
-(defclass source-span ()
-  ((from
-    :reader span-from
-    :initarg :from
-    :initform (error "must provide from")
-    :type source-location
-    :documentation "This is the location of the the first token or subexpression of the expression.")
-   (to
-    :reader span-to
-    :initarg :to
-    :initform (error "must provide to")
-    :type source-location
-    :documentation "This is the location of the last token or subexpression of the expression."))
-  (:documentation "A span in the source code for a given syntatic element. It denotes a range from the begining of the element to the end of the element."))
+(defun line++ (location)
+  (with-slots (line column offset) location
+    (incf line)
+    (setf column 1)
+    (incf offset)))
 
-(defmethod print-object ((span source-span) stream)
-  (with-slots (from to) span
-    (print-unreadable-object (span stream :type t :identity nil)
-      (format stream "[~A, ~A]" from to))))
+(defun column++ (location)
+  (with-slots (column offset) location
+    (incf column)
+    (incf offset)))
 
-(defgeneric span-for (expression)
-  (:documentation "Computes the span of the expression in the source code."))
+(defmethod support:copy-instance ((location source-location))
+  (with-slots (line column offset) location
+    (make-instance 'source-location :line line :column column :offset offset)))

@@ -1,4 +1,4 @@
-(in-package :cl-braces.development)
+(in-package :cl-braces.support)
 
 (defmacro todo! (message)
   (let ((full-message (gensym)))
@@ -31,3 +31,27 @@
                      (incf iota)))
                  variants)
        (deftype ,(intern (format nil "~A" name) *package*) () '(integer 0 ,iota)))))
+
+(defgeneric debug-print (obj)
+  (:documentation "Prints a debug representation of OBJ to STREAM."))
+
+(deftype list-of (type)
+  `(or null (cons ,type ,type)))
+
+(deftype none-empty-list-of (type)
+  `(cons ,type ,type))
+
+(defgeneric to-plist (obj)
+  (:documentation "Converts OBJ to a plist."))
+
+(defmethod to-plist ((obj list))
+  (apply #'append obj))
+
+(defmethod to-plist ((obj null))
+  nil)
+
+(defmethod to-plist ((obj vector))
+  (map 'vector #'to-plist obj))
+
+(defgeneric copy-instance (obj)
+  (:documentation "Creates a copy of OBJ."))

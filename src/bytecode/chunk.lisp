@@ -1,4 +1,4 @@
-(in-package :cl-braces.vm.bytecode)
+(in-package :cl-braces.bytecode)
 
 ;;;; Here we define the in-memory representation of the bytecode instructions.
 ;;;; The objectvie here is use a representation that is cache friendly and easy to decode.
@@ -11,10 +11,11 @@
 (deftype opcode-t ()  '(unsigned-byte 8))
 (deftype register-t () '(unsigned-byte 16))
 (deftype address-t () '(unsigned-byte 64))
-(deftype operand-t () '(or register-t address-t))
+(deftype label-t () '(unsigned-byte 64))
+(deftype operand-t () '(or register-t address-t label-t))
 
 ;; A machine instruction as loaded and executed by the vm.
-(serapeum:defconstructor instruction
+(s:defconstructor instruction
   (opcode opcode-t)
   (operands (vector operand-t)))
 
@@ -22,14 +23,15 @@
   (print-unreadable-object (instruction stream :type nil)
     (format stream "INSTRUCTION OPCODE: ~A ~A" (instruction-opcode instruction) (instruction-operands instruction))))
 
-(deftype constant-table () '(vector value:value))
+(deftype constant-table () '(vector runtime.value:value))
 
-(serapeum:defconstructor chunk
+(s:defconstructor chunk
   (constants constant-table)
+  (blocklabels hash-table)
   (code (vector instruction))
   (registers-used (integer 0 *)))
 
-(serapeum:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
+(s:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
   (let ((code (gensym)))
     `(let ((,code (chunk-code ,chunk)))
        (loop for ,pc from 0 below (length ,code)

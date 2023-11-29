@@ -1,7 +1,8 @@
 (in-package :cl-braces.compiler.symbols)
 (deftype scope-t () '(integer 0 *))
 
-(deftype denotation-t () '(member :function :variable :type))
+(deftype denotation-t () '(member :function :variable :type :constant))
+
 ;; we use angle brackets to avoid name clashes with common lisp symbols
 (defclass <symbol> ()
   ((id
@@ -72,8 +73,19 @@
 (-> denotes-type-p (<symbol>) boolean)
 (declaim (inline denotes-type-p))
 (defun denotes-type-p (symbol)
-  ""
+  "Return true if the given `SYMBOL' denotes a type."
   (eql :type (denotation symbol)))
+
+(-> denotes-constant-p (<symbol>) boolean)
+(declaim (inline denotes-constant-p))
+(defun denotes-constant-p (symbol)
+  "Return true if the given `SYMBOL' denotes a constant."
+  (eql :constant (denotation symbol)))
+
+(-> place-holder-p (<symbol>) boolean)
+(defun place-holder-p (sym)
+  (and (denotes-variable-p sym)
+       (string= (name sym) "_")))
 
 (-> add-symbol (symbol-table string denotation-t &key (:scope scope-t) (:location (or null location:source-location))) string)
 (defun add-symbol (table name denotation &key (scope 0) (location nil))
@@ -128,13 +140,13 @@ It searchs from high to low scopes, so it finds the hightest scope that is <= `C
 "
   (find-if (lambda (sym) (<= (scope sym) current-scope)) candidates))
 
-(defmethod dev:debug-print ((obj symbol-table) &key (stream *standard-output*))
+(defmethod support:debug-print ((obj symbol-table))
   (with-slots (symbols-by-name) obj
-    (let ((all-symbols (alexandria:hash-table-alist symbols-by-name)))
+    (let ((all-symbols (a:hash-table-alist symbols-by-name)))
       (setf all-symbols (sort all-symbols #'string< :key #'car))
-      (format stream "~20,a ~15,a ~7,a ~20,a~%" "Name" "Denotation" "Scope" "ID")
+      (format *debug-io* "~20,a ~15,a ~7,a ~20,a~%" "Name" "Denotation" "Scope" "ID")
       (dolist (entry all-symbols)
         (destructuring-bind (name . symbols) entry
           (declare (ignore name))
           (dolist (sym symbols)
-            (format stream "~20,a ~15,a ~7,a ~20,a~%" (name sym) (denotation sym) (scope sym) (id sym))))))))
+            (format *debug-io* "~20,a ~15,a ~7,a ~20,a~%" (name sym) (denotation sym) (scope sym) (id sym))))))))

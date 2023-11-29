@@ -1,9 +1,9 @@
-(in-package :cl-braces.tests.snapshots)
+(in-package :cl-braces.support.tests.snapshots)
 
 (defparameter *snapshot-dir* nil)
 
 (defun print-snapshot (value &optional (stream *standard-output*))
-  (print value stream))
+  (format stream "~A" value))
 
 (defun assert-snapshot-equals (snapshot-path actual)
   "Asserts that the actual value matches the snapshot. If the snapshot does not exist, it is created."

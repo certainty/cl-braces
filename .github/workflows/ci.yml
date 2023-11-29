@@ -43,12 +43,7 @@ jobs:
           ros -e '(progn (ql:quickload :lisp-unit2) (uiop:quit))'
           ros -e '(progn (ql:quickload :cl-braces) (uiop:quit))'
 
-      - name: Test Compiler
+      - name: Test
         shell: bash
         run: |
-          ros -e '(handler-case (asdf:test-system :cl-braces/compiler) (error (c) (print c) (uiop:quit 1)))'
-
-      - name: Test VM
-        shell: bash
-        run: |
-          ros -e '(handler-case (asdf:test-system :cl-braces/vm) (error (c) (print c) (uiop:quit 1)))'
+          ros -e '(handler-case (asdf:test-system :cl-braces) (error (c) (print c) (uiop:quit 1)))'

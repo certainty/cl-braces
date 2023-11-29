@@ -8,86 +8,77 @@
   :source-control (:git "https://github.com/certainty/cl-braces.git")
   :license "BSD"
   :version "1.0"
+  :depends-on (:alexandria :serapeum :frugal-uuid)
   :serial t
-  :depends-on (:cl-braces/compiler))
+  :pathname "src"
+  :in-order-to ((test-op (test-op "cl-braces/tests")))
+  :components
+  ((:file "packages")
 
-(defsystem "cl-braces/utils"
-  :description "Utilities used in different parts of the project"
-  :depends-on  (:alexandria :serapeum :lisp-unit2)
-  :serial t
-  :pathname "src/utils"
-  :components ((:file "packages")
-               (:file "development")
-               (:file "tests")))
+   (:module "support"
+    :components
+    ((:file "utils")
+     (:file "snapshot_tests")))
 
-(defsystem "cl-braces/compiler"
-  :description "Compiler for cl-braces the minimal go-like programming language"
-  :depends-on
-  (:alexandria
-   :serapeum
-   :frugal-uuid
-   :cl-braces/vm
-   :cl-braces/utils)
-  :in-order-to ((test-op (test-compiler-op "cl-braces/tests")))
-  :serial t
-  :pathname "src/compiler"
-  :components ((:file "packages")
-               (:file "location")
-               (:file "symbols")
-               (:module "frontend"
-                :components
-                ((:module "scanner"
-                  :components
-                  ((:file "packages")
-                   (:file "input")
-                   (:file "token")
-                   (:file "scanner")))
-                 (:module "ast"
-                  :components
-                  ((:file "packages")
-                   (:file "ast")
-                   (:file "printer")))
-                 (:module "parser"
-                  :components
-                  ((:file "packages")
-                   (:file "parser")))))
-               (:module "middleend"
-                :components
-                ((:module "semantic"
-                  :components
-                  ((:file "packages")
-                   (:file "symbol-resolver")))))
-               (:module "backend"
-                :components
-                ((:file "packages")
-                 (:file "constants-builder")
-                 (:file "chunk-builder")
-                 (:file "codegen")))
-               (:file "pipeline")))
+   (:module "runtime"
+    :components
+    ((:file "value")))
 
-(defsystem "cl-braces/vm"
-  :description "Compiler for cl-braces the minimal go-like programming language"
-  :depends-on (:alexandria :serapeum :cl-braces/utils)
-  :in-order-to ((test-op (test-vm-op "cl-braces/tests")))
-  :serial t
-  :pathname "src/vm"
-  :components ((:file "packages")
-               (:module "runtime"
-                :components
-                ((:file "value")))
-               (:module "bytecode"
-                :components
-                ((:file "chunk")
-                 (:file "isa")
-                 (:file "disassembler")
-                 (:file "isa-1.0")))
-               (:file "machine")))
+   (:module "bytecode"
+    :components
+    ((:file "chunk")
+     (:file "isa")
+     (:file "isa-1.0")
+     (:file "disassembler")))
 
-(defclass test-vm-op (asdf:test-op) ())
-(defclass test-compiler-op (asdf:test-op) ())
+   (:module "sourcecode"
+    :components
+    ((:file "input")
+     (:file "location")
+     (:file "span")))
+
+   (:module "compiler"
+    :components
+    ((:file "symbols")
+     (:module "frontend"
+      :components
+      ((:module "lexer"
+        :components
+                ((:file "token")
+                 (:file "scanner")))
+
+       (:module "ast"
+        :components
+                ((:file "ast")
+                 (:file "printer")))
+
+       (:module "parser"
+        :components
+                ((:file "buffer")
+                 (:file "parser")))))
+
+     (:module "middleend"
+      :components
+      ((:module "semantic"
+        :components
+                ((:file "symbol-resolver")))))
+
+     (:module "backend"
+      :components
+      ((:file "constants-builder")
+       (:file "chunk-builder")
+       (:file "codegen")))
+
+     (:file "pipeline")
+     (:file "examples")))
+
+   (:module "vm"
+    :components
+    ((:file "debug")
+     (:file "machine")))))
 
 (defsystem "cl-braces/tests"
-  :depends-on (:lisp-unit2 :cl-braces/compiler :cl-braces/vm :cl-braces/utils)
+  :depends-on (:lisp-unit2 :cl-braces)
   :serial t
   :pathname "tests"
   :components
@@ -112,10 +103,6 @@
     ((:file "bytecode_suite")
      (:file "machine_suite")
      (:file "system_suite"))))
-  :perform (test-vm-op (o c)
-                       (declare (ignore o c))
-                       (uiop:symbol-call :cl-braces.tests.runner :run-vm-suites))
-
-  :perform (test-compiler-op (o c)
-                             (declare (ignore o c))
-                             (uiop:symbol-call :cl-braces.tests.runner :run-compiler-suites)))
+  :perform (test-op (o c)
+                    (declare (ignore o c))
+                    (uiop:symbol-call :cl-braces.tests.runner :run-suites)))
