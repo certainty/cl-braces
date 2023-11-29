@@ -1,4 +1,4 @@
-(in-package :cl-braces.tests.snapshots)
+(in-package :cl-braces.support.tests.snapshots)
 
 (defparameter *snapshot-dir* nil)
 

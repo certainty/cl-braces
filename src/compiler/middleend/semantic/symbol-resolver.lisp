@@ -24,17 +24,20 @@
     :initarg :current-scope
     :initform 0
     :type (integer 0 *))
+   (context
+    :initarg :context
+    :initform nil
+    :type (or null ast:node))
    (errors
     :reader errors-of
     :initform nil
-    :type (dev:list-of semantic-error))))
+    :type (support:list-of semantic-error))))
 
 (-> make-resolver () resolver)
 (defun make-resolver ()
   (let ((res (make-instance 'resolver)))
     res))
 
-(-> resolve-symbols (ast:node) (values symbols:symbol-table (dev:list-of semantic-error)))
 (defun resolve-symbols (ast)
   (let ((resolver (make-resolver)))
     (ast:walk resolver ast)
@@ -42,9 +45,19 @@
       (values symbol-table (when errors (nreverse errors))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:node))
+  (declare (ignore resolver node))
   :continue)
 
 (defmethod ast:leave ((resolver resolver) (node ast:node))
+  (declare (ignore resolver node))
+  :continue)
+
+(defmethod ast:enter ((resolver resolver) (tok token:token))
+  (declare (ignore resolver tok))
+  :continue)
+
+(defmethod ast:leave ((resolver resolver) (tok token:token))
+  (declare (ignore resolver tok))
   :continue)
 
 (defmethod ast:enter ((resolver resolver) (node ast:block))
@@ -61,8 +74,9 @@
       (dolist (variable (ast:identifier-list-identifiers variables))
         (let ((identifier (ast:identifier-name variable)))
           (a:if-let ((existing (symbols:find-by-name symbol-table identifier :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
-            (unless (symbols:place-holder-p existing)
-              (push (make-condition 'variable-already-defined :symbol identifier :location (ast:location variable)) errors))
+            (dolist (existing existing)
+              (unless (symbols:place-holder-p existing)
+                (push (make-condition 'variable-already-defined :symbol identifier :location (ast:location variable)) errors)))
             (symbols:add-symbol symbol-table identifier :variable :scope current-scope :location (ast:location variable))))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:identifier))
@@ -70,3 +84,14 @@
     (let ((variable (ast:identifier-name node)))
       (unless (symbols:find-by-name symbol-table variable :denotation #'symbols:denotes-variable-p :scope<= current-scope)
         (push (make-condition 'undefined-symbol :symbol variable :location (ast:location node)) errors)))))
+
+(defmethod ast:enter ((resolver resolver) (node ast:variable-specification))
+  (with-slots (symbol-table current-scope errors) resolver
+    (let* ((variables (ast:variable-specification-identifiers node)))
+      (dolist (identifier (ast:identifier-list-identifiers variables))
+        (let ((name (ast:identifier-name identifier)))
+          (a:if-let ((existing (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
+            (dolist (existing existing)
+              (unless (symbols:place-holder-p existing)
+                (push (make-condition 'variable-already-defined :symbol name :location (ast:location identifier)) errors)))
+            (symbols:add-symbol symbol-table name :variable :scope current-scope :location (ast:location identifier))))))))

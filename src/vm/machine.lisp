@@ -10,41 +10,23 @@
                    collect `(,operand (aref ,operands-var ,i)))
          ,@body))))
 
-(defun dump-machine-state (headline pc chunk registers &key (disass-chunk t) (dump-instruction nil))
-  (format t "### ~A ###~%~%" headline)
-  (format t "PC:           ~3,'0X~%" pc)
-  (format t "Registers:    ~{~a~^, ~} ~%" (loop for reg across registers for i from 0 collect (format nil "R~A=~A" i (format-register reg))))
-
-  (when dump-instruction
-    (format t "Instruction: ")
-    (bytecode::disass-instruction (aref (bytecode:chunk-code chunk) (1- pc)) chunk))
-
-  (when disass-chunk
-    (format t "Disassembly: ~%")
-    (bytecode:disass chunk))
-
-  (format t "~%"))
-
-(defun format-register (reg)
-  (trivia:match reg
-    ((value:nilv) "nil")
-    ((value:boolv b) (if b "true" "false"))
-    ((value:intv n) (format nil "i~A" n))
-    (_ (format nil "R~A" reg))))
-
 (defmacro binary-op (operation instruction registers result-register)
-  `(with-operands (dst lhs rhs) instruction
-     (setf ,result-register dst)
-     (setf (aref ,registers dst)
-           (value:box (,operation (value:unbox (aref ,registers lhs))
-                                  (value:unbox (aref ,registers rhs)))))))
+  `(with-operands (lhs rhs) instruction
+     (setf ,result-register lhs)
+     (setf (aref ,registers lhs)
+           (runtime.value:box (,operation (runtime.value:unbox (aref ,registers lhs))
+                                          (runtime.value:unbox (aref ,registers rhs)))))))
 
 (defmacro unary-op (operation instruction registers result-register)
   `(with-operands (dst) instruction
      (setf ,result-register dst)
-     (setf (aref ,registers dst) (value:box (,operation (value:unbox (aref ,registers dst)))))))
+     (setf (aref ,registers dst) (runtime.value:box (,operation (runtime.value:unbox (aref ,registers dst)))))))
 
-(-> execute (bytecode:chunk) (values value:value &optional))
+(defun run (input &key (fail-fast nil))
+  (let ((chunk (compiler:compile-this input :fail-fast fail-fast)))
+    (execute chunk)))
+
+(-> execute (bytecode:chunk) (values runtime.value:value &optional))
 (defun execute (chunk)
   (let* ((pc (the fixnum 0))
          (instructions (bytecode:chunk-code chunk))
@@ -53,7 +35,7 @@
          (result-reg nil)
          (zero-flag nil)
          (constants (bytecode:chunk-constants chunk))
-         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or value:value bytecode:register-t) :initial-element value:nilv)))
+         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or runtime.value:value bytecode:register-t) :initial-element runtime.value:nilv)))
 
 
     #-cl-braces-vm-release
@@ -77,7 +59,7 @@
           (bytecode:noop t)
           (bytecode:halt (return))
 
-          (bytecode:loada
+          (bytecode:const
            (with-operands (dst addr) instruction
              (setf result-reg dst)
              (setf (aref registers dst) (aref constants addr))))
@@ -89,7 +71,7 @@
 
           (bytecode:test
            (with-operands (dst) instruction
-             (setf zero-flag (value:falsep (aref registers dst)))))
+             (setf zero-flag (runtime.value:falsep (aref registers dst)))))
 
           (bytecode:jmp
            (with-operands (addr) instruction

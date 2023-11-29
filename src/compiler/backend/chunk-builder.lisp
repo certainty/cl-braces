@@ -23,7 +23,7 @@
   "Create a new chunk builder"
   (make-instance 'chunk-builder))
 
-(-> add-constant (chunk-builder vm.value:value) bytecode:address)
+(-> add-constant (chunk-builder runtime.value:value) bytecode:address)
 (defun add-constant (builder constant)
   "Register a constant for this chunk. Returns the address of the constant"
   (with-slots (constants) builder

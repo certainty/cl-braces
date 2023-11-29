@@ -4,11 +4,8 @@ LISP=sbcl --noinform
 release_dependencies := serapeum alexandria frugal-uuid
 dev_dependencies := lisp-unit2 sblint 40ants-critic
 
-test-vm:
-	$(RUN_LISP) --eval '(progn (ql:quickload :cl-braces/tests) (asdf:test-system :cl-braces/vm))'
-
-test-compiler:
-	$(RUN_LISP) --eval '(progn (ql:quickload :cl-braces/tests) (asdf:test-system :cl-braces/compiler))'
+test:
+	$(RUN_LISP) --eval '(progn (ql:quickload :cl-braces/tests) (asdf:test-system :cl-braces))'
 
 repl:
 	$(LISP)	--eval '(ql:quickload :cl-braces)'

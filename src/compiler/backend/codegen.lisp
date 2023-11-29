@@ -109,9 +109,9 @@
 
 (defmethod generate ((generator bytecode-generator) (node ast:literal))
   (with-slots (chunk-builder register-allocator) generator
-    (s:lret* ((const-address (add-constant chunk-builder (value:box (ast:literal-value node))))
+    (s:lret* ((const-address (add-constant chunk-builder (runtime.value:box (ast:literal-value node))))
               (register (next-register register-allocator)))
-      (add-instructions chunk-builder (bytecode:instr 'bytecode:loada register const-address)))))
+      (add-instructions chunk-builder (bytecode:instr 'bytecode:const register const-address)))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:unary-expression))
   (with-slots (chunk-builder register-allocator) generator
@@ -126,22 +126,52 @@
 
 (defmethod generate ((generator bytecode-generator) (node ast:binary-expression))
   (with-slots (chunk-builder register-allocator) generator
-    (s:lret* ((op (ast:binary-expression-operator node))
-              (left  (generate generator (ast:binary-expression-lhs node)))
-              (right (generate generator (ast:binary-expression-rhs node)))
-              (dst   (next-register register-allocator)))
+    (let* ((op (ast:binary-expression-operator node))
+           (left  (generate generator (ast:binary-expression-lhs node)))
+           (right (generate generator (ast:binary-expression-rhs node))))
       (assert left)
       (assert right)
-      (cond
-        ((token:class= op token:@PLUS)
-         (add-instructions chunk-builder (bytecode:instr 'bytecode:add dst left right)))
-        ((token:class= op token:@MINUS)
-         (add-instructions chunk-builder (bytecode:instr 'bytecode:sub dst left right)))
-        ((token:class= op token:@STAR)
-         (add-instructions chunk-builder (bytecode:instr 'bytecode:mul dst left right)))
-        ((token:class= op token:@SLASH)
-         (add-instructions chunk-builder (bytecode:instr 'bytecode:div dst left right)))
-        (t (todo! "binary operator"))))))
+      (prog1 left
+        (cond
+          ((token:class= op token:@PLUS)
+           (add-instructions chunk-builder (bytecode:instr 'bytecode:add left right)))
+          ((token:class= op token:@MINUS)
+           (add-instructions chunk-builder (bytecode:instr 'bytecode:sub left right)))
+          ((token:class= op token:@STAR)
+           (add-instructions chunk-builder (bytecode:instr 'bytecode:mul left right)))
+          ((token:class= op token:@SLASH)
+           (add-instructions chunk-builder (bytecode:instr 'bytecode:div left right)))
+          (t (todo! "binary operator")))))))
+
+(defmethod generate ((generator bytecode-generator) (node ast:variable-declaration))
+  (loop for spec in (ast:variable-declaration-specifications node)
+        for reg = (generate generator spec)
+        finally (return reg)))
+
+(defmethod generate ((generator bytecode-generator) (node ast:variable-specification))
+  (with-slots (chunk-builder register-allocator) generator
+    (let* ((identifier-list (ast:variable-specification-identifiers node))
+           (typespec (ast:variable-specification-type node))
+           (expression-list (ast:variable-specification-initializer node))
+           (registers (registers-for-identifiers generator identifier-list :create-if-missing t)))
+
+      (if (null expression-list)
+          ;; initialize to the zero value
+          (loop for reg in registers
+                do (add-instructions chunk-builder (bytecode:instr 'bytecode:const reg (add-constant chunk-builder (zero-value-for typespec))))
+                finally (return reg))
+
+          (loop for src-reg in (generate generator expression-list)
+                for dst-reg in registers
+                do (add-instructions chunk-builder (bytecode:instr 'bytecode:mov dst-reg src-reg))
+                finally (return dst-reg))))))
+
+(defun zero-value-for (typespec)
+  (let ((name (token:lexeme (ast:type-specifier-name typespec))))
+    (cond
+      ((string= name "int") (runtime.value:box 0))
+      ((string= name "bool") (runtime.value:box nil))
+      (t (error "No zero value for type ~A" name)))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:short-variable-declaration))
   (with-slots (chunk-builder register-allocator) generator

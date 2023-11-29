@@ -1,4 +1,4 @@
-(in-package :cl-braces.compiler.frontend.scanner)
+(in-package :cl-braces.sourcecode)
 
 (defclass source-input ()
   ((uri
@@ -45,7 +45,7 @@
          (uri (format nil "string://~a" label)))
     (call-next-method input :uri uri :label label :string string :stream (make-string-input-stream string))))
 
-(deftype input-designator () 't)
+(deftype input-designator () '(or string source-input pathname))
 
 (defgeneric open-input (input-designator)
   (:documentation

@@ -1,4 +1,4 @@
-(in-package :vm.value)
+(in-package :cl-braces.runtime.value)
 
 (s:defunion value
   nilv ; the nil value
@@ -27,7 +27,7 @@
 (defun falsep (v)
   (typecase v
     (boolv (not (boolv-b v)))
-    (t ninil)))
+    (t nil)))
 
 (defun truep (v)
   (typecase v

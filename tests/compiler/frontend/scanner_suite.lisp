@@ -9,19 +9,18 @@ where the car is the expected token class and the cadr is a keyword argument :wi
          `((assert-equal ,with-value (token:value ,token))))))
 
 (defmacro assert-scans-as (input &rest args)
-  (let ((token-var (gensym)))
-    `(let ((,token-var (scanner:call-with-scanner #'scanner:next-token ,input)))
-       (assert-token ,token-var ,@args))))
+  (let ((tokens (gensym)))
+    `(let ((,tokens (scanner:scan-all ,input)))
+       (assert-true (>= (length ,tokens) 1))
+       (assert-token (aref ,tokens 0) ,@args))))
 
 (defmacro assert-scan-all-as (input &body token-matchers)
   "Scan input and assert that the tokens match the given matchers"
   (let ((scanner-var (gensym)))
-    `(scanner:call-with-scanner
-      (lambda (,scanner-var)
-        ,@(mapcar (lambda (matcher)
-                    `(assert-token (scanner:next-token ,scanner-var) ,matcher))
-                  token-matchers))
-      ,input)))
+    `(let ((,scanner-var (scanner:make-scanner ,input)))
+       ,@(mapcar (lambda (matcher)
+                   `(assert-token (scanner:next-token ,scanner-var) ,matcher))
+                 token-matchers))))
 
 (define-test scan-eof ()
   "Scan the end of file"
@@ -56,25 +55,25 @@ where the car is the expected token class and the cadr is a keyword argument :wi
 
 (define-test location-tracking ()
   "Scan multiple tokens and track the location correctly for each"
-  (let* ((s (scanner:open-scanner (format nil "   3~%4   5")))
-         (t1 (scanner:next-token s))
-         (semi (scanner:next-token s)) ;injected by scanner
-         (t2 (scanner:next-token s))
-         (t3 (scanner:next-token s)))
+  (let* ((s (scanner:make-scanner (format nil "   32~%4   5")))
+         (t1 (scanner:next-token s))    ; integer
+         (semi (scanner:next-token s))  ;injected by scanner
+         (t2 (scanner:next-token s))    ; integer
+         (t3 (scanner:next-token s)))   ; integer
 
-    (assert-equal 1 (location:line (token:location t1)))
-    (assert-equal 4 (location:column (token:location t1)))
-    (assert-equal 3 (location:offset (token:location t1)))
+    (assert-eql token:@INTEGER (token:class t1))
+    (assert-equal (list :line 1 :column 4 :offset 3) (support:to-plist (span:from (span:for t1))))
+    (assert-equal (list :line 1 :column 5 :offset 4) (support:to-plist (span:to (span:for t1))))
 
     (assert-eql token:@SEMICOLON (token:class semi))
 
-    (assert-equal 2 (location:line (token:location t2)))
-    (assert-equal 1 (location:column (token:location t2)))
-    (assert-equal 5 (location:offset (token:location t2)))
+    (assert-eql token:@INTEGER (token:class t2))
+    (assert-equal (list :line 2 :column 1 :offset 6) (support:to-plist (span:from (span:for t2))))
+    (assert-equal (list :line 2 :column 1 :offset 6) (support:to-plist (span:to (span:for t2))))
 
-    (assert-equal 2 (location:line (token:location t3)))
-    (assert-equal 5 (location:column (token:location t3)))
-    (assert-equal 9 (location:offset (token:location t3)))))
+    (assert-eql token:@INTEGER (token:class t3))
+    (assert-equal (list :line 2 :column 5 :offset 10) (support:to-plist (span:from (span:for t3))))
+    (assert-equal (list :line 2 :column 5 :offset 10) (support:to-plist (span:to (span:for t3))))))
 
 (define-test scan-unary-ops ()
   "Scan unary operators"
@@ -92,7 +91,9 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as "<" token:@LT)
   (assert-scans-as "<=" token:@LE)
   (assert-scans-as ">" token:@GT)
-  (assert-scans-as ">=" token:@GE))
+  (assert-scans-as ">=" token:@GE)
+  (assert-scans-as "=" token:@EQUAL)
+  (assert-scans-as "==" token:@EQUAL_EQUAL))
 
 (define-test scan-colon-equal ()
   "Scan the colon equal operator"
@@ -124,6 +125,7 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as "breaker" token:@IDENTIFIER :with-value "breaker")
   (assert-scans-as "continue" token:@CONTINUE)
   (assert-scans-as "discontinued" token:@IDENTIFIER :with-value "discontinued")
-
   (assert-scans-as "fallthrough" token:@FALLTHROUGH)
-  (assert-scans-as "afallthroughb" token:@IDENTIFIER :with-value "afallthroughb"))
+  (assert-scans-as "afallthroughb" token:@IDENTIFIER :with-value "afallthroughb")
+  (assert-scans-as "var" token:@VAR)
+  (assert-scans-as "avara" token:@IDENTIFIER :with-value "avara"))

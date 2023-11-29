@@ -14,7 +14,7 @@
 ;;; ===========================================================================
 
 (defgeneric walk (visitor node)
-  (:documentation "Walks the AST rooted at `NODE', calling the appropriate `visit' and `leave' methods on `VISITOR'. The tree is traversed inorder."))
+  (:documentation "Walks the AST rooted at `NODE', calling the appropriate `VISIT' and `LEAVE' methods on `VISITOR'. The tree is traversed inorder."))
 
 (defgeneric children (node)
   (:documentation "Returns a list of the children of `NODE'"))
@@ -37,6 +37,10 @@
       (walk visitor child))
     (leave visitor node)))
 
+(defmethod walk (visitor (tok frontend.token:token))
+  (enter visitor tok)
+  (leave visitor tok))
+
 ;;; ===========================================================================
 ;;; Program
 ;;; ===========================================================================
@@ -55,13 +59,13 @@
 (defmethod children ((node program))
   (list (program-declarations node)))
 
-(defmethod location:span-for ((node program))
+(defmethod span:for ((node program))
   (with-slots (declarations) node
     (let ((first-declaration (first declarations))
           (last-declaration  (first (last declarations))))
       (make-instance 'span
-                     :from (span-from first-declaration)
-                     :to (span-to last-declaration)))))
+                     :from (span:from first-declaration)
+                     :to (span:to last-declaration)))))
 
 ;;; ===========================================================================
 ;;; Statements
@@ -79,7 +83,7 @@
 (defmethod children ((node bad-statement))
   nil)
 
-(defmethod location:span-for ((node bad-statement))
+(defmethod span:for ((node bad-statement))
   (with-slots (location) node
     (make-instance 'span
                    :from location
@@ -90,7 +94,7 @@
 (defmethod children ((node empty-statement))
   nil)
 
-(defmethod location:span-for ((node empty-statement))
+(defmethod span:for ((node empty-statement))
   (with-slots (location) node
     (make-instance 'span
                    :from location
@@ -107,13 +111,13 @@
 (defmethod children ((node statement-list))
   (statement-list-statements node))
 
-(defmethod location:span-for ((node statement-list))
+(defmethod span:for ((node statement-list))
   (with-slots (statements) node
     (let ((first-statement (first statements))
           (last-statement  (first (last statements))))
       (make-instance 'span
-                     :from (span-from first-statement)
-                     :to (span-to last-statement)))))
+                     :from (span:from first-statement)
+                     :to (span:to last-statement)))))
 
 (defclass expression-statement (statement)
   ((expression
@@ -126,9 +130,9 @@
 (defmethod children ((node expression-statement))
   (list (expression-statement-expression node)))
 
-(defmethod location:span-for ((node expression-statement))
+(defmethod span:for ((node expression-statement))
   (with-slots (expression) node
-    (location:span-for expression)))
+    (span:for expression)))
 
 (defclass if-statement (statement)
   ((init
@@ -165,14 +169,45 @@
       (setf base (append base (list (if-statement-alternative node)))))
     base))
 
-(defmethod location:span-for ((node if-statement))
+(defmethod span:for ((node if-statement))
   (with-slots (condition consequence alternative) node
-    (let ((condition (location:span-for condition))
-          (consequence (location:span-for consequence))
-          (alternative (location:span-for alternative)))
+    (let ((condition (span:for condition))
+          (consequence (span:for consequence))
+          (alternative (span:for alternative)))
       (make-instance 'span
-                     :from (span-from condition)
-                     :to (span-to (or alternative consequence))))))
+                     :from (span:from condition)
+                     :to (span:to (or alternative consequence))))))
+
+(defclass assignment-statement (statement)
+  ((lhs
+    :reader assignment-statement-lhs
+    :initarg :lhs
+    :initform (error "must provide lhs")
+    :type expression-list)
+   (operator
+    :reader assignment-statement-operator
+    :initarg :operator
+    :initform (error "must provide op")
+    :type frontend.token:token)
+   (rhs
+    :reader assignment-statement-rhs
+    :initarg :rhs
+    :initform (error "must provide rhs")
+    :type expression-list))
+  (:documentation "A statement that is an assignment."))
+
+(defmethod children ((node assignment-statement))
+  (list (assignment-statement-lhs node)
+        (assignment-statement-operator node)
+        (assignment-statement-rhs node)))
+
+(defmethod span:for ((node assignment-statement))
+  (with-slots (lhs op rhs) node
+    (let ((lhs (span:for lhs))
+          (rhs (span:for rhs)))
+      (make-instance 'span
+                     :from (span:from lhs)
+                     :to (span:to rhs)))))
 
 (defclass block (node)
   ((statements
@@ -185,13 +220,13 @@
 (defmethod children ((node block))
   (list (block-statements node)))
 
-(defmethod location:span-for ((node block))
+(defmethod span:for ((node block))
   (with-slots (statements) node
     (let ((first-statement (first statements))
           (last-statement  (first (last statements))))
       (make-instance 'span
-                     :from (span-from first-statement)
-                     :to (span-to last-statement)))))
+                     :from (span:from first-statement)
+                     :to (span:to last-statement)))))
 
 ;;; ===========================================================================
 ;;; Declarations
@@ -209,11 +244,86 @@
 (defmethod children ((node bad-declaration))
   nil)
 
-(defmethod location:span-for ((node bad-declaration))
+(defmethod span:for ((node bad-declaration))
   (with-slots (location) node
     (make-instance 'span
                    :from location
                    :to location)))
+
+(defclass variable-declaration (declaration)
+  ((specifications
+    :reader variable-declaration-specifications
+    :initarg :specifications
+    :initform (error "must provide specifications")
+    :type (support:list-of variable-specification)))
+  (:documentation "A declaration that declares variables."))
+
+(defmethod children ((node variable-declaration))
+  (variable-declaration-specifications node))
+
+(defmethod span:for ((node variable-declaration))
+  (with-slots (specifications) node
+    (make-instance 'span
+                   :from (span:from specifications)
+                   :to (span:to speicfications))))
+
+(defclass variable-specification (declaration)
+  ((identifiers
+    :reader variable-specification-identifiers
+    :initarg :identifiers
+    :initform (error "must provide variables")
+    :type identifier-list
+    :documentation "The list of variables to declar")
+   (type
+    :reader variable-specification-type
+    :initarg :type
+    :initform nil
+    :type (or null type-specifier)
+    :documentation "The type of the variables. If this is nil it means the type is inferred from the initializer.")
+   (initializer
+    :reader variable-specification-initializer
+    :initarg :initializer
+    :initform nil
+    :type (or null expression-list)
+    :documentation "The initializer for the variables")))
+
+(defmethod children ((node variable-specification))
+  (let ((base (list (variable-specification-identifiers node))))
+    (when (variable-specification-type node)
+      (push (variable-specification-type node) base))
+    (when (variable-specification-initializer node)
+      (push (variable-specification-initializer node) base))
+    (reverse base)))
+
+(defmethod span:for ((node variable-specification))
+  (with-slots (identifiers initializer) node
+    (let ((first-identifier (first identifiers))
+          (type (variable-specification-type node))
+          (last-initializer  (first (last initializer))))
+      (make-instance 'span
+                     :from (token:location first-identifier)
+                     :to
+                     (or
+                      (and last-initializer (span:to last-initializer))
+                      (and type (span:to type))
+                      (token:location first-identifier))))))
+
+(defclass type-specifier (node)
+  ((name
+    :reader type-specifier-name
+    :initarg :name
+    :initform (error "must provide name")
+    :type frontend.token:token))
+  (:documentation "The base class for all type specifiers in the highlevel AST."))
+
+(defmethod children ((node type-specifier))
+  (list (type-specifier-name node)))
+
+(defmethod span:for ((node type-specifier))
+  (with-slots (name) node
+    (make-instance 'span
+                   :from (token:location name)
+                   :to (token:location name))))
 
 (defclass short-variable-declaration (declaration)
   ((identifiers
@@ -234,13 +344,13 @@
    (short-variable-declaration-identifiers node)
    (short-variable-declaration-expressions node)))
 
-(defmethod location:span-for ((node short-variable-declaration))
+(defmethod span:for ((node short-variable-declaration))
   (with-slots (identifiers expressions) node
     (let ((first-identifier (first identifiers))
           (last-expression  (first (last expressions))))
       (make-instance 'span
                      :from (token:location first-identifier)
-                     :to (span-to last-expression)))))
+                     :to (span:to last-expression)))))
 
 ;;; ===========================================================================
 ;;; Expressions
@@ -254,13 +364,13 @@
     :reader literal-token
     :initarg :token
     :initform (error "must provide token")
-    :type token:token))
+    :type frontend.token:token))
   (:documentation "The base class for all literals in the highlevel AST."))
 
 (defmethod children ((node literal))
-  nil)
+  (list (literal-token node)))
 
-(defmethod location:span-for ((node literal))
+(defmethod span:for ((node literal))
   (with-slots (token) node
     (make-instance 'span
                    :from (token:location token)
@@ -282,12 +392,12 @@
   (list (grouping-expression-expression node)))
 
 
-(defmethod location:span-for ((node grouping-expression))
+(defmethod span:for ((node grouping-expression))
   (with-slots (expression) node
     (let ((sub-expr-span (span expression)))
       (make-instance 'span
-                     :from (span-from sub-expr-span)
-                     :to (span-to sub-expr-span)))))
+                     :from (span:from sub-expr-span)
+                     :to (span:to sub-expr-span)))))
 
 
 (defclass unary-expression (expression)
@@ -295,7 +405,7 @@
     :reader unary-expression-operator
     :initarg :operator
     :initform (error "must provide op")
-    :type token:token)
+    :type frontend.token:token)
    (operand
     :reader unary-expression-operand
     :initarg :operand
@@ -304,14 +414,16 @@
   (:documentation "An expression for binary relations"))
 
 (defmethod children ((node unary-expression))
-  (list (unary-expression-operand node)))
+  (list
+   (unary-expression-operator node)
+   (unary-expression-operand node)))
 
-(defmethod location:span-for ((node unary-expression))
+(defmethod span:for ((node unary-expression))
   (with-slots (operator operand) node
     (let ((operand (span operand)))
       (make-instance 'span
                      :from (token:location operator)
-                     :to (span-to operand)))))
+                     :to (span:to operand)))))
 
 
 (defclass binary-expression (expression)
@@ -324,7 +436,7 @@
     :reader binary-expression-operator
     :initarg :operator
     :initform (error "must provide operator")
-    :type token:token)
+    :type frontend.token:token)
    (rhs
     :reader binary-expression-rhs
     :initarg :rhs
@@ -333,16 +445,18 @@
   (:documentation "An expression for binary relations"))
 
 (defmethod children ((node binary-expression))
-  (list (binary-expression-lhs node)
-        (binary-expression-rhs node)))
+  (list
+   (binary-expression-operator node)
+   (binary-expression-lhs node)
+   (binary-expression-rhs node)))
 
-(defmethod location:span-for ((node binary-expression))
+(defmethod span:for ((node binary-expression))
   (with-slots (lhs rhs) node
-    (let ((lhs (location:span-for lhs))
-          (rhs (location:span-for rhs)))
+    (let ((lhs (span:for lhs))
+          (rhs (span:for rhs)))
       (make-instance 'span
-                     :from (span-from lhs)
-                     :to (span-to rhs)))))
+                     :from (span:from lhs)
+                     :to (span:to rhs)))))
 
 (defclass expression-list (expression)
   ((expressions
@@ -355,26 +469,26 @@
 (defmethod children ((node expression-list))
   (expression-list-expressions node))
 
-(defmethod location:span-for ((node expression-list))
+(defmethod span:for ((node expression-list))
   (with-slots (expressions) node
     (let ((first-expression (first expressions))
           (last-expression  (first (last expressions))))
       (make-instance 'span
-                     :from (span-from first-expression)
-                     :to (span-to last-expression)))))
+                     :from (span:from first-expression)
+                     :to (span:to last-expression)))))
 
 (defclass variable (node)
   ((identifier
     :reader variable-identifier
     :initarg :identifier
     :initform (error "must provide identifier")
-    :type token:token))
+    :type frontend.token:token))
   (:documentation "The base class for all variables in the highlevel AST."))
 
 (defmethod children ((node variable))
-  nil)
+  (list (variable-identifier node)))
 
-(defmethod location:span-for ((node variable))
+(defmethod span:for ((node variable))
   (with-slots (identifier) node
     (make-instance 'span
                    :from (token:location identifier)
@@ -385,13 +499,13 @@
     :reader identifier-token
     :initarg :token
     :initform (error "must provide token")
-    :type token:token))
+    :type frontend.token:token))
   (:documentation "The base class for all identifiers in the highlevel AST."))
 
 (defmethod children ((node identifier))
-  nil)
+  (list (identifier-token node)))
 
-(defmethod location:span-for ((node identifier))
+(defmethod span:for ((node identifier))
   (with-slots (token) node
     (make-instance 'span
                    :from (token:location token)
@@ -411,7 +525,7 @@
 (defmethod children ((node identifier-list))
   (identifier-list-identifiers node))
 
-(defmethod location:span-for ((node identifier-list))
+(defmethod span:for ((node identifier-list))
   (with-slots (identifiers) node
     (let ((first-identifier (first identifiers))
           (last-identifier  (first (last identifiers))))

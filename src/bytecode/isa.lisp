@@ -1,4 +1,4 @@
-(in-package :cl-braces.vm.bytecode)
+(in-package :cl-braces.bytecode)
 
 ;;; The instruction set architecture (ISA) is a description of the instructions that are available in the virtual machine.
 ;;; It is used to construct instructions and to print the instructions in a human readable format.
@@ -134,11 +134,11 @@
    - reg: A register
    - addr: An address
 "
-  `(progn
-     (defparameter ,isa-name
+  `(a:define-constant ,isa-name
        (make-instance 'isa
                       :version (version ,(first version) ,(second version))
-                      :instructions (make-isa-instruction-set ,@instructions)))))
+                      :instructions (make-isa-instruction-set ,@instructions))
+     :test #'equalp))
 
 (defmacro make-isa-instruction-set (&rest instructions)
   `(vector ,@(mapcar (lambda (instruction)
