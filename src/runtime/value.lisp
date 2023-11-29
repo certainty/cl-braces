@@ -27,7 +27,7 @@
 (defun falsep (v)
   (typecase v
     (boolv (not (boolv-b v)))
-    (t ninil)))
+    (t nil)))
 
 (defun truep (v)
   (typecase v

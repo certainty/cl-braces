@@ -143,6 +143,36 @@
            (add-instructions chunk-builder (bytecode:instr 'bytecode:div left right)))
           (t (todo! "binary operator")))))))
 
+(defmethod generate ((generator bytecode-generator) (node ast:variable-declaration))
+  (loop for spec in (ast:variable-declaration-specifications node)
+        for reg = (generate generator spec)
+        finally (return reg)))
+
+(defmethod generate ((generator bytecode-generator) (node ast:variable-specification))
+  (with-slots (chunk-builder register-allocator) generator
+    (let* ((identifier-list (ast:variable-specification-identifiers node))
+           (typespec (ast:variable-specification-type node))
+           (expression-list (ast:variable-specification-initializer node))
+           (registers (registers-for-identifiers generator identifier-list :create-if-missing t)))
+
+      (if (null expression-list)
+          ;; initialize to the zero value
+          (loop for reg in registers
+                do (add-instructions chunk-builder (bytecode:instr 'bytecode:const reg (add-constant chunk-builder (zero-value-for typespec))))
+                finally (return reg))
+
+          (loop for src-reg in (generate generator expression-list)
+                for dst-reg in registers
+                do (add-instructions chunk-builder (bytecode:instr 'bytecode:mov dst-reg src-reg))
+                finally (return dst-reg))))))
+
+(defun zero-value-for (typespec)
+  (let ((name (token:lexeme (ast:type-specifier-name typespec))))
+    (cond
+      ((string= name "int") (runtime.value:box 0))
+      ((string= name "bool") (runtime.value:box nil))
+      (t (error "No zero value for type ~A" name)))))
+
 (defmethod generate ((generator bytecode-generator) (node ast:short-variable-declaration))
   (with-slots (chunk-builder register-allocator) generator
     (let* ((expression-list (ast:short-variable-declaration-expressions node))

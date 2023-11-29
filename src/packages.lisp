@@ -261,7 +261,7 @@
    #:variable-specification
    #:variable-specification-identifiers
    #:variable-specification-type
-   #:variable-specification-expressions
+   #:variable-specification-initializer
 
    #:statement
    #:bad-statement
@@ -285,6 +285,7 @@
    #:variable-identifier
 
    #:type-specifier
+   #:type-specifier-name
 
    #:identifier
    #:identifier-token

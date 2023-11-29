@@ -272,7 +272,7 @@
     :reader variable-specification-identifiers
     :initarg :identifiers
     :initform (error "must provide variables")
-    :type (or identifier-list expression-list)
+    :type identifier-list
     :documentation "The list of variables to declar")
    (type
     :reader variable-specification-type
