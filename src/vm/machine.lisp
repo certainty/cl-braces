@@ -11,9 +11,9 @@
          ,@body))))
 
 (defmacro binary-op (operation instruction registers result-register)
-  `(with-operands (dst lhs rhs) instruction
-     (setf ,result-register dst)
-     (setf (aref ,registers dst)
+  `(with-operands (lhs rhs) instruction
+     (setf ,result-register lhs)
+     (setf (aref ,registers lhs)
            (runtime.value:box (,operation (runtime.value:unbox (aref ,registers lhs))
                                           (runtime.value:unbox (aref ,registers rhs)))))))
 

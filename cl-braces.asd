@@ -77,9 +77,6 @@
     ((:file "debug")
      (:file "machine")))))
 
-(defclass test-vm-op (asdf:test-op) ())
-(defclass test-compiler-op (asdf:test-op) ())
-
 (defsystem "cl-braces/tests"
   :depends-on (:lisp-unit2 :cl-braces)
   :serial t

@@ -126,22 +126,22 @@
 
 (defmethod generate ((generator bytecode-generator) (node ast:binary-expression))
   (with-slots (chunk-builder register-allocator) generator
-    (s:lret* ((op (ast:binary-expression-operator node))
-              (left  (generate generator (ast:binary-expression-lhs node)))
-              (right (generate generator (ast:binary-expression-rhs node)))
-              (dst   (next-register register-allocator)))
+    (let* ((op (ast:binary-expression-operator node))
+           (left  (generate generator (ast:binary-expression-lhs node)))
+           (right (generate generator (ast:binary-expression-rhs node))))
       (assert left)
       (assert right)
-      (cond
-        ((token:class= op token:@PLUS)
-         (add-instructions chunk-builder (bytecode:instr 'bytecode:add dst left right)))
-        ((token:class= op token:@MINUS)
-         (add-instructions chunk-builder (bytecode:instr 'bytecode:sub dst left right)))
-        ((token:class= op token:@STAR)
-         (add-instructions chunk-builder (bytecode:instr 'bytecode:mul dst left right)))
-        ((token:class= op token:@SLASH)
-         (add-instructions chunk-builder (bytecode:instr 'bytecode:div dst left right)))
-        (t (todo! "binary operator"))))))
+      (prog1 left
+        (cond
+          ((token:class= op token:@PLUS)
+           (add-instructions chunk-builder (bytecode:instr 'bytecode:add left right)))
+          ((token:class= op token:@MINUS)
+           (add-instructions chunk-builder (bytecode:instr 'bytecode:sub left right)))
+          ((token:class= op token:@STAR)
+           (add-instructions chunk-builder (bytecode:instr 'bytecode:mul left right)))
+          ((token:class= op token:@SLASH)
+           (add-instructions chunk-builder (bytecode:instr 'bytecode:div left right)))
+          (t (todo! "binary operator")))))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:short-variable-declaration))
   (with-slots (chunk-builder register-allocator) generator

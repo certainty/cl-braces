@@ -28,15 +28,16 @@
    (#x42 test  ((reg dst))                    "Tests the value in $dst and sets the zero flag if it is falsey (nil or false).")
 
    ;; binary instructions #x80 - #xbf
-   (#x80 const ((reg dst) (addr src))          "Loads the constant from $src into $dst")
-   (#x81 mov   ((reg dst) (reg src))           "Moves the value from $src to $dst")
-   (#x82 jz    ((label dst) (reg value))       "Jump to %dst if $value is zero")
-   (#x83 jnz   ((label dst) (reg value))       "Jump to %dst if $value is non-zero")
+   (#x80 const ((reg dst)   (addr src))     "Loads the constant from $src into $dst")
+   (#x81 mov   ((reg dst)   (reg src))      "Moves the value from $src to $dst")
+   (#x82 jz    ((label dst) (reg value))    "Jump to %dst if $value is zero")
+   (#x83 jnz   ((label dst) (reg value))    "Jump to %dst if $value is non-zero")
+   (#x84 add   ((reg lhs)   (reg rhs))      "Add what is in $rhs to $lhs and store the result in $lhs")
+   (#x85 sub   ((reg lhs)   (reg rhs))      "Subtracts what is in $rhs from $lhs and stores the result in $lhs.")
+   (#x86 mul   ((reg lhs)   (reg rhs))      "Multiplies what is in $lhs by $rhs and stores the result in $lhs.")
+   (#x87 div   ((reg lhs)   (reg rhs))      "Divides what is in $lhs by $rhs and stores the result in $lhs.")
 
    ;; ternary instructions #xc0 - #xff
-   (#xC3 sub   ((reg dst)   (reg lhs) (reg rhs)) "Subtracts what is in $lhs from $rhs and stores the result in $dst.")
-   (#xC4 add   ((reg dst)   (reg lhs) (reg rhs)) "Add what is in $lhs to $rhs and stores the result in $dst.")
-   (#xC5 mul   ((reg dst)   (reg lhs) (reg rhs)) "Multiplies what is in $lhs by $rhs and stores the result in $dst.")
-   (#xC6 div   ((reg dst)   (reg lhs) (reg rhs)) "Divides what is in $lhs by $rhs and stores the result in $dst.")))
+   ))
 
 (setf *current-isa* +isa-1.0+)
