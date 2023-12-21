@@ -58,3 +58,34 @@
      blocklabels
      instructions
      registers-used)))
+
+(defclass package-builder ()
+  ((closures
+    :initform (make-constants-table)
+    :type constants-table)
+   (symbols
+    :initarg :symbols
+    :initform (error "No symbol table set")
+    :type symbol-table)
+   (entrypoint
+    :initform nil
+    :type (or null bytecode:address)))
+  (:documentation "Builds a golang package"))
+
+(defun make-package-builder (symbols)
+  "Create a new package builder"
+  (make-instance 'package-builder :symbols symbols))
+
+(defun add-closure (builder name closure)
+  "Add a closure to the package"
+  (with-slots (closures symbols) builder
+    (s:lret ((addr (constants-add closures closure)))
+      (symbols:add-symbol symbols name :function))))
+
+(defun package-result (builder)
+  "Return the package"
+  (with-slots (closures symbols entrypoint) builder
+    (bytecode:go-package
+     (constants-result closures)
+     symbols
+     entrypoint)))

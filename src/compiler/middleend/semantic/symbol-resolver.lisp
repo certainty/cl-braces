@@ -95,3 +95,11 @@
               (unless (symbols:place-holder-p existing)
                 (push (make-condition 'variable-already-defined :symbol name :location (ast:location identifier)) errors)))
             (symbols:add-symbol symbol-table name :variable :scope current-scope :location (ast:location identifier))))))))
+
+
+(defmethod ast:enter ((resolver resolver) (node ast:function-declaration))
+  (with-slots (symbol-table current-scope errors) resolver
+    (let ((name (ast:function-declaration-name node)))
+      ;; TODO: make thie package aware
+      (when (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-function-p)
+        (push (make-condition 'variable-already-defined :symbol name :location (span:from (span:for node))) errors)))))

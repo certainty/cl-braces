@@ -31,6 +31,12 @@
   (code (vector instruction))
   (registers-used (integer 0 *)))
 
+(s:defconstructor go-package
+  (entrypoint a:array-index)
+  (constants constant-table)
+  (exported-functions (vector chunk))
+  (functions (vector chunk)))
+
 (s:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
   (let ((code (gensym)))
     `(let ((,code (chunk-code ,chunk)))

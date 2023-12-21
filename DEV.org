@@ -62,3 +62,11 @@ Example ternary instruction opcodes: 0x03, 0x07, 0x0B, etc.
  - All of this should be cache friendly and well within the 64bit - 128bit cache line size
 
  - The opcode design should minimize branch misprediction
+
+* Overall compilation and code generation with packages
+Here's how I imagine this needs to happen.
+ 1. Parse all source files (the AST for source-files contains the package name)
+ 2. Merge all source files that belong to the same package
+ 3. Toposort packages by dependencies (package A imports function from Package B)
+ 4. Generate code in sorted order
+ 5. Generate final artifact which is a set of packages with the main package as the entry point

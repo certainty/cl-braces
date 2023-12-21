@@ -203,6 +203,7 @@
 ;;; https://golang.org/ref/spec#Source_file
 (-> <source-file (state) ast:source-file)
 (defun <source-file (state)
+  "Parses a source file into an `ast:source-file' node."
   (let ((decls (<top-level-declaration-list state)))
     (accept state 'ast:source-file :declarations decls)))
 

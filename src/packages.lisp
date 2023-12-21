@@ -54,10 +54,13 @@
   (:import-from :serapeum :->)
   (:export
    #:chunk
+   #:make-chunk
    #:chunk-code
    #:chunk-constants
    #:chunk-registers-used
    #:constant-table
+
+
 
    #:make-constants-builder
    #:constants-add
@@ -68,7 +71,11 @@
    #:add-constant
    #:add-instructions
 
-   #:make-chunk
+   #:go-package
+   #:package-builder
+   #:make-package-builder
+   #:add-closure
+
    #:print-isa
    #:*isa-1.0*
    #:*current-isa*

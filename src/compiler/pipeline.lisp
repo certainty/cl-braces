@@ -8,6 +8,7 @@
                      (compile-error-message condition)
                      (compile-error-details condition)))))
 
+
 (defun compile-this (input-designator &key (fail-fast nil))
   "Compile the `input-designator' to a chunk of bytecode."
   (let* ((ast (pass-syntactic-analysis input-designator))

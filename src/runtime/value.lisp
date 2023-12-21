@@ -3,7 +3,12 @@
 (s:defunion value
   nilv ; the nil value
   (boolv (b boolean)) ; booleans
-  (intv (n integer))) ; numbers
+  (intv (n integer))
+  (closurev (c closure))) ; numbers
+
+(s:defconstructor closure
+  (up-values (vector value))
+  (body bytecode:chunk))
 
 (defun box (n)
   (etypecase n

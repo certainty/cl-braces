@@ -445,6 +445,9 @@
                      :from (token:location first-parameter)
                      :to (token:location last-parameter)))))
 
+(defun parameter-names (params)
+  (mapcan #'identifier-list-identifiers (mapcan #'parameter-declaration-identifiers params)))
+
 (defclass parameter-splat (node)
   ((token
     :reader parameter-splat-token
