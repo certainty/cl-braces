@@ -39,7 +39,6 @@
    (register-allocator
     :initform (make-register-allocator))))
 
-
 (defun make-bytecode-generator (symbol-table)
   (make-instance 'bytecode-generator :symbol-table symbol-table))
 
@@ -49,20 +48,12 @@
     :initform (error "No symbol table specified"))
    (package-name
     :initarg :package-name
-    :initform (error "No package specified"))))
+    :initform (error "No package specified"))
+   (constants
+    :initform (make-constants-builder))))
 
 (defun make-package-bytecode-generator (symbol-table package-name)
   (make-instance 'package-bytecode-generator :symbol-table symbol-table :package-name package-name))
-
-(defclass program-bytecode-generator (bytecode-generator)
-  ((symbol-table
-    :initarg :symbol-table
-    :initform (error "No symbol table specified"))
-   (packages
-    :initform (make-hash-table :test #'equal))))
-
-(defun make-program-bytecode-generator (symbol-table)
-  (make-instance 'program-bytecode-generator :symbol-table symbol-table))
 
 (defun enter-scope (generator)
   (with-slots (current-scope) generator
@@ -87,30 +78,45 @@
       (prog1 reg
         (setf (gethash variable-id variable-registers) reg)))))
 
-;; use this for functions
 (defun generate-chunk (ast symbol-table)
   (let ((generator (make-bytecode-generator symbol-table)))
     (generate generator ast)
     (with-slots (chunk-builder register-allocator) generator
       (chunk-result chunk-builder (registers-used register-allocator)))))
 
+(defun generate-package (ast name symbol-table)
+  (let ((generator (make-package-bytecode-generator symbol-table name)))
+    (generate generator ast)
+    (with-slots (constants) generator
+      (let ((result (constants-result constants)))
+        (bytecode:go-package 0 (vector) result)))))
+
 ;; At a later point, when we only generate from simplified code in SSA we can switch to using ast:walk.
 ;; For now we implement the traversal ourselves to have full control
 (defgeneric generate (generator node)
   (:documentation "Generate code for a node"))
 
-(defmethod generate ((generator program-bytecode-generator) (node ast:source-file))
-  (with-slots (chunk-builder packages) generator
-    (let ((decls (ast:source-file-declarations node)))
-      ;; get the package decl
-      ;; find-or-create package-generator
-      ;; generate-code with package generator
-      )))
-
 ;;; Generate code where the compilation unit is a package
 (defmethod generate ((generator package-bytecode-generator) (node ast:function-declaration))
-  (with-slots (chunk-builder) generator)
-  :continue)
+  (with-slots (symbol-table constants) generator
+    (let* ((function-generator (make-bytecode-generator symbol-table))
+           (signature (ast:function-declaration-signature node))
+           (params (ast:parameter-list-parameters (ast:function-signature-parameters signature)))
+           (identifier-lists (mapcar #'ast:parameter-declaration-identifiers params))
+           (body (ast:function-declaration-body node)))
+
+      (enter-scope function-generator)
+      (dolist (identifier-list identifier-lists)
+        (registers-for-identifiers function-generator identifier-list :create-if-missing t))
+      (generate function-generator body)
+      (leave-scope function-generator)
+
+      (with-slots (chunk-builder register-allocator) function-generator
+        (let ((chunk (chunk-result chunk-builder (registers-used register-allocator))))
+          (symbols:add-symbol symbol-table (ast:identifier-name (ast:function-declaration-name node)) :function)
+          ;; FIXME: translate into correct arity
+          (constants-add constants (runtime.value:make-closure chunk (runtime.value:arity-exactly (length identifier-lists)))))))))
+
 
 (defmethod generate ((generator bytecode-generator) (node ast:node))
   (declare (ignore node generator))
@@ -118,8 +124,8 @@
 
 (defmethod generate ((generator bytecode-generator) (node ast:source-file))
   (with-slots (chunk-builder) generator
-    (let ((decls (ast:source-file-declarations node)))
-      (generate generator decls))))
+    (dolist (decl (ast:source-file-declarations node))
+      (generate generator decl))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:statement-list))
   (with-slots (chunk-builder) generator
@@ -288,32 +294,3 @@
       (generate generator statements)))
   (leave-scope generator))
 
-;; This can really only occur when we generate code for a package
-;; generator is used to generarate the top-level-declarations
-;; QUESTION: should we use a different generator class for this?
-(defmethod generate ((generator bytecode-generator) (node ast:function-declaration))
-  (with-slots (chunk-builder symbol-table) generator
-    (let* ((function-generator (make-bytecode-generator symbol-table))
-           (signature (ast:function-declaration-signature node))
-           (params (ast:function-signature-parameters signature))
-           (identifier-lists (mapcan #'ast:parameter-declaration-identifiers params))
-           (body (ast:function-declaration-body node)))
-
-      (dolist (identifier-list identifier-lists)
-        (registers-for-identifiers function-generator identifier-list :create-if-missing t))
-
-      (generate function-generator body)
-
-      (with-slots (chunk-builder register-allocator) function-generator
-        ;; TODO: take a decision on where to store functions
-        ;; In a package object? As a value in the constant pool?
-        ;; How do we export it?
-        ;; create the function object and store it in a constant
-
-
-        ))
-
-    ;; first we create a new scope
-    ;; then we register the parameters in the new scope
-    ;; then we generate the block
-    nil))

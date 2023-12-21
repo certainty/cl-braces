@@ -58,7 +58,7 @@
   (make-instance 'source-file :declarations decls :location (location:make-source-location 0 0 0)))
 
 (defmethod children ((node source-file))
-  (list (source-file-declarations node)))
+  (source-file-declarations node))
 
 (defmethod span:for ((node source-file ))
   (with-slots (declarations) node

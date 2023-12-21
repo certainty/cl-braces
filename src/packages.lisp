@@ -45,7 +45,11 @@
    #:unbox
    #:falsep
    #:truep
-   #:nonep))
+   #:nonep
+   #:make-closure
+   #:arity
+   #:arity-exactly
+   #:arity-at-least))
 
 (defpackage :cl-braces.bytecode
   (:nicknames :bytecode)
@@ -365,7 +369,8 @@
   (:import-from :cl-braces.runtime.value :value)
   (:import-from :cl-braces.bytecode :addr :reg :register :address)
   (:export
-   #:generate-chunk))
+   #:generate-chunk
+   #:generate-package))
 
 (defpackage :cl-braces.compiler
   (:nicknames :compiler)
@@ -373,7 +378,8 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   #:compile-this))
+   #:compile-this
+   #:compile-package))
 
 (defpackage :cl-braces.compiler.symbols
   (:nicknames :symbols)

@@ -38,11 +38,17 @@
   (let ((res (make-instance 'resolver)))
     res))
 
-(defun resolve-symbols (ast)
+(defun resolve-symbols (ast &key fail-fast)
   (let ((resolver (make-resolver)))
-    (ast:walk resolver ast)
-    (with-slots (errors symbol-table) resolver
-      (values symbol-table (when errors (nreverse errors))))))
+    (with-slots (symbol-table errors) resolver
+      (handler-bind ((semantic-error (lambda (c)
+                                       (if fail-fast
+                                           (invoke-debugger c)
+                                           (when (find-restart 'continue)
+                                             (push errors c)
+                                             (invoke-restart 'continue))))))
+        (ast:walk resolver ast)
+        (values symbol-table (when errors (nreverse errors)))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:node))
   (declare (ignore resolver node))
@@ -61,12 +67,25 @@
   :continue)
 
 (defmethod ast:enter ((resolver resolver) (node ast:block))
+  (enter-scope resolver))
+
+(defmethod ast:leave ((resolver resolver) (node ast:block))
+  (leave-scope resolver))
+
+(defun enter-scope (resolver)
   (with-slots (current-scope) resolver
     (incf current-scope)))
 
-(defmethod ast:leave ((resolver resolver) (node ast:block))
+(defun leave-scope (resolver)
   (with-slots (current-scope) resolver
     (decf current-scope)))
+
+(defmacro with-new-scope (resolver &body body)
+  `(unwind-protect
+        (progn
+          (enter-scope ,resolver)
+          ,@body)
+     (leave-scope ,resolver)))
 
 (defmethod ast:enter ((resolver resolver) (node ast:short-variable-declaration))
   (with-slots (symbol-table current-scope errors) resolver
@@ -76,14 +95,14 @@
           (a:if-let ((existing (symbols:find-by-name symbol-table identifier :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
             (dolist (existing existing)
               (unless (symbols:place-holder-p existing)
-                (push (make-condition 'variable-already-defined :symbol identifier :location (ast:location variable)) errors)))
+                (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol identifier :location (ast:location variable)))))
             (symbols:add-symbol symbol-table identifier :variable :scope current-scope :location (ast:location variable))))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:identifier))
   (with-slots (current-scope errors symbol-table) resolver
     (let ((variable (ast:identifier-name node)))
       (unless (symbols:find-by-name symbol-table variable :denotation #'symbols:denotes-variable-p :scope<= current-scope)
-        (push (make-condition 'undefined-symbol :symbol variable :location (ast:location node)) errors)))))
+        (cerror "Undefined symbol" (make-condition 'undefined-symbol :symbol variable :location (ast:location node)))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:variable-specification))
   (with-slots (symbol-table current-scope errors) resolver
@@ -93,13 +112,21 @@
           (a:if-let ((existing (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
             (dolist (existing existing)
               (unless (symbols:place-holder-p existing)
-                (push (make-condition 'variable-already-defined :symbol name :location (ast:location identifier)) errors)))
+                (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol name :location (ast:location identifier)))))
             (symbols:add-symbol symbol-table name :variable :scope current-scope :location (ast:location identifier))))))))
 
-
 (defmethod ast:enter ((resolver resolver) (node ast:function-declaration))
+  (with-new-scope resolver
+    (with-slots (symbol-table current-scope errors) resolver
+      (let ((name (ast:identifier-name (ast:function-declaration-name node))))
+        ;; TODO: make thie package aware
+        (when (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-function-p)
+          (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol name :location (span:from (span:for node)))))))))
+
+(defmethod ast:enter ((resolver resolver) (node ast:parameter-declaration))
   (with-slots (symbol-table current-scope errors) resolver
-    (let ((name (ast:function-declaration-name node)))
-      ;; TODO: make thie package aware
-      (when (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-function-p)
-        (push (make-condition 'variable-already-defined :symbol name :location (span:from (span:for node))) errors)))))
+    (dolist (parameter (ast:identifier-list-identifiers (ast:parameter-declaration-identifiers node)))
+      (let ((name (ast:identifier-name parameter)))
+        (a:if-let ((exising (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
+          (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol name :location (ast:location parameter)))
+          (symbols:add-symbol symbol-table name :variable :scope current-scope :location (ast:location parameter)))))))

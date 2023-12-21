@@ -9,15 +9,21 @@
                      (compile-error-details condition)))))
 
 
+
 (defun compile-this (input-designator &key (fail-fast nil))
   "Compile the `input-designator' to a chunk of bytecode."
-  (let* ((ast (pass-syntactic-analysis input-designator))
+  (let* ((ast (pass-syntactic-analysis input-designator :fail-fast fail-fast))
          (symbols (pass-semantic-analysis ast))
          (chunk (pass-code-generation ast symbols)))
     chunk))
 
-(defmethod pass-syntactic-analysis (input-designator &key (fail-fast nil))
-  (multiple-value-bind (ast had-errors state) (parser:parse input-designator :fail-fast fail-fast)
+(defun compile-package (input-designator &key (fail-fast nil))
+  (let* ((ast (pass-syntactic-analysis input-designator :production #'parser::<source-file :fail-fast fail-fast))
+         (symbols (pass-semantic-analysis ast)))
+    (pass-generate-package ast symbols)))
+
+(defmethod pass-syntactic-analysis (input-designator &key (fail-fast nil) (production #'parser::<statement-list))
+  (multiple-value-bind (ast had-errors state) (parser:parse input-designator :fail-fast fail-fast :production production)
     (when had-errors
       (error (make-condition 'compile-error :message "Syntactic analysis failed" :details (parser:parse-errors state))))
 
@@ -46,3 +52,7 @@
       (progn
         (format t "~%## Bytecode ~%")
         (support:debug-print chunk)))))
+
+(defun pass-generate-package (ast symbol-table)
+  (let ((package (codegen:generate-package ast "foo" symbol-table)))
+    package))

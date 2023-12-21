@@ -6,9 +6,18 @@
   (intv (n integer))
   (closurev (c closure))) ; numbers
 
+(s:defunion arity
+  (arity-exactly (n fixnum))
+  (arity-at-least (n fixnum)))
+
 (s:defconstructor closure
-  (up-values (vector value))
-  (body bytecode:chunk))
+  (arity arity)
+  (body bytecode:chunk)
+  (up-values (vector value)))
+
+(defun make-closure (body arity &optional (upvalues nil))
+  (let ((up-values (make-array (length upvalues) :element-type 'value)))
+    (closurev (closure arity body up-values))))
 
 (defun box (n)
   (etypecase n
