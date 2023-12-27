@@ -34,8 +34,8 @@
          (instruction (the fixnum 0))
          (result-reg (the fixnum 0))
          (zero-flag nil)
-         (constants (bytecode:chunk-constants chunk))
          (opcode (the fixnum 0))
+         (constants (bytecode:chunk-constants chunk))
          (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or runtime.value:value bytecode:register-t) :initial-element runtime.value:nilv)))
 
     #-cl-braces-vm-release

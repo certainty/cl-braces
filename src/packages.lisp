@@ -46,10 +46,7 @@
    #:falsep
    #:truep
    #:nonep
-   #:make-closure
-   #:arity
-   #:arity-exactly
-   #:arity-at-least))
+   #:make-closure))
 
 (defpackage :cl-braces.bytecode
   (:nicknames :bytecode)
@@ -57,8 +54,15 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
+   #:arity
+   #:arity-exactly
+   #:arity-at-least
+   #:function-record
+   #:function-record-arity
+   #:function-record-registers-used
+   #:function-record-address
    #:chunk
-   #:make-chunk
+   #:instruction
    #:chunk-code
    #:chunk-constants
    #:chunk-registers-used

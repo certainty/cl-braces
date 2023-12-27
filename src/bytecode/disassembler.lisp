@@ -33,11 +33,11 @@
 (defun column-pc (pc)
   (format nil "0x~X" pc))
 
-(defun column-label (pc instr isa ch)
+(defun column-label (pc instr isa chunk)
   "Prints the label for the given instruction."
   (declare (ignore instr isa))
-  (let ((blocklabels (chunk-blocklabels ch)))
-    (gethash pc blocklabels)))
+  (with-slots (block-labels) chunk
+    (gethash pc block-labels)))
 
 (defun column-encoded-instruction (instr isa)
   "Return the instruction it its encoded form. It's opcode followed by operands"
@@ -88,8 +88,7 @@
         "")))
 
 (defun comment-for (value op-type chunk)
-  (let ((constants (chunk-constants chunk))
-        (blocklabels (chunk-blocklabels chunk)))
+  (with-slots (constants block-labels) chunk
     (case op-type
       (register nil)
       (label

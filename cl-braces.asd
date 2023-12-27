@@ -66,7 +66,6 @@
      (:module "backend"
       :components
       ((:file "constants-builder")
-       (:file "chunk-builder")
        (:file "codegen")))
 
      (:file "pipeline")

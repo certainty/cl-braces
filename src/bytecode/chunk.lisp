@@ -25,20 +25,49 @@
 
 (deftype constant-table () '(vector runtime.value:value))
 
-(s:defconstructor chunk
-  (constants constant-table)
-  (blocklabels hash-table)
-  (code (vector instruction))
-  (registers-used (integer 0 *)))
+(s:defunion arity
+  (arity-exactly (n fixnum))
+  (arity-at-least (n fixnum)))
 
-(s:defconstructor go-package
-  (entrypoint a:array-index)
-  (constants constant-table)
-  (functions (vector chunk)))
+(s:defconstructor function-record
+  (arity arity)
+  (registers-used (integer 0 *))
+  (address address-t))
 
-(s:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
-  (let ((code (gensym)))
-    `(let ((,code (chunk-code ,chunk)))
-       (loop for ,pc from 0 below (length ,code)
-             do (let ((,instruction (aref ,code ,pc)))
-                  ,@body)))))
+(defclass chunk ()
+  ((constants
+    :reader chunk-constants
+    :initarg :constants
+    :initform (make-array 0  :element-type 'runtime.value:value :adjustable t :fill-pointer t)
+    :type  constant-table)
+   (functions
+    :reader chunk-functions
+    :initarg :functions
+    :initform (make-array 0 :element-type 'function-record :adjustable t :fill-pointer t)
+    :type (vector function-record))
+   (code
+    :reader chunk-code
+    :initarg :code
+    :initform (make-array 0 :element-type 'instruction :adjustable t :fill-pointer t)
+    :type (vector instruction))
+   (block-labels
+    :reader chunk-block-labels
+    :initarg :block-labels
+    :initform (make-hash-table :test #'equalp)
+    :type hash-table)
+   (registers-used
+    :reader chunk-registers-used
+    :initarg :registers-used
+    :initform 0
+    :type (integer 0 *))
+   (entrypoint
+    :reader chunk-entrypoint
+    :initarg :entrypoint
+    :initform 0
+    :type address-t)))
+
+(defmacro do-instructions ((pc instruction chunk) &body body)
+  `(with-slots (code) chunk
+     (loop for ,pc from 0 below (length code) do
+       (let ((,instruction (aref code ,pc)))
+         ,@body))))

@@ -6,18 +6,14 @@
   (intv (n integer))
   (closurev (c closure))) ; numbers
 
-(s:defunion arity
-  (arity-exactly (n fixnum))
-  (arity-at-least (n fixnum)))
-
 (s:defconstructor closure
-  (arity arity)
-  (body bytecode:chunk)
-  (up-values (vector value)))
+  (up-values (vector value))
+  (function-record-address bytecode:address-t))
 
-(defun make-closure (body arity &optional (upvalues nil))
+(defun make-closure (function-record-address &optional (upvalues nil))
+  "Create a closure with the given `FUNCTION-RECORD-ADDRESS' and `UPVALUES'"
   (let ((up-values (make-array (length upvalues) :element-type 'value)))
-    (closurev (closure arity body up-values))))
+    (closurev (closure function-record-address up-values))))
 
 (defun box (n)
   (etypecase n
