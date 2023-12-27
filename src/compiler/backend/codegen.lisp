@@ -52,7 +52,7 @@
     :initform (make-hash-table :test #'equalp)
     :type hash-table
     :documentation "Map function names to the instruction that needs to patched with the address of the function")
-   (blocklabels
+   (block-labels
     :initform (make-hash-table :test #'equalp)
     :type hash-table
     :documentation "Map label names to their addresses")
@@ -111,8 +111,8 @@
     (gethash variable-id variable-registers)))
 
 (defun create-register-for (generator variable-id)
-  (with-slots (variable-registers register-allocator) generator
-    (let ((reg (next-register register-allocator)))
+  (with-slots (variable-registers) generator
+    (let ((reg (next-register generator)))
       (prog1 reg
         (setf (gethash variable-id variable-registers) reg)))))
 
@@ -127,24 +127,24 @@
     (1- (length instructions))))
 
 (defun create-label (generator prefix)
-  (with-slots (blocklabels instructions) generator
+  (with-slots (block-labels instructions) generator
     (s:lret* ((name (gensym prefix))
               (addr (length instructions))
               (label (bytecode:label addr)))
-      (setf (gethash name blocklabels) label)
+      (setf (gethash name block-labels) label)
       (values label addr))))
 
 (defun generate-chunk (ast symbol-table)
   (let ((generator (make-bytecode-generator symbol-table)))
     (generate generator ast)
-    (with-slots (instructions constants functions entrypoint blocklabels) generator
+    (with-slots (instructions constants functions entrypoint block-labels) generator
       (let ((registers-used (pop-register-allocator generator)))
         (make-instance 'bytecode:chunk
                        :constants (constants-result constants)
                        :functions functions
                        :code instructions
                        :entrypoint entrypoint
-                       :block-labels blocklabels
+                       :block-labels block-labels
                        :registers-used registers-used)))))
 
 ;; At a later point, when we only generate from simplified code in SSA we can switch to using ast:walk.
@@ -331,6 +331,10 @@
         (replace-instruction generator jz-addr (bytecode:instr 'bytecode:jz label-end condition-reg)))
 
     (replace-instruction generator cons-jmp-addr (bytecode:instr 'bytecode:jmp label-end))))
+
+(defun replace-instruction (generator address instruction)
+  (with-slots (instructions) generator
+    (setf (aref instructions address) instruction)))
 
 (defun patch-instruction (generator address instruction)
   (with-slots (instructions) generator

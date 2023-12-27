@@ -92,7 +92,7 @@
     (case op-type
       (register nil)
       (label
-       (a:when-let ((blocklabel (gethash value blocklabels)))
+       (a:when-let ((blocklabel (gethash value block-labels)))
          (format nil "~a = ~a" (format-operand value op-type) blocklabel)))
       (address
        (let ((constant (aref constants value)))
