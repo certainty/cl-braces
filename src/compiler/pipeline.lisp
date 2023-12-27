@@ -17,10 +17,10 @@
          (chunk (pass-code-generation ast symbols)))
     chunk))
 
-(defun compile-package (input-designator &key (fail-fast nil))
+(defun compile-source-file (input-designator &key (fail-fast nil))
   (let* ((ast (pass-syntactic-analysis input-designator :production #'parser::<source-file :fail-fast fail-fast))
          (symbols (pass-semantic-analysis ast)))
-    (pass-generate-package ast symbols)))
+    (pass-code-generation ast symbols)))
 
 (defmethod pass-syntactic-analysis (input-designator &key (fail-fast nil) (production #'parser::<statement-list))
   (multiple-value-bind (ast had-errors state) (parser:parse input-designator :fail-fast fail-fast :production production)
@@ -52,7 +52,3 @@
       (progn
         (format t "~%## Bytecode ~%")
         (support:debug-print chunk)))))
-
-(defun pass-generate-package (ast symbol-table)
-  (let ((package (codegen:generate-package ast "foo" symbol-table)))
-    package))

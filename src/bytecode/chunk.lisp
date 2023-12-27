@@ -29,10 +29,19 @@
   (arity-exactly (n fixnum))
   (arity-at-least (n fixnum)))
 
-(s:defconstructor function-record
-  (arity arity)
-  (registers-used (integer 0 *))
-  (address address-t))
+(defclass function-record ()
+  ((arity
+    :reader function-record-arity
+    :initarg :arity
+    :type arity)
+   (registers-used
+    :reader function-record-registers-used
+    :initarg :registers-used
+    :type (integer 0 *))
+   (address
+    :reader function-record-address
+    :initarg :address
+    :type address-t)))
 
 (defclass chunk ()
   ((constants

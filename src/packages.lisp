@@ -383,7 +383,7 @@
   (:import-from :serapeum :->)
   (:export
    #:compile-this
-   #:compile-package))
+   #:compile-source-file))
 
 (defpackage :cl-braces.compiler.symbols
   (:nicknames :symbols)

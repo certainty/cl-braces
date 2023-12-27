@@ -155,28 +155,33 @@
 (defmethod generate ((generator bytecode-generator) (node ast:function-declaration))
   (with-slots (symbol-table constants) generator
     (let* ((signature (ast:function-declaration-signature node))
-           (name (ast:identifier-name (ast:function-declaration-name signature)))
+           (name (ast:identifier-name (ast:function-declaration-name node)))
            (params (ast:parameter-list-parameters (ast:function-signature-parameters signature)))
            (identifier-lists (mapcar #'ast:parameter-declaration-identifiers params))
            (body (ast:function-declaration-body node)))
-      (multiple-value-bind (function-label function-addresss) (create-label generator name)
+      (multiple-value-bind (function-label function-address) (create-label generator name)
         (enter-scope generator)
         (push-register-allocator generator)
         (dolist (identifier-list identifier-lists)
-          (registers-for-identifiers function-generator identifier-list :create-if-missing t))
+          (registers-for-identifiers generator identifier-list :create-if-missing t))
         (generate generator body)
         (leave-scope generator)
-        (let ((registers-used (pop-register-allocator generator))
-              (record (bytecode:function-record :name name
-                                                :address function-address
-                                                :arity (bytecode:arity-exactly (length identifier-lists)))))
-          (functions-add generator record name)
+        (let ((registers-used (pop-register-allocator generator)))
+          (functions-add generator
+                         :name name
+                         :address function-address
+                         :registers-used registers-used
+                         :arity (bytecode:arity-exactly (length identifier-lists)))
           function-label)))))
 
-(defun functions-add (generator function-record name)
-  (with-slots (functions symbol-table) generator
-    (setf (gethash name functions) function-record)
-    (symbols:add-symbol symbol-table name :function)))
+(defun functions-add (generator &key name address registers-used arity)
+  (let ((record (make-instance 'bytecode:function-record
+                               :address address
+                               :registers-used registers-used
+                               :arity arity)))
+    (with-slots (functions symbol-table) generator
+      (vector-push-extend record functions)
+      (symbols:add-symbol symbol-table name :function))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:node))
   (declare (ignore node generator))
