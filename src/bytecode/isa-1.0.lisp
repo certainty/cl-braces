@@ -26,7 +26,7 @@
    (#x40 neg   ((reg dst))                     "Negatate value in register $dst. The result is written directly to $dst.")
    (#x41 jmp   ((label dst))                   "Unconditionally jump to %dst")
    (#x42 test  ((reg dst))                     "Tests the value in $dst and sets the zero flag if it is falsey (nil or false).")
-   (#x43 ret   ((imm value))                   "Return from the current function. $value indicates the number of return values")
+   (#x43 ret   ((imm values))                   "Return from the current function. $values indicates the number of return values")
 
    ;; binary instructions #x80 - #xbf
    (#x80 const ((reg dst)   (addr src))     "Loads the constant from $src into $dst")
@@ -37,6 +37,7 @@
    (#x85 sub   ((reg lhs)   (reg rhs))      "Subtracts what is in $rhs from $lhs and stores the result in $lhs.")
    (#x86 mul   ((reg lhs)   (reg rhs))      "Multiplies what is in $lhs by $rhs and stores the result in $lhs.")
    (#x87 div   ((reg lhs)   (reg rhs))      "Divides what is in $lhs by $rhs and stores the result in $lhs.")
+   (#x88 call  ((reg fun)   (imm argc))     "Calls the function in the $fun register providing $argc arguments. The arguments are the last $argc registers in the current context.")
 
    ;; ternary instructions #xc0 - #xff
    ))

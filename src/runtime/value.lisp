@@ -8,12 +8,14 @@
 
 (s:defconstructor closure
   (up-values (vector value))
-  (function-record-address bytecode:address-t))
+  (arity bytecode:arity)
+  (registers-used (integer 0 *))
+  (function-address bytecode:label))
 
-(defun make-closure (function-record-address &optional (upvalues nil))
+(defun make-closure (function-address arity registers-used &optional (upvalues nil))
   "Create a closure with the given `FUNCTION-RECORD-ADDRESS' and `UPVALUES'"
   (let ((up-values (make-array (length upvalues) :element-type 'value)))
-    (closurev (closure function-record-address up-values))))
+    (closurev (closure up-values arity registers-used function-address))))
 
 (defun box (n)
   (etypecase n

@@ -45,8 +45,8 @@
     :type (vector bytecode:instruction)
     :documentation "The instructions we're generating")
    (functions
-    :initform (make-array 0 :adjustable t :fill-pointer t :element-type 'bytecode:function-record)
-    :type (vector bytecode:function-record *)
+    :initform (make-hash-table)
+    :type (hash-table)
     :documentation "The function records which contain the function address and some metadata required by the runtime")
    (patch-function-calls
     :initform (make-hash-table :test #'equalp)
@@ -106,15 +106,20 @@
     (a:when-let ((var (symbols:closest-scope current-scope (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p))))
       (symbols:id var))))
 
-(defun find-register-for (generator variable-id)
-  (with-slots (variable-registers) generator
-    (gethash variable-id variable-registers)))
+(defun find-function (generator name)
+  (with-slots (functions symbol-table) generator
+    (a:when-let ((fun (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-function-p :scope<= 0)))
+      (symbols:id (car fun)))))
 
 (defun create-register-for (generator variable-id)
   (with-slots (variable-registers) generator
     (let ((reg (next-register generator)))
       (prog1 reg
         (setf (gethash variable-id variable-registers) reg)))))
+
+(defun find-register-for (generator variable-id)
+  (with-slots (variable-registers) generator
+    (gethash variable-id variable-registers)))
 
 (defun add-constant (generator value)
   (with-slots (constants) generator
@@ -151,8 +156,12 @@
 (defgeneric generate (generator node)
   (:documentation "Generate code for a node"))
 
+(defmethod generate ((generator bytecode-generator) (node ast:node))
+  (declare (ignore node generator))
+  t)
+
 (defmethod generate ((generator bytecode-generator) (node ast:function-declaration))
-  (with-slots (symbol-table constants) generator
+  (with-slots (symbol-table functions) generator
     (let* ((signature (ast:function-declaration-signature node))
            (name (ast:identifier-name (ast:function-declaration-name node)))
            (params (ast:parameter-list-parameters (ast:function-signature-parameters signature)))
@@ -165,26 +174,21 @@
           (registers-for-identifiers generator identifier-list :create-if-missing t))
         (generate generator body)
         (leave-scope generator)
-        (let ((registers-used (pop-register-allocator generator)))
-          (functions-add generator
-                         :name name
-                         :address function-address
-                         :registers-used registers-used
-                         :arity (bytecode:arity-exactly (length identifier-lists)))
+        (let* ((registers-used (pop-register-allocator generator))
+               (function-value (runtime.value:make-closure function-address (bytecode:arity-exactly (length identifier-lists)) registers-used))
+               (const-addr (add-constant generator function-value))
+               (function-id (find-function generator name)))
+          (assert function-id)
+          (setf (gethash function-id functions) const-addr)
           function-label)))))
 
-(defun functions-add (generator &key name address registers-used arity)
-  (let ((record (make-instance 'bytecode:function-record
-                               :address address
-                               :registers-used registers-used
-                               :arity arity)))
-    (with-slots (functions symbol-table) generator
-      (vector-push-extend record functions)
-      (symbols:add-symbol symbol-table name :function))))
-
-(defmethod generate ((generator bytecode-generator) (node ast:node))
-  (declare (ignore node generator))
-  t)
+(defmethod generate ((generator bytecode-generator) (node ast:function-call))
+  (let* ((function-register (generate generator (ast:function-call-function node)))
+         (arguments (ast:function-call-arguments node))
+         (argument-registers nil))
+    (when arguments
+      (setf argument-registers (multiple-value-list (generate generator arguments))))
+    (add-instructions generator (bytecode:instr 'bytecode:call function-register (bytecode:immediate (length argument-registers))))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:source-file))
   (dolist (decl (ast:source-file-declarations node))
@@ -297,7 +301,13 @@
 (defmethod generate ((generator bytecode-generator) (node ast:identifier))
   (let ((name (ast:identifier-name node)))
     (a:when-let ((variable-id (find-scoped-variable generator name)))
-      (find-register-for generator variable-id))))
+      (return-from generate (find-register-for generator variable-id)))
+    (a:when-let ((function-id (find-function generator name)))
+      (with-slots (functions) generator
+        (let ((function-object-address (gethash function-id functions))
+              (reg (next-register generator)))
+          (prog1 reg
+            (add-instructions generator (bytecode:instr 'bytecode:const reg function-object-address))))))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:empty-statement))
   (declare (ignore node generator))

@@ -102,19 +102,24 @@
          (format nil "~a = ~a" (format-operand value op-type) blocklabel)))
       (address
        (let ((constant (aref constants value)))
-         (format nil "~a = ~a" (format-operand value op-type) (format-constant constant))))
+         (format nil "~a = ~a" (format-operand value op-type) (format-constant constant chunk))))
       (immediate nil)
       (t (unreachable! "Unknown operand type")))))
 
-(defun format-constant (constant)
+(defun format-constant (constant chunk)
   (trivia:match constant
     ((runtime.value:nilv) "nil")
     ((runtime.value:boolv b) (if b (format nil "true") (format nil "false")))
-    ((runtime.value:intv n) (format nil "i~A" n))))
+    ((runtime.value:intv n) (format nil "i~A" n))
+    ((runtime.value:closurev c)
+     (with-slots (block-labels) chunk
+       (let* ((label-address (runtime.value:closure-function-address c))
+              (blocklabel (gethash label-address block-labels)))
+         (format nil ".~15a" blocklabel))))))
 
 (defun disass-constants (chunk &key (stream *standard-output*))
   (with-slots (constants) chunk
     (format stream "__constants__~%")
     (loop :for i :from 0 :below (length constants)
           :for constant :across constants
-          :do (format stream "@~3a ~20a~%" i (format-constant constant)))))
+          :do (format stream "@~3a ~20a~%" i (format-constant constant chunk)))))

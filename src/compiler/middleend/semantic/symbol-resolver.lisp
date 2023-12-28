@@ -101,7 +101,9 @@
 (defmethod ast:enter ((resolver resolver) (node ast:identifier))
   (with-slots (current-scope errors symbol-table) resolver
     (let ((variable (ast:identifier-name node)))
-      (unless (symbols:find-by-name symbol-table variable :denotation #'symbols:denotes-variable-p :scope<= current-scope)
+      (unless
+          (or (symbols:find-by-name symbol-table variable :denotation #'symbols:denotes-variable-p :scope<= current-scope)
+              (symbols:find-by-name symbol-table variable :denotation #'symbols:denotes-function-p :scope<= 0))
         (cerror "Undefined symbol" (make-condition 'undefined-symbol :symbol variable :location (ast:location node)))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:variable-specification))
@@ -116,12 +118,23 @@
             (symbols:add-symbol symbol-table name :variable :scope current-scope :location (ast:location identifier))))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:function-declaration))
-  (with-new-scope resolver
-    (with-slots (symbol-table current-scope errors) resolver
-      (let ((name (ast:identifier-name (ast:function-declaration-name node))))
-        ;; TODO: make thie package aware
-        (when (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-function-p)
-          (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol name :location (span:from (span:for node)))))))))
+  (with-slots (symbol-table current-scope errors) resolver
+    (let ((name (ast:identifier-name (ast:function-declaration-name node))))
+      (when (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-function-p)
+        (cerror "Function already defined" (make-condition 'variable-already-defined :symbol name :location (ast:location node))))
+      (symbols:add-symbol symbol-table name :function :scope 0 :location (ast:location node)))))
+
+(defmethod ast:enter ((resolver resolver) (node ast:function-signature))
+  (enter-scope resolver))
+
+(defmethod ast:leave ((resolver resolver) (node ast:function-signature))
+  (leave-scope resolver))
+
+(defmethod ast:enter ((resolver resolver) (node ast:block))
+  (enter-scope resolver))
+
+(defmethod ast:leave ((resolver resolver) (node ast:block))
+  (leave-scope resolver))
 
 (defmethod ast:enter ((resolver resolver) (node ast:parameter-declaration))
   (with-slots (symbol-table current-scope errors) resolver

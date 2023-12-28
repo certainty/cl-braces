@@ -46,6 +46,10 @@
    #:falsep
    #:truep
    #:nonep
+   #:closurev
+   #:closure-function-address
+   #:closure-registers-used
+   #:closure-arity
    #:make-closure))
 
 (defpackage :cl-braces.bytecode
@@ -109,6 +113,7 @@
    #:imm
 
    #:const
+   #:call
    #:mov
    #:test
    #:jz
@@ -332,7 +337,7 @@
    #:function-signature-return-parameters
 
    #:function-call
-   #:function-call-name
+   #:function-call-function
    #:function-call-arguments
 
    #:parameter-declaration
