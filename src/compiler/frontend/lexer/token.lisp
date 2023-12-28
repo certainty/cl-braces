@@ -62,6 +62,7 @@
   @RBRACE
   @SEMICOLON
   @COMMA
+  @DOT
 
   ;; Special
   @ILLEGAL ; This is used to represent an illegal token. This is used so that we can delay the decision what to do in this case.

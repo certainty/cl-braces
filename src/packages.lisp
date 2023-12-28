@@ -212,6 +212,7 @@
    #:@LE
    #:@GT
    #:@GE
+   #:@DOT
    #:@SEMICOLON
    #:@COMMA
    #:@COLON_EQUAL
@@ -316,6 +317,10 @@
    #:identifier-list
    #:identifier-list-identifiers
 
+   #:qualified-identifier
+   #:qualified-identifier-package-name
+   #:qualified-identifier-identifier
+
    #:function-declaration
    #:function-declaration-name
    #:function-declaration-signature
@@ -325,6 +330,10 @@
    #:function-signature-parameters
    #:function-signature-return-type
    #:function-signature-return-parameters
+
+   #:function-call
+   #:function-call-name
+   #:function-call-arguments
 
    #:parameter-declaration
    #:parameter-declaration-identifiers

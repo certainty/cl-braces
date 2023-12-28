@@ -681,6 +681,19 @@
 (defun identifier-name (identifier)
   (token:lexeme (identifier-token identifier)))
 
+(defclass qualified-identifier (node)
+  ((package-name
+    :reader qualified-identifier-package-name
+    :initarg :package-name
+    :initform (error "must provide package name")
+    :type identifier)
+   (identifier
+    :reader qualified-identifier-identifier
+    :initarg :identifier
+    :initform (error "must provide identifier")
+    :type identifier))
+  (:documentation "A qualified identifier"))
+
 (defclass identifier-list (node)
   ((identifiers
     :reader identifier-list-identifiers
@@ -708,3 +721,22 @@
     :initform (error "must provide token")
     :type token:token))
   (:documentation "A comma"))
+
+(defclass function-call (expression)
+  ((function
+    :reader function-call-function
+    :initarg :function
+    :initform (error "must provide functio ")
+    :type expression)
+   (arguments
+    :reader function-call-arguments
+    :initarg :arguments
+    :initform (error "must provide arguments")
+    :type (or null expression-list)))
+  (:documentation "A function call"))
+
+(defmethod children ((node function-call))
+  (let ((base (list (function-call-function node))))
+    (when (function-call-arguments node)
+      (push (function-call-arguments node) base))
+    (reverse base)))

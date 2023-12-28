@@ -129,9 +129,9 @@
 (defun create-label (generator prefix)
   (with-slots (block-labels instructions) generator
     (s:lret* ((label-name (gensym prefix))
-              (address (length instructions)))
+              (address (bytecode:label (length instructions))))
       (setf (gethash address block-labels) label-name)
-      (values label-name address))))
+      (values address label-name))))
 
 (defun generate-chunk (ast symbol-table)
   (let ((generator (make-bytecode-generator symbol-table)))
@@ -158,7 +158,7 @@
            (params (ast:parameter-list-parameters (ast:function-signature-parameters signature)))
            (identifier-lists (mapcar #'ast:parameter-declaration-identifiers params))
            (body (ast:function-declaration-body node)))
-      (multiple-value-bind (function-label function-address) (create-label generator name)
+      (multiple-value-bind (function-address function-label) (create-label generator name)
         (enter-scope generator)
         (push-register-allocator generator)
         (dolist (identifier-list identifier-lists)

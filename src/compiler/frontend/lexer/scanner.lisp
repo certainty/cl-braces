@@ -330,6 +330,7 @@
     ((match= state "*") (accept state token:@STAR))
     ((match= state ";") (accept state token:@SEMICOLON))
     ((match= state ",") (accept state token:@COMMA))
+    ((match= state ".") (accept state token:@DOT))
     ((match= state "<") (accept state token:@LT))
     ((match= state ">") (accept state token:@GT))
     ((match= state "=") (accept state token:@EQUAL))))

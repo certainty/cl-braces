@@ -570,14 +570,12 @@
 (defun <expression-list (state)
   (guard-parse state
     (a:when-let ((expression (<expression state)))
-      (let ((expresions (list expression)))
+      (let ((expressions (list expression)))
         (with-slots (cur-token) state
-          (loop
-            (cond
-              ((token:class= cur-token token:@COMMA)
-               (advance! state)
-               (push (expect #'<expression "Expected expression" state) expresions))
-              (t (return (accept state 'ast:expression-list :expressions (nreverse expresions)))))))))))
+          (loop :while (token:class= cur-token token:@COMMA)
+                :do (advance! state)
+                :collect (expect #'<expression "Expected expression" state)
+                :finally (return (accept state 'ast:expression-list :expressions expressions))))))))
 
 (defun parse-parenthized-many (parser &key (open-paren token:@LPAREN) (close-paren token:@RPAREN))
   "Parses first the `OPEN-PAREN', then the provided `PARSER' repeatedly until the `CLOSE-PAREN' token is encountered."
@@ -614,6 +612,7 @@
   term       ; + -
   factor     ; * /
   unary      ; + - !
+  call
   primary)
 
 (define-enum associativity
@@ -631,7 +630,8 @@
      token:@LE     (cons +precedence-term+ +associativity-left+)
      token:@GT     (cons +precedence-term+ +associativity-left+)
      token:@GE     (cons +precedence-term+ +associativity-left+)
-     token:@LPAREN (cons +precedence-none+ +associativity-none+))
+     token:@LPAREN (cons +precedence-call+ +associativity-left+)
+     token:@RPAREN (cons +precedence-none+ +associativity-none+))
   :test #'equalp)
 
 (defun operator-rule-for (token-class)
@@ -663,7 +663,7 @@ Example:
 "
   (guard-parse state
     (with-slots (cur-token) state
-      (loop with left = (parse-primary-expression state)
+      (loop with left = (<primary-expression state)
             with right = nil
             do
                (destructuring-bind (prec . assoc) (operator-rule-for (token:class cur-token))
@@ -680,14 +680,63 @@ Example:
      (when (and cur-token (token:class= cur-token ,expected-class))
        ,@body)))
 
-(defun parse-primary-expression (state)
+
+;;;
+;;; PrimaryExpr =
+;;; Operand |
+;;; Conversion |
+;;; MethodExpr |
+;;; PrimaryExpr Selector |
+;;; PrimaryExpr Index |
+;;; PrimaryExpr Slice |
+;;; PrimaryExpr TypeAssertion |
+;;; PrimaryExpr Arguments .
+
+(defun <primary-expression (state)
   "Parse a primary expression, which are usually terminal nodes. The prefix `primary-' is often used in parsers to denot these types of productions."
   (guard-parse state
+    (a:when-let ((expr (try #'<operand state)))
+      ;; selector
+      ;; index
+      ;; slice
+      ;; type assertion
+      ;; call / arguments
+      (a:if-let ((args (try #'<arguments state)))
+        (return-from <primary-expression (accept state 'ast:function-call :function expr :arguments args))
+        (return-from <primary-expression expr)))
+    (a:when-let ((expr (try #'<unary-expression state)))
+      (return-from <primary-expression expr))))
+
+;;;
+;;; Arguments  = "(" [ ( ExpressionList | Type [ "," ExpressionList ] ) [ "..." ] [ "," ] ] ")" .
+;;;
+(defun <arguments (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@LPAREN)
+        (advance! state)
+        (a:when-let ((exprs (try #'<expression-list state)))
+          (consume! state token:@RPAREN "Expected ')' after arguments")
+          exprs)))))
+
+;;;
+;;; Operand     = Literal | OperandName [ TypeArgs ] | "(" Expression ")" .
+;;;
+(defun <operand (state)
+  (guard-parse state
     (or
-     (try #'parse-literal state)
-     (try #'parse-unary-expression state)
-     (try #'<identifier state)
-     (try #'parse-grouping-expression state))))
+     (try #'<literal state)
+     (try #'<operand-name state)
+     (try #'<grouping-expression state))))
+
+;;;
+;;; OperandName = identifier | QualifiedIdent .
+;;;
+(defun <operand-name (state)
+  (guard-parse state
+    (or
+     (try #'<qualified-identifier state)
+     (try #'<identifier state))))
 
 (defun <identifier (state)
   (guard-parse state
@@ -696,21 +745,35 @@ Example:
         (let ((tok (consume! state token:@IDENTIFIER "Expected identifier")))
           (accept state 'ast:identifier :token tok))))))
 
+(defun <qualified-identifier (state)
+  (guard-parse state
+    (with-slots (cur-token next-token)
+        (when (and (token:class= cur-token token:@IDENTIFIER)
+                   (token:class= cur-token token:@DOT))
+          (let ((package-name (consume! state token:@IDENTIFIER "Expected package name")))
+            (consume! state token:@DOT "Expected '.'")
+            (let ((identifier (consume! state token:@IDENTIFIER "Expected identifier")))
+              (accept state 'ast:qualified-identifier :package-name package-name :identifier identifier)))))))
+
 (defun <comma (state)
   (guard-parse state
     (when-token state token:@COMMA
       (advance! state)
       (accept state 'ast:comma :token cur-token))))
 
-(defun parse-literal (state)
+(defun <literal (state)
   "Recognizes a literal expression"
   (guard-parse state
-    (or
-     (try #'parse-boolean-literal state)
-     (try #'parse-number-literal state))))
+    (or (<basic-literal state))))
 
-(-> parse-boolean-literal (state) (or null ast:literal))
-(defun parse-boolean-literal (state)
+(defun <basic-literal (state)
+  (guard-parse state
+    (or
+     (try #'<boolean-literal state)
+     (try #'<number-literal state))))
+
+(-> <boolean-literal (state) (or null ast:literal))
+(defun <boolean-literal (state)
   (guard-parse state
     (with-slots (cur-token) state
       (let ((token cur-token))
@@ -718,14 +781,14 @@ Example:
           (advance! state)
           (accept state 'ast:literal :token token))))))
 
-(-> parse-number-literal (state) (or null ast:literal))
-(defun parse-number-literal (state)
+(-> <number-literal (state) (or null ast:literal))
+(defun <number-literal (state)
   (guard-parse state
     (when-token state token:@INTEGER
       (let ((tok (consume! state token:@INTEGER "Expected number literal")))
         (accept state 'ast:literal :token tok)))))
 
-(defun parse-grouping-expression (state)
+(defun <grouping-expression (state)
   (when-token state token:@LPAREN
     (let ((tok (consume! state token:@LPAREN "Expected '('")))
       (when tok
@@ -734,8 +797,8 @@ Example:
             (consume! state token:@RPAREN "Expected ')' after expression")
             (accept state 'ast:grouping-expression :expression expr)))))))
 
-(-> parse-unary-expression (state) (or null ast:expression))
-(defun parse-unary-expression (state)
+(-> <unary-expression (state) (or null ast:expression))
+(defun <unary-expression (state)
   "Parse a unary expression which is essentially an operator followed by a single operand, which itself could be a more complex expression"
   (guard-parse state
     (with-slots (cur-token) state
@@ -743,7 +806,7 @@ Example:
         ((or (token:class= cur-token token:@PLUS) (token:class= cur-token token:@MINUS))
          (let ((op cur-token))
            (advance! state)
-           (accept state 'ast:unary-expression :operator op :operand (parse-primary-expression state))))))))
+           (accept state 'ast:unary-expression :operator op :operand (<primary-expression state))))))))
 
 (-> eofp (state) boolean)
 (defun eofp (state)
