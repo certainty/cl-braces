@@ -572,10 +572,12 @@
     (a:when-let ((expression (<expression state)))
       (let ((expressions (list expression)))
         (with-slots (cur-token) state
-          (loop :while (token:class= cur-token token:@COMMA)
-                :do (advance! state)
-                :collect (expect #'<expression "Expected expression" state)
-                :finally (return (accept state 'ast:expression-list :expressions expressions))))))))
+          (loop
+            (cond
+              ((token:class= cur-token token:@COMMA)
+               (advance! state)
+               (push (expect #'<expression "Expected expression" state) expressions))
+              (t (return (accept state 'ast:expression-list :expressions (nreverse expressions)))))))))))
 
 (defun parse-parenthized-many (parser &key (open-paren token:@LPAREN) (close-paren token:@RPAREN))
   "Parses first the `OPEN-PAREN', then the provided `PARSER' repeatedly until the `CLOSE-PAREN' token is encountered."
