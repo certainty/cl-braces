@@ -179,6 +179,21 @@
                      :from (span:from condition)
                      :to (span:to (or alternative consequence))))))
 
+(defclass return-statement (statement)
+  ((expressions
+    :reader return-statement-expressions
+    :initarg :expressions
+    :type (or null expression-list)))
+  (:documentation "A statement that is a return."))
+
+(defmethod children ((node return-statement))
+  (when (return-statement-expressions node)
+    (list (return-statement-expressions node))))
+
+(defmethod span:for ((node return-statement))
+  (with-slots (expressions) node
+    nil))
+
 (defclass assignment-statement (statement)
   ((lhs
     :reader assignment-statement-lhs

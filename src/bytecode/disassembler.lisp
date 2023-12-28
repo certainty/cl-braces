@@ -10,13 +10,18 @@
 ;;;; (bytecode:disass (compiler:compile-this "3 + 4"))
 ;;;; ```
 
-(defun disass (chunk &key (isa *current-isa*) (stream *standard-output*))
+(defun disass (chunk &key (isa *current-isa*) (stream *standard-output*) (include-constants t))
   "Disassemble a chunk of bytecode to the provided `stream'.
-   The format of the disassembly is as follows:
+   The format of each instruction in the disassembly is as follows:
    PC: [LABEL] ENCODED-INSTRUCTION OPCODE OPERANDS [COMMENT] "
+  (when include-constants
+    (disass-constants chunk :stream stream))
+
+  (terpri stream)
+  (format stream "__instructions__~%")
   (do-instructions (pc instr chunk)
     (a:when-let ((label (column-label pc instr isa chunk)))
-      (format stream "~%~a:~%" label))
+      (format stream "~%.~a:~%" label))
     (format stream "%~10a " (column-pc pc))
     (disass-instruction instr chunk :isa isa :stream stream)))
 
@@ -72,6 +77,7 @@
     ((eq op-type 'register) (format nil "$~a" value))
     ((eq op-type 'address) (format nil "@~a" value))
     ((eq op-type 'label)   (format nil "%0x~X" value))
+    ((eq op-type 'immediate) (format nil "~a" value))
     (t (unreachable! "Unknown operand type"))))
 
 (defun column-comment (instr isa chunk)
@@ -97,6 +103,7 @@
       (address
        (let ((constant (aref constants value)))
          (format nil "~a = ~a" (format-operand value op-type) (format-constant constant))))
+      (immediate nil)
       (t (unreachable! "Unknown operand type")))))
 
 (defun format-constant (constant)
@@ -104,3 +111,10 @@
     ((runtime.value:nilv) "nil")
     ((runtime.value:boolv b) (if b (format nil "true") (format nil "false")))
     ((runtime.value:intv n) (format nil "i~A" n))))
+
+(defun disass-constants (chunk &key (stream *standard-output*))
+  (with-slots (constants) chunk
+    (format stream "__constants__~%")
+    (loop :for i :from 0 :below (length constants)
+          :for constant :across constants
+          :do (format stream "@~3a ~20a~%" i (format-constant constant)))))

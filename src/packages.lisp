@@ -97,6 +97,7 @@
    #:address-t
    #:register-t
    #:opcode-t
+   #:immediate-t
 
    #:instr
    #:address
@@ -104,6 +105,8 @@
    #:register
    #:reg
    #:label
+   #:immediate
+   #:imm
 
    #:const
    #:mov
@@ -111,6 +114,7 @@
    #:jz
    #:jnz
    #:jmp
+   #:ret
    #:noop
    #:halt
    #:add
@@ -288,6 +292,8 @@
    #:if-statement-condition
    #:if-statement-consequence
    #:if-statement-alternative
+   #:return-statement
+   #:return-statement-expressions
    #:expression-statement
    #:expression-statement-expression
    #:statement-list

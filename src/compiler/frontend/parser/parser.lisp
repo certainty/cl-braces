@@ -291,6 +291,7 @@
     (or
      (try #'<declaration state)
      (try #'<if-statement state)
+     (try #'<return-statement state)
      (try #'<simple-statement state)
      (try #'<block state))))
 ;;;
@@ -334,6 +335,19 @@
               (signal-parse-error state "Expected else block")))
 
           (accept state 'ast:if-statement :init init :condition condition :consequence consequence :alternative alternative))))))
+
+
+;;;
+;;; ReturnStmt = "return" [ ExpressionList ] .
+;;;
+(-> <return-statement (state) (or null ast:return-statement))
+(defun <return-statement (state)
+  (with-slots (cur-token) state
+    (guard-parse state
+      (when (token:class= cur-token token:@RETURN)
+        (advance! state)
+        (let ((exprs (<expression-list state)))
+          (accept state 'ast:return-statement :expressions exprs))))))
 
 ;;;
 ;;; SimpleStmt = EmptyStmt | ExpressionStmt | SendStmt | IncDecStmt | Assignment | ShortVarDecl .

@@ -61,22 +61,24 @@
 ;; TODO: how about we define a union for this?
 (s:defunion operand
   (register (value register-t))
-  (address (value address-t))
-  (label (value label-t)))
+  (address  (value address-t))
+  (label    (value label-t))
+  (immediate (value immediate-t)))
 
-(-> operand-value (operand) (or register-t address-t label-t))
+(-> operand-value (operand) operand-t)
 (defun operand-value (operand)
   (trivia:match operand
     ((register value) value)
     ((address value) value)
-    ((label value) value)))
+    ((label value) value)
+    ((immediate value) value)))
 
 (defclass isa-operand ()
   ((type-description
     :reader isa-operand-type-description
     :initarg
     :type-description
-    :type (member :register :address :label))
+    :type (member :register :address :label :immediate))
    (type-guard
     :reader isa-operand-type-guard
     :initarg :type-guard
@@ -154,6 +156,7 @@
                                   (case (first operand)
                                     (reg   `(make-instance 'isa-operand :type-description :register :type-guard 'register :name ,(format nil "$~a" (second operand))))
                                     (addr  `(make-instance 'isa-operand :type-description :address :type-guard 'address :name ,(format nil "@~a" (second operand))))
+                                    (imm   `(make-instance 'isa-operand :type-description :immediate :type-guard 'immediate :name ,(format nil "#~a" (second operand))))
                                     (label `(make-instance 'isa-operand :type-description :label :type-guard 'label :name ,(format nil "%~a" (second operand))))
                                     (t (error "Unknown operand type ~A" (first operand)))))
                                 operands))))

@@ -25,7 +25,8 @@
    ;; unary instructions #x40 - #x7f
    (#x40 neg   ((reg dst))                     "Negatate value in register $dst. The result is written directly to $dst.")
    (#x41 jmp   ((label dst))                   "Unconditionally jump to %dst")
-   (#x42 test  ((reg dst))                    "Tests the value in $dst and sets the zero flag if it is falsey (nil or false).")
+   (#x42 test  ((reg dst))                     "Tests the value in $dst and sets the zero flag if it is falsey (nil or false).")
+   (#x43 ret   ((imm value))                   "Return from the current function. $value indicates the number of return values")
 
    ;; binary instructions #x80 - #xbf
    (#x80 const ((reg dst)   (addr src))     "Loads the constant from $src into $dst")

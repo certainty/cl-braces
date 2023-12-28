@@ -128,11 +128,10 @@
 
 (defun create-label (generator prefix)
   (with-slots (block-labels instructions) generator
-    (s:lret* ((name (gensym prefix))
-              (addr (length instructions))
-              (label (bytecode:label addr)))
-      (setf (gethash name block-labels) label)
-      (values label addr))))
+    (s:lret* ((label-name (gensym prefix))
+              (address (length instructions)))
+      (setf (gethash address block-labels) label-name)
+      (values label-name address))))
 
 (defun generate-chunk (ast symbol-table)
   (let ((generator (make-bytecode-generator symbol-table)))
@@ -200,8 +199,8 @@
 (defmethod generate ((generator bytecode-generator) (node ast:expression-list))
   (let ((expressions (ast:expression-list-expressions node)))
     (loop for expression in expressions
-          for expr-reg = (generate generator expression)
-          finally (return expr-reg))))
+          collect (generate generator expression)
+          finally (values-list expr-reg))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:expression-statement))
   (let ((expression (ast:expression-statement-expression node)))
@@ -336,6 +335,13 @@
         (replace-instruction generator jz-addr (bytecode:instr 'bytecode:jz label-end condition-reg)))
 
     (replace-instruction generator cons-jmp-addr (bytecode:instr 'bytecode:jmp label-end))))
+
+(defmethod generate ((generator bytecode-generator) (node ast:return-statement))
+  (let ((expressions (ast:return-statement-expressions node)))
+    (if expressions
+        (let ((registers (multiple-value-list (generate generator expressions))))
+          (add-instructions generator (bytecode:instr 'bytecode:ret (bytecode:immediate (length registers)))))
+        (add-instructions generator (bytecode:instr 'bytecode:ret (bytecode:immediate 0))))))
 
 (defun replace-instruction (generator address instruction)
   (with-slots (instructions) generator

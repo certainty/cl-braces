@@ -12,7 +12,9 @@
 (deftype register-t () '(unsigned-byte 16))
 (deftype address-t () '(unsigned-byte 64))
 (deftype label-t () '(unsigned-byte 64))
-(deftype operand-t () '(or register-t address-t label-t))
+(deftype immediate-t () '(unsigned-byte 16))
+(deftype operand-t () '(or immediate-t register-t address-t label-t))
+
 
 ;; A machine instruction as loaded and executed by the vm.
 (s:defconstructor instruction
