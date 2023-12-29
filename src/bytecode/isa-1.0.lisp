@@ -34,13 +34,13 @@
    (#x82 jz    ((label dst) (reg value))    "Jump to %dst if $value is zero")
    (#x83 jnz   ((label dst) (reg value))    "Jump to %dst if $value is non-zero")
    (#x84 neg   ((reg dst) (reg src))        "Negatate value in register $src and store it in $dst")
+   (#x85 call  ((reg fun) (imm argc))       "Calls the function in the $fun register providing $argc arguments. The arguments are the last $argc registers in the current context.")
 
    ;; ternary instructions #xc0 - #xff
    (#xC0 add   ((reg dst) (reg lhs) (reg rhs))      "Add what is in $rhs to $lhs and store the result in $dst")
    (#xC1 sub   ((reg dst) (reg lhs) (reg rhs))      "Subtracts what is in $rhs from $lhs and stores the result in $dst.")
    (#xC2 mul   ((reg dst) (reg lhs) (reg rhs))      "Multiplies what is in $lhs by $rhs and stores the result in $dst.")
    (#xC3 div   ((reg dst) (reg lhs) (reg rhs))      "Divides what is in $lhs by $rhs and stores the result in $dst.")
-   (#xC4 call  ((reg dst) (reg fun) (imm argc))     "Calls the function in the $fun register providing $argc arguments. The arguments are the last $argc registers in the current context.")
    (#xC5 land  ((reg dst) (reg lhs) (reg rhs))      "Logical AND of $lhs and $rhs and stores the result in $dst")
    (#xC6 lor   ((reg dst) (reg lhs) (reg rhs))      "Logical OR of $lhs and $rhs and stores the result in $dst")
    (#xC7 eq    ((reg dst) (reg lhs) (reg rhs))      "Compares $lhs and $rhs for equality and stores the result in $dst")

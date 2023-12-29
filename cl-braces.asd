@@ -74,6 +74,7 @@
    (:module "vm"
     :components
     ((:file "debug")
+     (:file "callstack")
      (:file "machine")))))
 
 (defsystem "cl-braces/tests"

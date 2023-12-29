@@ -60,10 +60,10 @@
     :initform 0
     :type scope-t
     :documentation "The current scope we're in")
-   (entrypoint
-    :initform 0
-    :type bytecode:address-t
-    :documentation "The address of the entrypoint of the chunk")
+   (main-function
+    :initform nil
+    :type (or null bytecode:address-t)
+    :documentation "The address of the main function if there is one")b
    (register-allocators
     :initform (list (make-register-allocator))
     :documentation "The stack of register allocators, that we're using to manage registers in functions.")))
@@ -133,15 +133,18 @@
 
 (defun create-label (generator prefix)
   (with-slots (block-labels instructions) generator
-    (s:lret* ((label-name (gensym (concatenate 'string prefix "_")))
-              (address (bytecode:label (length instructions))))
+    (let ((label-name (string (gensym (concatenate 'string prefix "_"))))
+          (address (bytecode:label (length instructions))))
       (setf (gethash address block-labels) label-name)
       (values address label-name))))
 
 (defun generate-chunk (ast symbol-table)
-  (let ((generator (make-bytecode-generator symbol-table)))
+  (let ((generator (make-bytecode-generator symbol-table))
+        (entrypoint nil))
     (generate generator ast)
-    (with-slots (instructions constants entrypoint block-labels) generator
+    (with-slots (instructions constants main-function block-labels) generator
+      (when main-function
+        (setf entrypoint (generate-entrypoint generator)))
       (let ((registers-used (pop-register-allocator generator)))
         (make-instance 'bytecode:chunk
                        :constants (constants-result constants)
@@ -149,6 +152,15 @@
                        :entrypoint entrypoint
                        :block-labels block-labels
                        :registers-used registers-used)))))
+
+(defun generate-entrypoint (generator)
+  (with-slots (main-function) generator
+    (push-register-allocator generator)
+    (let ((main-function-reg (next-register generator)))
+      (multiple-value-bind (entrypoint-address entrypoint-label) (create-label generator "__gobraces_entrypoint")
+        (add-instructions generator (bytecode:instr 'bytecode:const main-function-reg main-function))
+        (add-instructions generator (bytecode:instr 'bytecode:call main-function-reg (bytecode:immediate 0)))
+        entrypoint-address))))
 
 ;; At a later point, when we only generate from simplified code in SSA we can switch to using ast:walk.
 ;; For now we implement the traversal ourselves to have full control
@@ -169,15 +181,13 @@
     (setf current-package-name (ast:identifier-name (ast:package-declaration-name node)))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:function-declaration))
-  (with-slots (symbol-table functions) generator
+  (with-slots (symbol-table main-function functions) generator
     (let* ((signature (ast:function-declaration-signature node))
            (name (ast:identifier-name (ast:function-declaration-name node)))
            (params (ast:parameter-list-parameters (ast:function-signature-parameters signature)))
            (identifier-lists (mapcar #'ast:parameter-declaration-identifiers params))
            (body (ast:function-declaration-body node)))
       (multiple-value-bind (function-address function-label) (create-label generator (mangle-name generator name))
-        (when (entrypoint-p function-label)
-          (setf (slot-value generator 'entrypoint) function-address))
         (enter-scope generator)
         (push-register-allocator generator)
         (dolist (identifier-list identifier-lists)
@@ -192,6 +202,8 @@
                (const-addr (add-constant generator function-value))
                (function-id (find-function generator name)))
           (assert function-id)
+          (when (main-function-p function-label)
+            (setf main-function const-addr))
           (setf (gethash function-id functions) const-addr)
           function-label)))))
 
@@ -201,7 +213,7 @@
         (concatenate 'string current-package-name "#" name)
         name)))
 
-(defun entrypoint-p (name)
+(defun main-function-p (name)
   (plusp (cl-ppcre:count-matches "main#main_.+" name)))
 
 (defmethod generate ((generator bytecode-generator) (node ast:function-call))

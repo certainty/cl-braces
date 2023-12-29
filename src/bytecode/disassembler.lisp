@@ -28,8 +28,8 @@
   (a:when-let ((entrypoint (chunk-entrypoint chunk)))
     (terpri stream)
     (format stream "__entrypoint__~%~%")
-    (format stream "%~10a " (column-pc entrypoint))
-    (format stream ".~a" (column-label entrypoint nil nil chunk))))
+    (format stream "%~10a " (bytecode:label-address entrypoint))
+    (format stream ".~a" (column-label (bytecode:label-address entrypoint) nil nil chunk))))
 
 (defun disass-instruction (instr chunk &key (isa *current-isa*) (stream *standard-output*))
   (format stream "~16,a ~8,a ~30,a ~a~%"
@@ -108,28 +108,27 @@
          (format nil "~a = ~a" (format-operand value op-type) blocklabel)))
       (address
        (let ((constant (aref constants value)))
-         (format nil "~a = ~a" (format-operand value op-type) (format-constant constant chunk))))
+         (format nil "~a = ~a" (format-operand value op-type) (format-value constant chunk))))
       (immediate nil)
       (t (unreachable! "Unknown operand type")))))
 
-(defun format-constant (constant chunk)
+(defun format-value (value chunk)
   (cond
-    ((runtime.value:nilp constant) "nil")
-    ((runtime.value:boolp constant) (if constant "true" "false"))
-    ((runtime.value:intp constant) (format nil "~A" (runtime.value:int-value constant)))
-    ((runtime.value:closurep constant)
+    ((runtime.value:nilp value) "nil")
+    ((runtime.value:boolp value) (if value "true" "false"))
+    ((runtime.value:intp value) (format nil "~A" (runtime.value:int-value value)))
+    ((runtime.value:closurep value)
      (with-slots (block-labels) chunk
-       (let* ((label-address (runtime.value:closure-function-label constant))
+       (let* ((label-address (runtime.value:closure-function-label value))
               (blocklabel (gethash label-address block-labels)))
-         (format nil ".~15a" blocklabel))))
-    (t (unreachable! "Unknown constant type"))))
+         (format nil ".~15a" blocklabel))))))
 
 (defun disass-constants (chunk &key (stream *standard-output*))
   (with-slots (constants) chunk
     (format stream "__constants__~%~%")
     (loop :for i :from 0 :below (length constants)
           :for constant :across constants
-          :do (format stream "@~3a ~10a ~20a~%" i (format-constant-type constant) (format-constant constant chunk)))))
+          :do (format stream "@~3a ~10a ~20a~%" i (format-constant-type constant) (format-value constant chunk)))))
 
 
 (defun format-constant-type (value)

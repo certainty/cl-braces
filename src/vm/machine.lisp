@@ -1,5 +1,19 @@
 (in-package :cl-braces.vm.machine)
 
+(defparameter *MACHINE* nil)
+(defparameter *STACK-SIZE* 100)
+
+(defclass machine ()
+  ((call-stack
+    :initarg :call-stack
+    :initform nil)
+   (chunk
+    :initform nil
+    :type bytecode:chunk)))
+
+(defun make-machine (&key (stack-size *STACK-SIZE*))
+  (make-instance 'machine :call-stack (make-call-stack stack-size)))
+
 (defmacro with-operands ((operand &rest operands) instruction &body body)
   (let ((operand-count (length (cons operand operands)))
         (operands-var (gensym))
@@ -21,100 +35,97 @@
      (setf (aref ,registers dst) (runtime.value:box (,operation (runtime.value:unbox (aref ,registers src)))))))
 
 (defun run (input &key (fail-fast nil))
-  (let ((chunk (compiler:compile-string input :fail-fast fail-fast)))
-    (execute chunk)))
+  (let* ((machine (make-machine))
+         (chunk (compiler:compile-string input :fail-fast fail-fast))
+         (*MACHINE* machine))
+    (load-code machine chunk)
+    (execute machine)))
 
 (defun run-source-file (input &key (fail-fast) (entry-point nil))
-  (let ((chunk (compiler:compile-source-file input :fail-fast fail-fast)))
-    (when entry-point
-      (setf (slot-value chunk 'bytecode::entrypoint) entry-point))
-    (execute chunk)))
+  (let* ((machine (make-machine))
+         (chunk (compiler:compile-source-file input :fail-fast fail-fast))
+         (*MACHINE* machine))
+    (load-code machine chunk)
+    (execute machine)))
 
-(defclass call-frame ()
-  ((registers
-    :initarg :registers
-    :initform (vector))
-   (return-address
-    :initarg :return-address
-    :initform (error "return-address not specified"))))
+(defun load-code (machine provided-chunk)
+  (prog1 machine
+    (with-slots (call-stack chunk pc) machine
+      (call-stack-reset call-stack)
+      (setf chunk provided-chunk))))
 
-(defun make-call-frame (number-of-registers return-address)
-  (make-instance 'call-frame :registers (make-registers number-of-registers) :return-address return-address))
+(defun execute (machine)
+  (with-slots (chunk call-stack) machine
+    (let* ((entrypoint (bytecode:chunk-entrypoint chunk))
+           (constants  (bytecode:chunk-constants chunk))
+           (instructions (bytecode:chunk-code chunk))
+           (instruction-count (length instructions)))
+      (unless entrypoint
+        (error "Chunk has no entrypoint"))
 
-(defun make-registers (amount)
-  (make-array amount :element-type '(or null runtime.value:<value> bytecode:register-t) :initial-element nil))
-
-(defun execute (chunk)
-  (unless (bytecode:chunk-entrypoint chunk)
-    (error "Chunk has no entrypoint"))
-
-  (let* ((pc (the fixnum (bytecode:chunk-entrypoint chunk)))
-         (instructions (bytecode:chunk-code chunk))
-         (instruction-count (length instructions))
-         (instruction (the fixnum 0))
-         (zero-flag nil)
-         (opcode (the fixnum 0))
-         (call-stack nil)
-         (constants (bytecode:chunk-constants chunk))
-         (registers (make-registers 50)))
-    #-cl-braces-vm-release
-    (progn
-      (format t "## Execute ~%~%")
-      (dump-machine-state "Initial machine state" pc chunk registers :disass-chunk t))
-
-    (bytecode:with-opcodes-from-current-isa
-      (loop
-        (when (>= pc instruction-count)
-          (return))
-
-        (setf instruction (aref instructions pc))
-        (setf opcode (bytecode:instruction-opcode instruction))
-        (incf pc)
+      (let* ((pc          (the fixnum (bytecode:label-address entrypoint)))
+             (instruction (the fixnum 0))
+             (opcode (the fixnum 0))
+             (zero-flag nil)
+             (registers (make-registers (bytecode:chunk-registers-used chunk))))
 
         #-cl-braces-vm-release
-        (dump-machine-state "Execute instruction" pc chunk registers :disass-chunk nil :dump-instruction t)
+        (progn
+          (format t "## Execute ~%~%")
+          (dump-machine-state "Initial machine state" pc chunk registers :disass-chunk t)
+          (terpri))
 
-        (s:select opcode
-          (bytecode:noop t)
-          (bytecode:halt (return))
+        (bytecode:with-opcodes-from-current-isa
+          (loop
+            (when (>= pc instruction-count)
+              (return))
 
-          (bytecode:const
-           (with-operands (dst addr) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst) (aref constants addr))))
+            (setf instruction (aref instructions pc))
+            (setf opcode (bytecode:instruction-opcode instruction))
+            (incf pc)
 
-          (bytecode:mov
-           (with-operands (dst src) instruction
-             (setf result-reg dst)
-             (setf (aref registers dst) (aref registers src))))
+            #-cl-braces-vm-release
+            (dump-machine-state "Execute instruction" pc chunk registers :disass-chunk nil :dump-instruction t)
 
-          (bytecode:test
-           (with-operands (dst) instruction
-             (setf zero-flag (runtime.value:falsep (aref registers dst)))))
+            (s:select opcode
+              (bytecode:noop t)
+              (bytecode:halt (return))
 
-          (bytecode:jmp
-           (with-operands (addr) instruction
-             (setf pc addr)))
+              (bytecode:const
+               (with-operands (dst addr) instruction
+                 (setf (aref registers dst) (aref constants addr))))
 
-          (bytecode:jz
-           (with-operands (addr) instruction
-             (when zero-flag
-               (setf pc addr))))
+              (bytecode:mov
+               (with-operands (dst src) instruction
+                 (setf (aref registers dst) (aref registers src))))
 
-          (bytecode:jnz
-           (with-operands (addr) instruction
-             (unless zero-flag
-               (setf pc addr))))
+              (bytecode:test
+               (with-operands (dst) instruction
+                 (setf zero-flag (runtime.value:falsep (aref registers dst)))))
 
-          (bytecode:add (binary-op + instruction registers))
-          (bytecode:sub (binary-op - instruction registers))
-          (bytecode:mul (binary-op * instruction registers))
-          (bytecode:div (binary-op / instruction registers))
-          (bytecode:neg (unary-op  - instruction registers))
-          (bytecode:eq  (binary-op = instruction registers))
+              (bytecode:jmp
+               (with-operands (addr) instruction
+                 (setf pc addr)))
 
-          (t (todo! "unsupported opcode")))))
+              (bytecode:jz
+               (with-operands (addr) instruction
+                 (when zero-flag
+                   (setf pc addr))))
 
-    #-cl-braces-vm-release
-    (dump-machine-state "Final machine state" pc chunk registers :disass-chunk nil :dump-instruction nil)
-    (values (find-if-not #'null registers :from-end t) registers)))
+              (bytecode:jnz
+               (with-operands (addr) instruction
+                 (unless zero-flag
+                   (setf pc addr))))
+
+              (bytecode:add (binary-op + instruction registers))
+              (bytecode:sub (binary-op - instruction registers))
+              (bytecode:mul (binary-op * instruction registers))
+              (bytecode:div (binary-op / instruction registers))
+              (bytecode:neg (unary-op  - instruction registers))
+              (bytecode:eq  (binary-op = instruction registers))
+
+              (t (todo! "unsupported opcode")))))
+
+        #-cl-braces-vm-release
+        (dump-machine-state "Final machine state" pc chunk registers :disass-chunk nil :dump-instruction nil)
+        (values (find-if-not #'null registers :from-end t) registers)))))

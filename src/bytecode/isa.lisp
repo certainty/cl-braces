@@ -73,6 +73,10 @@
     ((label value) value)
     ((immediate value) value)))
 
+(defun label-address (label)
+  (trivia:match label
+    ((label address) address)))
+
 (defclass isa-operand ()
   ((type-description
     :reader isa-operand-type-description

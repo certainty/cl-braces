@@ -97,6 +97,7 @@
    #:register-value
    #:disass
    #:disass-instruction
+   #:format-value
 
    #:address-t
    #:register-t
@@ -109,6 +110,7 @@
    #:register
    #:reg
    #:label
+   #:label-address
    #:immediate
    #:imm
 
