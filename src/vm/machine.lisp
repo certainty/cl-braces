@@ -10,34 +10,53 @@
                    collect `(,operand (aref ,operands-var ,i)))
          ,@body))))
 
-(defmacro binary-op (operation instruction registers result-register)
-  `(with-operands (lhs rhs) instruction
-     (setf ,result-register lhs)
-     (setf (aref ,registers lhs)
+(defmacro binary-op (operation instruction registers)
+  `(with-operands (dst lhs rhs) instruction
+     (setf (aref ,registers dst)
            (runtime.value:box (,operation (runtime.value:unbox (aref ,registers lhs))
                                           (runtime.value:unbox (aref ,registers rhs)))))))
 
-(defmacro unary-op (operation instruction registers result-register)
-  `(with-operands (dst) instruction
-     (setf ,result-register dst)
-     (setf (aref ,registers dst) (runtime.value:box (,operation (runtime.value:unbox (aref ,registers dst)))))))
+(defmacro unary-op (operation instruction registers)
+  `(with-operands (dst src) instruction
+     (setf (aref ,registers dst) (runtime.value:box (,operation (runtime.value:unbox (aref ,registers src)))))))
 
 (defun run (input &key (fail-fast nil))
   (let ((chunk (compiler:compile-this input :fail-fast fail-fast)))
     (execute chunk)))
 
-(-> execute (bytecode:chunk) (values runtime.value:value &optional))
+(defun run-source-file (input &key (fail-fast) (entry-point nil))
+  (let ((chunk (compiler:compile-source-file input :fail-fast fail-fast)))
+    (when entry-point
+      (setf (slot-value chunk 'bytecode::entrypoint) entry-point))
+    (execute chunk)))
+
+(defclass call-frame ()
+  ((registers
+    :initarg :registers
+    :initform (vector))
+   (return-address
+    :initarg :return-address
+    :initform (error "return-address not specified"))))
+
+(defun make-call-frame (number-of-registers return-address)
+  (make-instance 'call-frame :registers (make-registers number-of-registers) :return-address return-address))
+
+(defun make-registers (amount)
+  (make-array amount :element-type '(or null runtime.value:<value> bytecode:register-t) :initial-element nil))
+
 (defun execute (chunk)
-  (let* ((pc (the fixnum 0))
+  (unless (bytecode:chunk-entrypoint chunk)
+    (error "Chunk has no entrypoint"))
+
+  (let* ((pc (the fixnum (bytecode:chunk-entrypoint chunk)))
          (instructions (bytecode:chunk-code chunk))
          (instruction-count (length instructions))
          (instruction (the fixnum 0))
-         (result-reg (the fixnum 0))
          (zero-flag nil)
          (opcode (the fixnum 0))
+         (call-stack nil)
          (constants (bytecode:chunk-constants chunk))
-         (registers (make-array (bytecode:chunk-registers-used chunk) :element-type '(or runtime.value:value bytecode:register-t) :initial-element runtime.value:nilv)))
-
+         (registers (make-registers 50)))
     #-cl-braces-vm-release
     (progn
       (format t "## Execute ~%~%")
@@ -87,14 +106,15 @@
              (unless zero-flag
                (setf pc addr))))
 
-          (bytecode:add (binary-op + instruction registers result-reg))
-          (bytecode:sub (binary-op - instruction registers result-reg))
-          (bytecode:mul (binary-op * instruction registers result-reg))
-          (bytecode:div (binary-op / instruction registers result-reg))
-          (bytecode:neg (unary-op - instruction registers result-reg))
+          (bytecode:add (binary-op + instruction registers))
+          (bytecode:sub (binary-op - instruction registers))
+          (bytecode:mul (binary-op * instruction registers))
+          (bytecode:div (binary-op / instruction registers))
+          (bytecode:neg (unary-op  - instruction registers))
+          (bytecode:eq  (binary-op = instruction registers))
+
           (t (todo! "unsupported opcode")))))
 
     #-cl-braces-vm-release
     (dump-machine-state "Final machine state" pc chunk registers :disass-chunk nil :dump-instruction nil)
-
-    (values (aref registers result-reg))))
+    (values (find-if-not #'null registers :from-end t) registers)))

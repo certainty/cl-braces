@@ -21,7 +21,7 @@
   (assert-equal
    10
    (compile-and-run "
-   if 10  {
+   if true  {
      10
    } else {
      20
@@ -32,7 +32,7 @@
    30
    (compile-and-run "
    lim := 10
-   if v := 20; v + lim {
+   if v := 10; v == 10  {
       v
    }
    ")))

@@ -141,11 +141,10 @@
 (defun generate-chunk (ast symbol-table)
   (let ((generator (make-bytecode-generator symbol-table)))
     (generate generator ast)
-    (with-slots (instructions constants functions entrypoint block-labels) generator
+    (with-slots (instructions constants entrypoint block-labels) generator
       (let ((registers-used (pop-register-allocator generator)))
         (make-instance 'bytecode:chunk
                        :constants (constants-result constants)
-                       :functions functions
                        :code instructions
                        :entrypoint entrypoint
                        :block-labels block-labels
@@ -175,7 +174,7 @@
         (generate generator body)
         (leave-scope generator)
         (let* ((registers-used (pop-register-allocator generator))
-               (function-value (runtime.value:make-closure function-address (bytecode:arity-exactly (length identifier-lists)) registers-used))
+               (function-value (runtime.value:make-closure function-address (runtime.value:arity-exactly (length identifier-lists)) registers-used))
                (const-addr (add-constant generator function-value))
                (function-id (find-function generator name)))
           (assert function-id)
@@ -220,30 +219,36 @@
 
 (defmethod generate ((generator bytecode-generator) (node ast:unary-expression))
   (s:lret ((op (ast:unary-expression-operator node))
-           (operand (generate generator (ast:unary-expression-operand node))))
+           (operand (generate generator (ast:unary-expression-operand node)))
+           (result (next-register generator)))
     (assert operand)
     (cond
       ((token:class= op token:@MINUS)
-       (add-instructions generator (bytecode:instr 'bytecode:neg operand)))
-      ((token:class= op token:@PLUS) t)
+       (add-instructions generator (bytecode:instr 'bytecode:neg result operand))
+       result)
+      ((token:class= op token:@PLUS)
+       operand)
       (t (todo! "unary operator")))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:binary-expression))
   (let* ((op (ast:binary-expression-operator node))
          (left  (generate generator (ast:binary-expression-lhs node)))
-         (right (generate generator (ast:binary-expression-rhs node))))
+         (right (generate generator (ast:binary-expression-rhs node)))
+         (result (next-register generator)))
     (assert left)
     (assert right)
-    (prog1 left
+    (prog1 result
       (cond
         ((token:class= op token:@PLUS)
-         (add-instructions generator (bytecode:instr 'bytecode:add left right)))
+         (add-instructions generator (bytecode:instr 'bytecode:add result left right)))
         ((token:class= op token:@MINUS)
-         (add-instructions generator (bytecode:instr 'bytecode:sub left right)))
+         (add-instructions generator (bytecode:instr 'bytecode:sub result left right)))
         ((token:class= op token:@STAR)
-         (add-instructions generator (bytecode:instr 'bytecode:mul left right)))
+         (add-instructions generator (bytecode:instr 'bytecode:mul result left right)))
         ((token:class= op token:@SLASH)
-         (add-instructions generator (bytecode:instr 'bytecode:div left right)))
+         (add-instructions generator (bytecode:instr 'bytecode:div result left right)))
+        ((token:class= op token:@EQUAL_EQUAL)
+         (add-instructions generator (bytecode:instr 'bytecode:eq result left right)))
         (t (todo! "binary operator"))))))
 
 (defmethod generate ((generator bytecode-generator) (node ast:variable-declaration))

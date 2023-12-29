@@ -16,8 +16,12 @@
   (format t "~%"))
 
 (defun format-register (reg)
-  (trivia:match reg
-    ((runtime.value:nilv) "nil")
-    ((runtime.value:boolv b) (if b "true" "false"))
-    ((runtime.value:intv n) (format nil "i~A" n))
-    (_ (format nil "R~A" reg))))
+  (cond
+    ((runtime.value:nilp reg) "nil")
+    ((runtime.value:boolp reg)
+     (if (runtime.value:truep reg) "true" "false"))
+    ((runtime.value:intp reg)
+     (format nil "i~A" (runtime.value:int-value reg)))
+    ((runtime.value:closurep reg)
+     (format nil ".~A" (runtime.value:closure-function-label reg)))
+    (t (format nil "R~A" reg))))
