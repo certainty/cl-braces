@@ -26,6 +26,7 @@
   @RETURN
   @VAR
   @FUNC
+  @PACKAGE
 
   ;; [Literals](https://golang.org/ref/spec#Literals)
   @INTEGER

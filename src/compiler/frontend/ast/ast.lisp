@@ -46,7 +46,12 @@
 ;;; ===========================================================================
 
 (defclass source-file (node)
-  ((declarations
+  ((package
+    :reader source-file-package
+    :initarg :package
+    :initform (error "must provide package")
+    :documentation "The package declaration for the file.")
+   (declarations
     :reader source-file-declarations
     :initarg :declarations
     :initform (error "must provide declarations")
@@ -54,11 +59,15 @@
     :type list))
   (:documentation "The root node of the highlevel AST."))
 
-(defun make-source-file (decls)
-  (make-instance 'source-file :declarations decls :location (location:make-source-location 0 0 0)))
+(defun make-source-file (package-decl decls)
+  (make-instance 'source-file
+                 :package package-decl
+                 :declarations decls
+                 :location (location:make-source-location 0 0 0)))
 
 (defmethod children ((node source-file))
-  (source-file-declarations node))
+  (cons (source-file-package node)
+        (source-file-declarations node)))
 
 (defmethod span:for ((node source-file ))
   (with-slots (declarations) node
@@ -518,6 +527,23 @@
                      (or
                       (and type (span:to type))
                       (token:location last-name))))))
+
+(defclass package-declaration (declaration)
+  ((name
+    :reader package-declaration-name
+    :initarg :name
+    :initform (error "must provide name")
+    :type identifier))
+  (:documentation "A package declaration"))
+
+(defmethod children ((node package-declaration))
+  (list (package-declaration-name node)))
+
+(defmethod span:for ((node package-declaration))
+  (with-slots (name) node
+    (make-instance 'span
+                   :from (token:location name)
+                   :to (token:location name))))
 
 ;;; ===========================================================================
 ;;; Expressions

@@ -8,17 +8,12 @@
                      (compile-error-message condition)
                      (compile-error-details condition)))))
 
-
-
-(defun compile-this (input-designator &key (fail-fast nil))
-  "Compile the `input-designator' to a chunk of bytecode."
-  (let* ((ast (pass-syntactic-analysis input-designator :fail-fast fail-fast))
-         (symbols (pass-semantic-analysis ast))
-         (chunk (pass-code-generation ast symbols)))
-    chunk))
+(defun compile-string (input &key (fail-fast nil) (wrap-in-main t))
+  (let ((full-source (format nil "package main~% func main() {~%~A~%}" input)))
+    (compile-source-file full-source :fail-fast fail-fast)))
 
 (defun compile-source-file (input-designator &key (fail-fast nil))
-  (let* ((ast (pass-syntactic-analysis input-designator :production #'parser::<source-file :fail-fast fail-fast))
+  (let* ((ast     (pass-syntactic-analysis input-designator :production #'parser::<source-file :fail-fast fail-fast))
          (symbols (pass-semantic-analysis ast)))
     (pass-code-generation ast symbols)))
 

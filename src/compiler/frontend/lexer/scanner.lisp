@@ -260,7 +260,8 @@
      "continue" token:@CONTINUE
      "fallthrough" token:@FALLTHROUGH
      "return" token:@RETURN
-     "var" token:@VAR)
+     "var" token:@VAR
+     "package" token:@PACKAGE)
   :test #'equalp)
 
 (-> scan-identifier (state) (or null token:token))

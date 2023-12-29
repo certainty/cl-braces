@@ -4,7 +4,7 @@
   (let* ((source-code "
           -(3 + 3 + ( 5 + 4 ) * 8)
         ")
-         (code (compiler:compile-this source-code)))
+         (code (compiler:compile-string source-code)))
     (time (machine:execute code))))
 
 
@@ -17,5 +17,5 @@
             x
         }
         ")
-         (code (compiler:compile-this source-code)))
+         (code (compiler:compile-string source-code)))
     (time (machine:execute code))))

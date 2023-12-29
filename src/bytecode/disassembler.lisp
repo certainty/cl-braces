@@ -7,7 +7,7 @@
 ;;;; Example:
 ;;;;
 ;;;; ```common-lisp
-;;;; (bytecode:disass (compiler:compile-this "3 + 4"))
+;;;; (bytecode:disass (compiler:compile-string "3 + 4"))
 ;;;; ```
 
 (defun disass (chunk &key (isa *current-isa*) (stream *standard-output*) (include-constants t))

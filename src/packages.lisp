@@ -254,6 +254,7 @@
    #:@FALLTHROUGH
    #:@RETURN
    #:@VAR
+   #:@PACKAGE
    #:@ELLIPSIS))
 
 (defpackage :cl-braces.compiler.frontend.scanner
@@ -368,6 +369,9 @@
    #:parameter-list
    #:parameter-list-parameters
 
+   #:package-declaration
+   #:package-declaration-name
+
    #:comma
 
    #:block
@@ -375,6 +379,7 @@
 
    #:source-file
    #:source-file-declarations
+   #:source-file-package
    #:make-source-file
 
    #:walk
@@ -417,7 +422,7 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   #:compile-this
+   #:compile-string
    #:compile-source-file))
 
 (defpackage :cl-braces.compiler.symbols

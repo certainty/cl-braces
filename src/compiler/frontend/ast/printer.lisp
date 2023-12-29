@@ -100,6 +100,7 @@
 (define-default-printer parameter-list "parameter-list")
 (define-default-printer parameter-declaration "parameter-declaration")
 (define-default-printer parameter-splat "parameter-splat")
+(define-default-printer package-declaration "package-declaration")
 
 (defmethod enter ((printer ast-printer) (tok token:token))
   (with-slots (indentation-level stream print-spans-p) printer

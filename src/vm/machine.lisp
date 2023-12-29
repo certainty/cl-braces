@@ -21,7 +21,7 @@
      (setf (aref ,registers dst) (runtime.value:box (,operation (runtime.value:unbox (aref ,registers src)))))))
 
 (defun run (input &key (fail-fast nil))
-  (let ((chunk (compiler:compile-this input :fail-fast fail-fast)))
+  (let ((chunk (compiler:compile-string input :fail-fast fail-fast)))
     (execute chunk)))
 
 (defun run-source-file (input &key (fail-fast) (entry-point nil))

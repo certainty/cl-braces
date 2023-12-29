@@ -204,8 +204,22 @@
 (-> <source-file (state) ast:source-file)
 (defun <source-file (state)
   "Parses a source file into an `ast:source-file' node."
-  (let ((decls (<top-level-declaration-list state)))
-    (accept state 'ast:source-file :declarations decls)))
+  (let ((package (expect #'<package-declaration "Expected package clause" state))
+        (decls (<top-level-declaration-list state)))
+    (accept state 'ast:source-file :package package :declarations decls)))
+
+;;;
+;;; PackageClause  = "package" PackageName .
+;;; PackageName    = identifier .
+;;;
+(defun <package-declaration (state)
+  (guard-parse state
+    (with-slots (cur-token) state
+      (when (token:class= cur-token token:@PACKAGE)
+        (advance! state)
+        (let ((name (expect #'<identifier "Expected package name" state)))
+          (consume! state token:@SEMICOLON "Expected ';' after package declaration")
+          (accept state 'ast:package-declaration :name name))))))
 
 (defun <top-level-declaration-list (state)
   (guard-parse state

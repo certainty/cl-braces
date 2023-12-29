@@ -133,7 +133,7 @@
 
 (defun create-label (generator prefix)
   (with-slots (block-labels instructions) generator
-    (s:lret* ((label-name (gensym prefix))
+    (s:lret* ((label-name (gensym (concatenate 'string prefix "_")))
               (address (bytecode:label (length instructions))))
       (setf (gethash address block-labels) label-name)
       (values address label-name))))
@@ -159,6 +159,15 @@
   (declare (ignore node generator))
   t)
 
+(defmethod generate ((generator bytecode-generator) (node ast:source-file))
+  (generate generator (ast:source-file-package node))
+  (dolist (decl (ast:source-file-declarations node))
+    (generate generator decl)))
+
+(defmethod generate ((generator bytecode-generator) (node ast:package-declaration))
+  (with-slots (current-package-name) generator
+    (setf current-package-name (ast:identifier-name (ast:package-declaration-name node)))))
+
 (defmethod generate ((generator bytecode-generator) (node ast:function-declaration))
   (with-slots (symbol-table functions) generator
     (let* ((signature (ast:function-declaration-signature node))
@@ -166,7 +175,9 @@
            (params (ast:parameter-list-parameters (ast:function-signature-parameters signature)))
            (identifier-lists (mapcar #'ast:parameter-declaration-identifiers params))
            (body (ast:function-declaration-body node)))
-      (multiple-value-bind (function-address function-label) (create-label generator name)
+      (multiple-value-bind (function-address function-label) (create-label generator (mangle-name generator name))
+        (when (entrypoint-p function-label)
+          (setf (slot-value generator 'entrypoint) function-address))
         (enter-scope generator)
         (push-register-allocator generator)
         (dolist (identifier-list identifier-lists)
@@ -181,6 +192,15 @@
           (setf (gethash function-id functions) const-addr)
           function-label)))))
 
+(defun mangle-name (generator name)
+  (with-slots (current-package-name) generator
+    (if current-package-name
+        (concatenate 'string current-package-name "#" name)
+        name)))
+
+(defun entrypoint-p (name)
+  (plusp (cl-ppcre:count-matches "main#main_.+" name)))
+
 (defmethod generate ((generator bytecode-generator) (node ast:function-call))
   (let* ((function-register (generate generator (ast:function-call-function node)))
          (arguments (ast:function-call-arguments node))
@@ -188,10 +208,6 @@
     (when arguments
       (setf argument-registers (multiple-value-list (generate generator arguments))))
     (add-instructions generator (bytecode:instr 'bytecode:call function-register (bytecode:immediate (length argument-registers))))))
-
-(defmethod generate ((generator bytecode-generator) (node ast:source-file))
-  (dolist (decl (ast:source-file-declarations node))
-    (generate generator decl)))
 
 (defmethod generate ((generator bytecode-generator) (node ast:statement-list))
   (let ((statements (ast:statement-list-statements node)))
