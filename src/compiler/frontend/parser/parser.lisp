@@ -624,16 +624,18 @@
 
 (a:define-constant +operator-rules+
     (s:dict
-     token:@MINUS  (cons +precedence-term+ +associativity-left+)
-     token:@PLUS   (cons +precedence-term+ +associativity-left+)
-     token:@SLASH  (cons +precedence-factor+ +associativity-left+)
-     token:@STAR   (cons +precedence-factor+ +associativity-left+)
-     token:@LT     (cons +precedence-term+ +associativity-left+)
-     token:@LE     (cons +precedence-term+ +associativity-left+)
-     token:@GT     (cons +precedence-term+ +associativity-left+)
-     token:@GE     (cons +precedence-term+ +associativity-left+)
-     token:@LPAREN (cons +precedence-call+ +associativity-left+)
-     token:@RPAREN (cons +precedence-none+ +associativity-none+))
+     token:@MINUS       (cons +precedence-term+ +associativity-left+)
+     token:@PLUS        (cons +precedence-term+ +associativity-left+)
+     token:@SLASH       (cons +precedence-factor+ +associativity-left+)
+     token:@STAR        (cons +precedence-factor+ +associativity-left+)
+     token:@EQUAL_EQUAL (cons +precedence-term+ +associativity-left+)
+     token:@BANG_EQUAL  (cons +precedence-term+ +associativity-left+)
+     token:@LT          (cons +precedence-term+ +associativity-left+)
+     token:@LE          (cons +precedence-term+ +associativity-left+)
+     token:@GT          (cons +precedence-term+ +associativity-left+)
+     token:@GE          (cons +precedence-term+ +associativity-left+)
+     token:@LPAREN      (cons +precedence-call+ +associativity-left+)
+     token:@RPAREN      (cons +precedence-none+ +associativity-none+))
   :test #'equalp)
 
 (defun operator-rule-for (token-class)

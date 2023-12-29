@@ -7,7 +7,7 @@
 (defclass constants-builder ()
   ((registered-constants
     :initform (make-hash-table :test 'equal)
-    :type (hash-table bytecode:address runtime.value:value)
+    :type (hash-table bytecode:address runtime.value:<value>)
     :documentation "A hash table that maps constant values to their addresses in the constant table")
    (next-address
     :initform 0
@@ -19,7 +19,7 @@
   "Creates a new constants builder. You should never have to create this directly. Use the `chunk-builder' instead."
   (make-instance 'constants-builder))
 
-(-> constants-add (constants-builder runtime.value:value) bytecode:address)
+(-> constants-add (constants-builder runtime.value:<value>) bytecode:address)
 (defun constants-add (builder value)
   "Add the constant to the constant pool and return its address.
   Constants will be deduplicated, so if the constant already exists as determined by `equal', the address of the existing constant will be returned."

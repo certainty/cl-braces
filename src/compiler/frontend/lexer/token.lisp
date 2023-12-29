@@ -52,6 +52,18 @@
   @GT
   @GE
   @ELLIPSIS
+  @AMPERSAND
+  @AMPERSAND_AMPERSAND
+  @AMPERSAND_EQUAL
+  @PIPE
+  @PIPE_PIPE
+  @PIPE_EQUAL
+  @CARET
+  @CARET_EQUAL
+  @TILDE
+  @TILDE_EQUAL
+  @BANG
+  @BANG_EQUAL
 
   ;; [Punctuation](https://golang.org/ref/spec#Operators_and_punctuation)
   @LPAREN

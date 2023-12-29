@@ -73,11 +73,11 @@
 (defun format-operand (value op-type)
   "Formats the given operand value according to the given operand type.
    Registers are formatted as $<reg-number>, addresses as @<address-number>."
-  (cond
-    ((eq op-type 'register) (format nil "$~a" value))
-    ((eq op-type 'address) (format nil "@~a" value))
-    ((eq op-type 'label)   (format nil "%0x~X" value))
-    ((eq op-type 'immediate) (format nil "~a" value))
+  (case op-type
+    (register (format nil "$~a" value))
+    (address (format nil "@~a" value))
+    (label   (format nil "%0x~X" value))
+    (immediate (format nil "~a" value))
     (t (unreachable! "Unknown operand type"))))
 
 (defun column-comment (instr isa chunk)
@@ -107,19 +107,29 @@
       (t (unreachable! "Unknown operand type")))))
 
 (defun format-constant (constant chunk)
-  (trivia:match constant
-    ((runtime.value:nilv) "nil")
-    ((runtime.value:boolv b) (if b (format nil "true") (format nil "false")))
-    ((runtime.value:intv n) (format nil "i~A" n))
-    ((runtime.value:closurev c)
+  (cond
+    ((runtime.value:nilp constant) "nil")
+    ((runtime.value:boolp constant) (if constant "true" "false"))
+    ((runtime.value:intp constant) (format nil "~A" (runtime.value:int-value constant)))
+    ((runtime.value:closurep constant)
      (with-slots (block-labels) chunk
-       (let* ((label-address (runtime.value:closure-function-address c))
+       (let* ((label-address (runtime.value:closure-function-label constant))
               (blocklabel (gethash label-address block-labels)))
-         (format nil ".~15a" blocklabel))))))
+         (format nil ".~15a" blocklabel))))
+    (t (unreachable! "Unknown constant type"))))
 
 (defun disass-constants (chunk &key (stream *standard-output*))
   (with-slots (constants) chunk
     (format stream "__constants__~%")
     (loop :for i :from 0 :below (length constants)
           :for constant :across constants
-          :do (format stream "@~3a ~20a~%" i (format-constant constant chunk)))))
+          :do (format stream "@~3a ~10a ~20a~%" i (format-constant-type constant) (format-constant constant chunk)))))
+
+
+(defun format-constant-type (value)
+  (cond
+    ((runtime.value:nilp value) "nil")
+    ((runtime.value:boolp value) "bool")
+    ((runtime.value:intp value) "int")
+    ((runtime.value:closurep value) "closure")
+    (t (unreachable! "Unknown constant type"))))

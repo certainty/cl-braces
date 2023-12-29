@@ -25,37 +25,14 @@
   (print-unreadable-object (instruction stream :type nil)
     (format stream "INSTRUCTION OPCODE: ~A ~A" (instruction-opcode instruction) (instruction-operands instruction))))
 
-(deftype constant-table () '(vector runtime.value:value))
-
-(s:defunion arity
-  (arity-exactly (n fixnum))
-  (arity-at-least (n fixnum)))
-
-(defclass function-record ()
-  ((arity
-    :reader function-record-arity
-    :initarg :arity
-    :type arity)
-   (registers-used
-    :reader function-record-registers-used
-    :initarg :registers-used
-    :type (integer 0 *))
-   (address
-    :reader function-record-address
-    :initarg :address
-    :type address-t)))
+(deftype constant-table () '(vector runtime.value:<value>))
 
 (defclass chunk ()
   ((constants
     :reader chunk-constants
     :initarg :constants
-    :initform (make-array 0  :element-type 'runtime.value:value :adjustable t :fill-pointer t)
+    :initform (make-array 0  :element-type 'runtime.value:<value> :adjustable t :fill-pointer t)
     :type  constant-table)
-   (functions
-    :reader chunk-functions
-    :initarg :functions
-    :initform (make-array 0 :element-type 'function-record :adjustable t :fill-pointer t)
-    :type (vector function-record))
    (code
     :reader chunk-code
     :initarg :code
@@ -74,8 +51,8 @@
    (entrypoint
     :reader chunk-entrypoint
     :initarg :entrypoint
-    :initform 0
-    :type address-t)))
+    :initform nil
+    :type (or null address-t))))
 
 (defmacro do-instructions ((pc instruction chunk) &body body)
   `(with-slots (code) chunk

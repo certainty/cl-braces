@@ -37,20 +37,28 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   #:value
-   #:intV
-   #:boolv
-   #:nilv
+   #:<value>
+   #:make-nil
+   #:nilp
+   #:make-bool
+   #:truep
+   #:falsep
+   #:boolp
+   #:make-int
+   #:intp
+   #:int-value
+   #:<closure>
+   #:make-closure
+   #:closurep
+   #:closure-up-values
+   #:closure-arity
+   #:closure-registers-used
+   #:closure-function-label
    #:box
    #:unbox
-   #:falsep
-   #:truep
-   #:nonep
-   #:closurev
-   #:closure-function-address
-   #:closure-registers-used
-   #:closure-arity
-   #:make-closure))
+   #:<arity>
+   #:arity-exactly
+   #:arity-at-least))
 
 (defpackage :cl-braces.bytecode
   (:nicknames :bytecode)
@@ -58,21 +66,13 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   #:arity
-   #:arity-exactly
-   #:arity-at-least
-   #:function-record
-   #:function-record-arity
-   #:function-record-registers-used
-   #:function-record-address
    #:chunk
    #:instruction
    #:chunk-code
    #:chunk-constants
    #:chunk-registers-used
+   #:chunk-entrypoint
    #:constant-table
-
-
 
    #:make-constants-builder
    #:constants-add
@@ -126,7 +126,11 @@
    #:sub
    #:div
    #:mul
-   #:neg))
+   #:neg
+   #:eq
+   #:lor
+   #:land
+   #:lnot))
 
 ;;;
 ;;; Source code
@@ -225,6 +229,19 @@
    #:@MUL_EQUAL
    #:@EQUAL
    #:@EQUAL_EQUAL
+   #:@AMPERSAND_AMPERSAND
+   #:@AMPERSAND
+   #:@AMPERSAND_EQUAL
+   #:@PIPE_PIPE
+   #:@PIPE
+   #:@PIPE_EQUAL
+   #:@BANG
+   #:@BANG_EQUAL
+   #:@TILDE
+   #:@TILDE_EQUAL
+   #:@CARET
+   #:@CARET_EQUAL
+
    #:@IDENTIFIER
    #:@TRUE
    #:@FALSE
@@ -389,8 +406,6 @@
   (:use :cl :cl-braces.support)
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
-
-  (:import-from :cl-braces.runtime.value :value)
   (:import-from :cl-braces.bytecode :addr :reg :register :address)
   (:export
    #:generate-chunk
