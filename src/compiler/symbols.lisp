@@ -15,6 +15,11 @@
     :initarg :name
     :initform (error "name not initialized")
     :type string)
+   (package-name
+    :reader package-name*
+    :initarg :package-name
+    :initform (error "package not initialized")
+    :type string)
    (denotation
     :reader denotation
     :initarg :denotation
@@ -25,11 +30,22 @@
     :initarg :scope
     :initform 0
     :type scope-t)
+   (exportedp
+    :reader exportedp
+    :initarg :exportedp
+    :initform nil
+    :type boolean)
    (location
     :reader location
     :initarg :location
     :initform nil
     :type (or null location:source-location))))
+
+(defun qualified-name (symbol)
+  (qualify (package-name* symbol) (name symbol)))
+
+(defun qualify (package name)
+  (concatenate 'string package "#" name))
 
 (defmethod print-object ((symbol <symbol>) stream)
   (print-unreadable-object (symbol stream :type t :identity t)
@@ -87,19 +103,24 @@
   (and (denotes-variable-p sym)
        (string= (name sym) "_")))
 
-(-> add-symbol (symbol-table string denotation-t &key (:scope scope-t) (:location (or null location:source-location))) string)
-(defun add-symbol (table name denotation &key (scope 0) (location nil))
-  "Add the symbol with the given `NAME' and `DENOTATION' to the `TABLE' and return its `id'"
+(-> add-symbol (symbol-table string string denotation-t &key (:scope scope-t) (:location (or null location:source-location))) string)
+(defun add-symbol (table package name denotation &key (scope 0) (location nil))
+  "Add the symbol with the given `NAME' in `PACKAGE' and `DENOTATION' to the `TABLE' and return its `id'"
+
+  (assert (plusp (length package)) (package package) "package must not be empty")
+  (assert (plusp (length name)) (name name) "name must not be empty")
+
   (with-slots (symbols-by-name symbols-by-id) table
-    (let ((sym (make-instance '<symbol> :name name :denotation denotation :scope scope :location location)))
+    (let* ((exportedp (char= (char-upcase (aref name 0)) (aref name 0)))
+           (sym (make-instance '<symbol> :package-name package :name name :denotation denotation :exportedp exportedp :scope scope :location location)))
       (with-slots (id) sym
         (prog1 id
           (setf (gethash id symbols-by-id) sym)
-          (let ((updated (gethash (name sym) symbols-by-name)))
+          (let ((updated (gethash (qualified-name sym) symbols-by-name)))
             (pushnew sym updated)
             ;; symbols with a higher scope are first
             (setf updated (sort updated #'> :key #'scope))
-            (setf (gethash (name sym) symbols-by-name) updated)))))))
+            (setf (gethash (qualified-name sym) symbols-by-name) updated)))))))
 
 (-> find-by-id (symbol-table string) (or null <symbol>))
 (defun find-by-id (table id)
@@ -107,18 +128,21 @@
   (with-slots (symbols-by-id) table
     (gethash id symbols-by-id)))
 
-(-> find-by-name (symbol-table string &key (:denotation (or null (function (<symbol>) boolean))) (:scope<= (or null scope-t))) list)
-(defun find-by-name (table name &key (denotation nil) (scope<= nil))
+(-> find-by-name (symbol-table string string &key (:denotation (or null (function (<symbol>) boolean))) (:scope<= (or null scope-t)) (:only-exported (member nil t))) list)
+(defun find-by-name (table package name &key (denotation nil) (scope<= nil) (only-exported nil))
   "Find all symbols with the given `NAME' in the `TABLE' and return them or NIL if it does not exist.
 If `DENOTATION' is given if must be a function that takes a symbol and returns a boolean. See also `denots-any', `denotes-function-p', `denotes-variable-p' and `denotes-type-p'.
 If `SCOPE<=' is given all symboles that have scope <= the given scope are returned.
+If `ONLY-EXPORTED' is true only exported symbols are returned.
 "
   (with-slots (symbols-by-name) table
-    (let ((candidates (gethash name symbols-by-name)))
+    (let ((candidates (gethash (qualify package name) symbols-by-name)))
       (when denotation
         (setf candidates (filter-denotation denotation candidates)))
       (when scope<=
         (setf candidates (remove-if (lambda (sym) (> (scope sym) scope<=)) candidates)))
+      (when only-exported
+        (setf candidates (remove-if-not #'exportedp candidates)))
       candidates)))
 
 (-> denotes-any (denotation-t &rest denotation-t) (function (<symbol>) boolean))
@@ -144,9 +168,9 @@ It searchs from high to low scopes, so it finds the hightest scope that is <= `C
   (with-slots (symbols-by-name) obj
     (let ((all-symbols (a:hash-table-alist symbols-by-name)))
       (setf all-symbols (sort all-symbols #'string< :key #'car))
-      (format *debug-io* "~20,a ~15,a ~7,a ~20,a~%" "Name" "Denotation" "Scope" "ID")
+      (format *debug-io* "~20,a ~20,a ~15,a ~7,a ~10,a ~20,a~%" "Package" "Name" "Denotation" "Scope" "Exported" "ID")
       (dolist (entry all-symbols)
         (destructuring-bind (name . symbols) entry
           (declare (ignore name))
           (dolist (sym symbols)
-            (format *debug-io* "~20,a ~15,a ~7,a ~20,a~%" (name sym) (denotation sym) (scope sym) (id sym))))))))
+            (format *debug-io* "~20,a ~20,a ~15,a ~7,a ~10,a ~20,a~%" (package-name* sym) (name sym) (denotation sym) (scope sym) (if (exportedp sym) "yes" "no") (id sym))))))))

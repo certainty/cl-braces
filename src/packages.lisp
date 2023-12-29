@@ -434,6 +434,8 @@
    #:id
    #:name
    #:location
+   #:package-name*
+   #:exportedp
    #:scope
    #:denotation
    #:symbol-table

@@ -24,6 +24,10 @@
     :initarg :current-scope
     :initform 0
     :type (integer 0 *))
+   (current-package
+    :initarg :current-package
+    :initform nil
+    :type (or null string))
    (context
     :initarg :context
     :initform nil
@@ -66,6 +70,7 @@
   (declare (ignore resolver tok))
   :continue)
 
+
 (defmethod ast:enter ((resolver resolver) (node ast:block))
   (enter-scope resolver))
 
@@ -80,49 +85,46 @@
   (with-slots (current-scope) resolver
     (decf current-scope)))
 
-(defmacro with-new-scope (resolver &body body)
-  `(unwind-protect
-        (progn
-          (enter-scope ,resolver)
-          ,@body)
-     (leave-scope ,resolver)))
+(defmethod ast:enter ((resolver resolver) (node ast:package-declaration))
+  (with-slots (current-package) resolver
+    (setf current-package (ast:identifier-name (ast:package-declaration-name node)))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:short-variable-declaration))
-  (with-slots (symbol-table current-scope errors) resolver
+  (with-slots (symbol-table current-scope current-package errors) resolver
     (let* ((variables (ast:short-variable-declaration-identifiers node)))
       (dolist (variable (ast:identifier-list-identifiers variables))
         (let ((identifier (ast:identifier-name variable)))
-          (a:if-let ((existing (symbols:find-by-name symbol-table identifier :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
+          (a:if-let ((existing (symbols:find-by-name symbol-table current-package identifier :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
             (dolist (existing existing)
               (unless (symbols:place-holder-p existing)
                 (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol identifier :location (ast:location variable)))))
             (symbols:add-symbol symbol-table identifier :variable :scope current-scope :location (ast:location variable))))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:identifier))
-  (with-slots (current-scope errors symbol-table) resolver
+  (with-slots (current-scope current-package errors symbol-table) resolver
     (let ((variable (ast:identifier-name node)))
       (unless
-          (or (symbols:find-by-name symbol-table variable :denotation #'symbols:denotes-variable-p :scope<= current-scope)
-              (symbols:find-by-name symbol-table variable :denotation #'symbols:denotes-function-p :scope<= 0))
+          (or (symbols:find-by-name symbol-table current-package variable :denotation #'symbols:denotes-variable-p :scope<= current-scope)
+              (symbols:find-by-name symbol-table current-package variable :denotation #'symbols:denotes-function-p :scope<= 0))
         (cerror "Undefined symbol" (make-condition 'undefined-symbol :symbol variable :location (ast:location node)))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:variable-specification))
-  (with-slots (symbol-table current-scope errors) resolver
+  (with-slots (symbol-table current-scope current-package errors) resolver
     (let* ((variables (ast:variable-specification-identifiers node)))
       (dolist (identifier (ast:identifier-list-identifiers variables))
         (let ((name (ast:identifier-name identifier)))
-          (a:if-let ((existing (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
+          (a:if-let ((existing (symbols:find-by-name symbol-table current-package name :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
             (dolist (existing existing)
               (unless (symbols:place-holder-p existing)
                 (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol name :location (ast:location identifier)))))
-            (symbols:add-symbol symbol-table name :variable :scope current-scope :location (ast:location identifier))))))))
+            (symbols:add-symbol symbol-table current-package name :variable :scope current-scope :location (ast:location identifier))))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:function-declaration))
-  (with-slots (symbol-table current-scope errors) resolver
+  (with-slots (symbol-table current-scope current-package errors) resolver
     (let ((name (ast:identifier-name (ast:function-declaration-name node))))
-      (when (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-function-p)
+      (when (symbols:find-by-name symbol-table current-package name :denotation #'symbols:denotes-function-p)
         (cerror "Function already defined" (make-condition 'variable-already-defined :symbol name :location (ast:location node))))
-      (symbols:add-symbol symbol-table name :function :scope 0 :location (ast:location node)))))
+      (symbols:add-symbol symbol-table current-package name :function :scope 0 :location (ast:location node)))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:function-signature))
   (enter-scope resolver))
@@ -137,9 +139,9 @@
   (leave-scope resolver))
 
 (defmethod ast:enter ((resolver resolver) (node ast:parameter-declaration))
-  (with-slots (symbol-table current-scope errors) resolver
+  (with-slots (symbol-table current-scope current-package errors) resolver
     (dolist (parameter (ast:identifier-list-identifiers (ast:parameter-declaration-identifiers node)))
       (let ((name (ast:identifier-name parameter)))
-        (a:if-let ((exising (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
+        (a:if-let ((exising (symbols:find-by-name symbol-table current-package name :denotation #'symbols:denotes-variable-p :scope<= current-scope)))
           (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol name :location (ast:location parameter)))
-          (symbols:add-symbol symbol-table name :variable :scope current-scope :location (ast:location parameter)))))))
+          (symbols:add-symbol symbol-table current-package name :variable :scope current-scope :location (ast:location parameter)))))))

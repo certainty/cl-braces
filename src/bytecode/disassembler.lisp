@@ -23,7 +23,13 @@
     (a:when-let ((label (column-label pc instr isa chunk)))
       (format stream "~%.~a:~%" label))
     (format stream "%~10a " (column-pc pc))
-    (disass-instruction instr chunk :isa isa :stream stream)))
+    (disass-instruction instr chunk :isa isa :stream stream))
+
+  (a:when-let ((entrypoint (chunk-entrypoint chunk)))
+    (terpri stream)
+    (format stream "__entrypoint__~%~%")
+    (format stream "%~10a " (column-pc entrypoint))
+    (format stream ".~a" (column-label entrypoint nil nil chunk))))
 
 (defun disass-instruction (instr chunk &key (isa *current-isa*) (stream *standard-output*))
   (format stream "~16,a ~8,a ~30,a ~a~%"
@@ -120,7 +126,7 @@
 
 (defun disass-constants (chunk &key (stream *standard-output*))
   (with-slots (constants) chunk
-    (format stream "__constants__~%")
+    (format stream "__constants__~%~%")
     (loop :for i :from 0 :below (length constants)
           :for constant :across constants
           :do (format stream "@~3a ~10a ~20a~%" i (format-constant-type constant) (format-constant constant chunk)))))

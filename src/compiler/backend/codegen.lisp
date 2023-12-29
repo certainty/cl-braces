@@ -102,13 +102,13 @@
     (decf current-scope)))
 
 (defun find-scoped-variable (generator name)
-  (with-slots (current-scope variable-registers symbol-table) generator
-    (a:when-let ((var (symbols:closest-scope current-scope (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-variable-p))))
+  (with-slots (current-scope variable-registers current-package-name symbol-table) generator
+    (a:when-let ((var (symbols:closest-scope current-scope (symbols:find-by-name symbol-table current-package-name name :denotation #'symbols:denotes-variable-p))))
       (symbols:id var))))
 
 (defun find-function (generator name)
-  (with-slots (functions symbol-table) generator
-    (a:when-let ((fun (symbols:find-by-name symbol-table name :denotation #'symbols:denotes-function-p :scope<= 0)))
+  (with-slots (functions symbol-table current-package-name) generator
+    (a:when-let ((fun (symbols:find-by-name symbol-table current-package-name name :denotation #'symbols:denotes-function-p :scope<= 0)))
       (symbols:id (car fun)))))
 
 (defun create-register-for (generator variable-id)
@@ -185,7 +185,10 @@
         (generate generator body)
         (leave-scope generator)
         (let* ((registers-used (pop-register-allocator generator))
-               (function-value (runtime.value:make-closure function-address (runtime.value:arity-exactly (length identifier-lists)) registers-used))
+               (function-value (runtime.value:make-closure
+                                function-address
+                                (runtime.value:arity-exactly (length identifier-lists))
+                                registers-used))
                (const-addr (add-constant generator function-value))
                (function-id (find-function generator name)))
           (assert function-id)

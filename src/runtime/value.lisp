@@ -90,7 +90,7 @@
     :initarg :function-label
     :type bytecode:label)))
 
-(-> make-closure (bytecode:label <arity> (integer 0 *) list) <closure>)
+(-> make-closure (bytecode:label <arity> (integer 0 *) &optional list) <closure>)
 (defun make-closure (function-label arity registers-used &optional (upvalues nil))
   "Create a closure with the given `FUNCTION-RECORD-ADDRESS' and `UPVALUES'"
   (let ((up-values (make-array (length upvalues) :element-type 'value)))
