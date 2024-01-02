@@ -1,7 +1,14 @@
 (in-package :cl-braces.vm.machine)
 
 (defparameter *MACHINE* nil)
-(defparameter *STACK-SIZE* 100)
+(defparameter *STACK-SIZE* 10)
+
+(define-condition machine-error (error)
+  ((message
+    :initarg :message
+    :initform nil)))
+
+(define-condition runtime-error (machine-error) ())
 
 (defclass machine ()
   ((call-stack
@@ -60,6 +67,7 @@
            (constants  (bytecode:chunk-constants chunk))
            (instructions (bytecode:chunk-code chunk))
            (instruction-count (length instructions)))
+
       (unless entrypoint
         (error "Chunk has no entrypoint"))
 
@@ -67,15 +75,17 @@
              (instruction (the fixnum 0))
              (opcode (the fixnum 0))
              (zero-flag nil)
-             (registers (make-registers (bytecode:chunk-registers-used chunk))))
+             (initial-registers (make-registers (bytecode:chunk-registers-used chunk)))
+             (registers initial-registers))
 
         #-cl-braces-vm-release
         (progn
           (format t "## Execute ~%~%")
-          (dump-machine-state "Initial machine state" pc chunk registers :disass-chunk t)
+          (dump-machine-state "Initial machine state" machine pc registers :disass-chunk t)
           (terpri))
 
         (bytecode:with-opcodes-from-current-isa
+
           (loop
             (when (>= pc instruction-count)
               (return))
@@ -85,7 +95,7 @@
             (incf pc)
 
             #-cl-braces-vm-release
-            (dump-machine-state "Execute instruction" pc chunk registers :disass-chunk nil :dump-instruction t)
+            (dump-machine-state "Execute instruction" machine pc registers :disass-chunk nil :dump-instruction t :dump-stack t)
 
             (s:select opcode
               (bytecode:noop t)
@@ -124,8 +134,46 @@
               (bytecode:neg (unary-op  - instruction registers))
               (bytecode:eq  (binary-op = instruction registers))
 
+              (bytecode:call
+               (with-operands (fn argc) instruction
+                 (let ((closure (aref registers fn)))
+                   (unless (runtime.value:closurep closure)
+                     (error 'runtime-error :message "Attempt to call non-function value ~S" fn))
+                   (multiple-value-bind (address call-frame) (prepare-function-call pc closure argc registers)
+                     (call-stack-push call-stack call-frame)
+                     (setf registers (slot-value call-frame 'registers))
+                     (setf pc address)))))
+
+              (bytecode:ret
+               (let ((call-frame (call-stack-pop call-stack)))
+                 (unless call-frame
+                   (error 'runtime-error :message "Attempt to return from empty call stack"))
+                 ;; restore the registers
+                 (if (call-stack-empty-p call-stack)
+                     (setf registers initial-registers)
+                     (setf registers (call-stack-registers (call-stack-top call-frame))))
+                 (setf pc (call-frame-return-address call-frame))))
+
               (t (todo! "unsupported opcode")))))
 
         #-cl-braces-vm-release
-        (dump-machine-state "Final machine state" pc chunk registers :disass-chunk nil :dump-instruction nil)
+        (dump-machine-state "Final machine state" machine pc registers :disass-chunk nil :dump-instruction nil)
         (values (find-if-not #'null registers :from-end t) registers)))))
+
+(defun prepare-function-call (return-addr closure argc source-registers)
+  (let ((call-frame (make-call-frame closure return-addr))
+        (arity (runtime.value:closure-arity closure))
+        (args-begin (- (length source-registers) 1 argc)))
+
+    (unless (eq (runtime.value:arity-kind arity) :fixed)
+      (todo! "handle non-fixed arity"))
+
+    ;; transfer arguments in the first registers
+    (with-slots (registers) call-frame
+      (loop :for i :from args-begin :below (length source-registers)
+            :for j :from 0
+            :do (setf (aref registers j) (aref source-registers i))))
+
+    (values
+     (bytecode:label-address (runtime.value:closure-function-label closure))
+     call-frame)))

@@ -98,7 +98,7 @@
             (dolist (existing existing)
               (unless (symbols:place-holder-p existing)
                 (cerror "Variable already defined" (make-condition 'variable-already-defined :symbol identifier :location (ast:location variable)))))
-            (symbols:add-symbol symbol-table identifier :variable :scope current-scope :location (ast:location variable))))))))
+            (symbols:add-symbol symbol-table current-package identifier :variable :scope current-scope :location (ast:location variable))))))))
 
 (defmethod ast:enter ((resolver resolver) (node ast:identifier))
   (with-slots (current-scope current-package errors symbol-table) resolver

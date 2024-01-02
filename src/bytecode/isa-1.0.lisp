@@ -26,7 +26,7 @@
    (#x41 jmp   ((label dst))                   "Unconditionally jump to %dst")
    (#x42 test  ((reg dst))                     "Tests the value in $dst and sets the zero flag if it is falsey (nil or false).")
    (#x43 ret   ((imm values))                  "Return from the current function. $values indicates the number of return values")
-   (#x44 lnot   ((reg dst))                    "Applies logical negation to $dst")
+   (#x44 lnot  ((reg dst))                    "Applies logical negation to $dst")
 
    ;; binary instructions #x80 - #xbf
    (#x80 const ((reg dst)   (addr src))     "Loads the constant from $src into $dst")

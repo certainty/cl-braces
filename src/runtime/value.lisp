@@ -52,10 +52,12 @@
 
 (defclass <arity> ()
   ((kind
+    :reader arity-kind
     :initarg :kind
     :initform (error "No value")
     :type (member :fixed :variable))
    (value
+    :reader arity-value
     :initarg :value
     :initform (error "No value")
     :type (integer 0 *))))
@@ -103,6 +105,18 @@
 (defun closurep (v)
   (typep v '<closure>))
 
+
+(defclass <tuple> (<value>)
+  ((values
+    :reader tuple-values
+    :initform (error "No value")
+    :initarg :values
+    :type (vector <value>))))
+
+(defun make-tuple (n &optional (initial-value (make-nil)))
+  (make-instance '<tuple> :values (make-array n :element-type '<value> :initial-element initial-value)))
+
+(-> make-tuple (list) <tuple>)
 (defun box (n)
   (etypecase n
     (integer (make-instance '<int> :value n))

@@ -58,7 +58,9 @@
    #:unbox
    #:<arity>
    #:arity-exactly
-   #:arity-at-least))
+   #:arity-at-least
+   #:arity-kind
+   #:arity-value))
 
 (defpackage :cl-braces.bytecode
   (:nicknames :bytecode)
@@ -113,6 +115,7 @@
    #:label-address
    #:immediate
    #:imm
+   #:label-name-for-label
 
    #:const
    #:call
@@ -467,4 +470,5 @@
   (:import-from :cl-braces.bytecode)
   (:export
    #:run
+   #:run-source-file
    #:execute))

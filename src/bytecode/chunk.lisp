@@ -59,3 +59,7 @@
      (loop for ,pc from 0 below (length code) do
        (let ((,instruction (aref code ,pc)))
          ,@body))))
+
+(defun label-name-for-label (chunk label)
+  (with-slots (block-labels) chunk
+    (gethash label block-labels)))
