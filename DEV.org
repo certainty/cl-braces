@@ -1,3 +1,55 @@
+* Handling of multiple values
+
+Align multiple values with the way common lisp uses them that means when used in a context
+where a single value is needed but the functioin returns multiple only the primary value is passed.
+
+#+begin_src go
+func Foo() (int, int) {
+	return 3, 10
+}
+
+func Bar(int x) {
+	return x
+}
+
+Bar(Foo())    // primary value
+x := Foo()     // primary value
+x, y := Foo() // multiple values
+#+end_src
+
+* Expression lists and multiple assignment desugaring
+
+Golang has multiple places where it expression lists can be used like so:
+
+#+begin_src go
+x, y := 10, 20
+
+x, y := foo(), bar()
+#+end_src
+
+
+To simplify code generation I suggest to desugar this to one assignment per statement.
+This aligns well with SSA and simplifies the code generator
+
+So the above desugars to:
+#+begin_src go
+x := 10
+y := 10
+
+x := foo() // see also treatment of multiple values above
+y := bar() // see also treament of multiple values above
+#+end_src
+
+* Passing the result registers to the generator
+
+Currently the code generator returns the result register. This way the calling code knows where to find the result.
+This works well but it also uses up too many registers and makes some use-cases harder to implement.
+
+I think we should instead switch to a mode where the generator may receive result registers as input.
+This is especially useful for function calls, but also to generate assignments.
+
+Maybe we need to add a mode in which either the provided registers are used or the generator allocates them itself.
+
 * VM instruction set ideas
 
 - Instructions are represented as byte vectors

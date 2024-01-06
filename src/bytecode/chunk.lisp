@@ -18,7 +18,7 @@
 
 ;; A machine instruction as loaded and executed by the vm.
 (s:defconstructor instruction
-  (opcode opcode-t)
+    (opcode opcode-t)
   (operands (vector operand-t)))
 
 (defmethod print-object ((instruction instruction) stream)

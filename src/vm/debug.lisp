@@ -12,7 +12,7 @@
 
     (when dump-stack
       (with-slots (frames stack-pointer) call-stack
-        (format t "~%#### Call-Stack #### ~%")
+        (format t "~%#### Call-Stack #### ~%~%")
         (format t "~10,a ~20,a ~5,a ~%" "Pos" "Label" "Return Address")
 
         (loop :for i :from (1- stack-pointer) :downto 0
