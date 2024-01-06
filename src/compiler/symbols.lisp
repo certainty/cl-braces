@@ -8,7 +8,7 @@
   ((id
     :reader id
     :initarg :id
-    :initform (fuuid:to-string (fuuid:make-v4))
+    :initform (make-symbol-id)
     :type string)
    (name
     :reader name
@@ -30,6 +30,10 @@
     :initarg :location
     :initform nil
     :type (or null location:source-location))))
+
+(defun make-symbol-id (symbol)
+  (random-uuid:to-string
+   (random-uuid:make-uuid)))
 
 (defmethod print-object ((symbol <symbol>) stream)
   (print-unreadable-object (symbol stream :type t :identity t)
