@@ -38,9 +38,8 @@ jobs:
         shell: bash
         run: |
           ln -s $(pwd) ~/.roswell/lisp/quicklisp/local-projects/cl-braces
-          ros -e '(progn (ql:register-local-projects) (uiop:quit))'
-          ros -e '(progn (ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil) (uiop:quit))'
           ros -e '(progn (ql:quickload :lisp-unit2) (uiop:quit))'
+          ros -e '(progn (ql:register-local-projects) (uiop:quit))'
           ros -e '(progn (ql:quickload :cl-braces) (uiop:quit))'
 
       - name: Test
