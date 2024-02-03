@@ -8,7 +8,7 @@
   :source-control (:git "https://github.com/certainty/cl-braces.git")
   :license "BSD"
   :version "1.0"
-  :depends-on (:alexandria :serapeum :random-uuid)
+  :depends-on (:alexandria :serapeum :random-uuid :cl-ppcre)
   :serial t
   :pathname "src"
   :in-order-to ((test-op (test-op "cl-braces/tests")))
