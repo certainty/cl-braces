@@ -19,15 +19,6 @@
    #:to-plist
    #:copy-instance))
 
-(defpackage :cl-braces.support.tests.snapshots
-  (:nicknames :cl-braces.snapshots :snapshots)
-  (:use :cl :lisp-unit2)
-  (:local-nicknames (:a :alexandria) (:s :serapeum))
-  (:import-from :serapeum :->)
-  (:export
-   #:assert-snapshot-equals
-   #:*snapshot-dir*))
-
 ;;;
 ;;; Runtime
 ;;;

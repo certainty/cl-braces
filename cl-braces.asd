@@ -17,8 +17,7 @@
 
    (:module "support"
     :components
-    ((:file "utils")
-     (:file "snapshot_tests")))
+    ((:file "utils")))
 
    (:module "runtime"
     :components
@@ -83,6 +82,7 @@
   :pathname "tests"
   :components
   ((:file "packages")
+   (:file "snapshot_tests")
    (:file "runner")
    (:module "compiler"
     :components

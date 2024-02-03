@@ -7,6 +7,15 @@
    #:run-vm-suites
    #:run-compiler-suites))
 
+(defpackage :cl-braces.tests.snapshots
+  (:nicknames :cl-braces.snapshots :snapshots)
+  (:use :cl :lisp-unit2)
+  (:local-nicknames (:a :alexandria) (:s :serapeum))
+  (:import-from :serapeum :->)
+  (:export
+   #:assert-snapshot-equals
+   #:*snapshot-dir*))
+
 ;;; Compiler
 (defpackage :cl-braces.tests.compiler.frontend.scanner
   (:nicknames :tests.frontend.scanner :tests.scanner)
