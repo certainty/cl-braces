@@ -56,13 +56,34 @@
 (defgeneric close-input (source-input)
   (:documentation  "Closes the given input stream."))
 
+(defgeneric input-string (source-input)
+  (:documentation "Returns the string that is being read from the given input."))
+
+(defmethod input-string ((input string-input))
+  (string-input-string input))
+
+(defmethod input-string ((input source-input))
+  (with-slots (stream) input
+    (with-output-to-string (str)
+      (loop for c = (read-char stream nil nil)
+            while c
+            do (write-char c str)))))
+
 (defmethod open-input ((inp source-input)) ; specialization for when we already have a constructed input
   inp)
 
 (defmethod open-input ((input-designator string))
   (make-instance 'string-input :string input-designator))
 
+(defmethod open-input ((input-designator pathname))
+  (let ((stream (open input-designator :direction :input :if-does-not-exist :error)))
+    (make-instance 'source-input :stream stream :uri (format nil "file://~a" (namestring input-designator)))))
+
 (defmethod close-input ((input string-input)) nil)
+
+(defmethod close-input ((input source-input))
+  (with-slots (stream) input
+    (close stream)))
 
 (-> call-with-input ((function (source-input) *) input-designator) *)
 (defun call-with-input (fn input-designator)

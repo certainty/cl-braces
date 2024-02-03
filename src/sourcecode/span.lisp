@@ -20,15 +20,22 @@
     (print-unreadable-object (span stream :type t :identity nil)
       (format stream "[~A, ~A]" from to))))
 
+(defun make-span (from to)
+  (make-instance 'source-span :from from :to to))
+
+(defparameter *dummy-location* (location:make-source-location 0 0 0))
+(defparameter *dummy-span* (make-span *dummy-location* *dummy-location*))
+
 (defmethod support:to-plist ((span source-span))
   (with-slots (from to) span
     (list :from (support:to-plist from) :to (support:to-plist to))))
 
-(defgeneric for (expression)
+(defgeneric for (obj)
   (:documentation "Computes the span of the expression in the source code."))
 
-(defun make-span (from to)
-  (make-instance 'source-span :from from :to to))
+(defmethod for (obj)
+  (declare (ignore obj))
+  *dummy-span*)
 
 (defmethod support:copy-instance ((span source-span))
   (make-instance 'source-span :from (from span) :to (to span)))

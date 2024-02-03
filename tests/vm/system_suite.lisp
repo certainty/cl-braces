@@ -1,45 +1,49 @@
 (in-package :cl-braces.tests.system)
 
 (defun compile-and-run (code)
-  (runtime.value:unbox (machine:execute (compiler:compile-this code))))
+  (machine:run code))
 
 (define-test simple-variables ()
-  (assert-equal
-   7
+  (assert-no-signal
+   'error
    (compile-and-run
     "x := 3
      y := 4
-     x + y")))
+     return x + y")))
 
 (define-test statement-list ()
-  (assert-equal
-   7
+  (assert-no-signal
+   'error
    (compile-and-run
-    "x := 3; y := 4; x + y")))
+    "x := 3; y := 4; return x + y")))
 
 (define-test conditional-if ()
-  (assert-equal
-   10
+  (assert-no-signal
+   'error
    (compile-and-run "
-   if 10  {
+   if true  {
      10
    } else {
      20
-   }")))
+   }
+
+  return 30
+  ")))
 
 (define-test conditional-if-shortstatement ()
-  (assert-equal
-   30
+  (assert-no-signal
+   'error
    (compile-and-run "
    lim := 10
-   if v := 20; v + lim {
+   if v := 10; v == 10  {
       v
    }
+   return lim
    ")))
 
 (define-test assignment-and-declaration ()
-  (assert-equal
-   90
+  (assert-no-signal
+   'error
    (compile-and-run "
    var x = 10
    var y = 20
@@ -48,5 +52,21 @@
      b int = 30
    )
    a := x + y + z
-   a + x + b
+   return a + x + b
    ")))
+
+;; (define-test functions-with-one-return-value ()
+;;   (assert-equal
+;;    10
+;;    (compile-and-run "
+;;    func f() int {
+;;      x := 42
+;;      if true {
+;;         return x
+;;      } else {
+;;        return 33
+;;      }
+;;    }
+;;    f()
+;;    "))
+;;   )

@@ -12,28 +12,54 @@
 (deftype register-t () '(unsigned-byte 16))
 (deftype address-t () '(unsigned-byte 64))
 (deftype label-t () '(unsigned-byte 64))
-(deftype operand-t () '(or register-t address-t label-t))
+(deftype immediate-t () '(unsigned-byte 16))
+(deftype operand-t () '(or immediate-t register-t address-t label-t))
+
 
 ;; A machine instruction as loaded and executed by the vm.
 (s:defconstructor instruction
-  (opcode opcode-t)
+    (opcode opcode-t)
   (operands (vector operand-t)))
 
 (defmethod print-object ((instruction instruction) stream)
   (print-unreadable-object (instruction stream :type nil)
     (format stream "INSTRUCTION OPCODE: ~A ~A" (instruction-opcode instruction) (instruction-operands instruction))))
 
-(deftype constant-table () '(vector runtime.value:value))
+(deftype constant-table () '(vector runtime.value:<value>))
 
-(s:defconstructor chunk
-  (constants constant-table)
-  (blocklabels hash-table)
-  (code (vector instruction))
-  (registers-used (integer 0 *)))
+(defclass chunk ()
+  ((constants
+    :reader chunk-constants
+    :initarg :constants
+    :initform (make-array 0  :element-type 'runtime.value:<value> :adjustable t :fill-pointer t)
+    :type  constant-table)
+   (code
+    :reader chunk-code
+    :initarg :code
+    :initform (make-array 0 :element-type 'instruction :adjustable t :fill-pointer t)
+    :type (vector instruction))
+   (block-labels
+    :reader chunk-block-labels
+    :initarg :block-labels
+    :initform (make-hash-table :test #'equalp)
+    :type hash-table)
+   (registers-used
+    :reader chunk-registers-used
+    :initarg :registers-used
+    :initform 0
+    :type (integer 0 *))
+   (entrypoint
+    :reader chunk-entrypoint
+    :initarg :entrypoint
+    :initform nil
+    :type (or null address-t))))
 
-(s:define-do-macro do-instructions ((pc instruction chunk &optional return) &body body)
-  (let ((code (gensym)))
-    `(let ((,code (chunk-code ,chunk)))
-       (loop for ,pc from 0 below (length ,code)
-             do (let ((,instruction (aref ,code ,pc)))
-                  ,@body)))))
+(defmacro do-instructions ((pc instruction chunk) &body body)
+  `(with-slots (code) chunk
+     (loop for ,pc from 0 below (length code) do
+       (let ((,instruction (aref code ,pc)))
+         ,@body))))
+
+(defun label-name-for-label (chunk label)
+  (with-slots (block-labels) chunk
+    (gethash label block-labels)))

@@ -66,7 +66,6 @@
      (:module "backend"
       :components
       ((:file "constants-builder")
-       (:file "chunk-builder")
        (:file "codegen")))
 
      (:file "pipeline")
@@ -75,6 +74,7 @@
    (:module "vm"
     :components
     ((:file "debug")
+     (:file "callstack")
      (:file "machine")))))
 
 (defsystem "cl-braces/tests"

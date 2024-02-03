@@ -253,13 +253,15 @@
 (a:define-constant +keywords+
     ;; dictionary mapping keyword lexemes to their class
     (s:dict
+     "func" token:@FUNC
      "if" token:@IF
      "else" token:@ELSE
      "break" token:@BREAK
      "continue" token:@CONTINUE
      "fallthrough" token:@FALLTHROUGH
      "return" token:@RETURN
-     "var" token:@VAR)
+     "var" token:@VAR
+     "package" token:@PACKAGE)
   :test #'equalp)
 
 (-> scan-identifier (state) (or null token:token))
@@ -308,6 +310,7 @@
 (-> scan-operator/punctuation (state) (or null token:token))
 (defun scan-operator/punctuation (state)
   (cond
+    ((match= state "...") (accept state token:@ELLIPSIS))
     ((match= state ":=") (accept state token:@COLON_EQUAL))
     ((match= state "==") (accept state token:@EQUAL_EQUAL))
     ((match= state "<=") (accept state token:@LE))
@@ -316,6 +319,18 @@
     ((match= state "++") (accept state token:@PLUS_PLUS))
     ((match= state "+=") (accept state token:@PLUS_EQUAL))
     ((match= state "*=") (accept state token:@MUL_EQUAL))
+    ((match= state "&&") (accept state token:@AMPERSAND_AMPERSAND))
+    ((match= state "&=") (accept state token:@AMPERSAND_EQUAL))
+    ((match= state "||") (accept state token:@PIPE_PIPE))
+    ((match= state "|=") (accept state token:@PIPE_EQUAL))
+    ((match= state "^=") (accept state token:@CARET_EQUAL))
+    ((match= state "~=") (accept state token:@TILDE_EQUAL))
+    ((match= state "!=") (accept state token:@BANG_EQUAL))
+    ((match= state "~") (accept state token:@TILDE))
+    ((match= state "!") (accept state token:@BANG))
+    ((match= state "^") (accept state token:@CARET))
+    ((match= state "|") (accept state token:@PIPE))
+    ((match= state "&") (accept state token:@AMPERSAND))
     ((match= state "(") (accept state token:@LPAREN))
     ((match= state ")") (accept state token:@RPAREN))
     ((match= state "{") (accept state token:@LBRACE))
@@ -328,6 +343,7 @@
     ((match= state "*") (accept state token:@STAR))
     ((match= state ";") (accept state token:@SEMICOLON))
     ((match= state ",") (accept state token:@COMMA))
+    ((match= state ".") (accept state token:@DOT))
     ((match= state "<") (accept state token:@LT))
     ((match= state ">") (accept state token:@GT))
     ((match= state "=") (accept state token:@EQUAL))))

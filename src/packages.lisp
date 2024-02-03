@@ -12,6 +12,7 @@
    #:returning
    #:domap
    #:define-enum
+   #:debug
    #:debug-print
    #:list-of
    #:non-empty-list-of
@@ -37,15 +38,30 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   #:value
-   #:intV
-   #:boolv
-   #:nilv
+   #:<value>
+   #:make-nil
+   #:nilp
+   #:make-bool
+   #:truep
+   #:falsep
+   #:boolp
+   #:make-int
+   #:intp
+   #:int-value
+   #:<closure>
+   #:make-closure
+   #:closurep
+   #:closure-up-values
+   #:closure-arity
+   #:closure-registers-used
+   #:closure-function-label
    #:box
    #:unbox
-   #:falsep
-   #:truep
-   #:nonep))
+   #:<arity>
+   #:arity-exactly
+   #:arity-at-least
+   #:arity-kind
+   #:arity-value))
 
 (defpackage :cl-braces.bytecode
   (:nicknames :bytecode)
@@ -54,9 +70,11 @@
   (:import-from :serapeum :->)
   (:export
    #:chunk
+   #:instruction
    #:chunk-code
    #:chunk-constants
    #:chunk-registers-used
+   #:chunk-entrypoint
    #:constant-table
 
    #:make-constants-builder
@@ -68,7 +86,11 @@
    #:add-constant
    #:add-instructions
 
-   #:make-chunk
+   #:go-package
+   #:package-builder
+   #:make-package-builder
+   #:add-closure
+
    #:print-isa
    #:*isa-1.0*
    #:*current-isa*
@@ -78,10 +100,12 @@
    #:register-value
    #:disass
    #:disass-instruction
+   #:format-value
 
    #:address-t
    #:register-t
    #:opcode-t
+   #:immediate-t
 
    #:instr
    #:address
@@ -89,20 +113,30 @@
    #:register
    #:reg
    #:label
+   #:label-address
+   #:immediate
+   #:imm
+   #:label-name-for-label
 
    #:const
+   #:call
    #:mov
    #:test
    #:jz
    #:jnz
    #:jmp
+   #:ret
    #:noop
    #:halt
    #:add
    #:sub
    #:div
    #:mul
-   #:neg))
+   #:neg
+   #:eq
+   #:lor
+   #:land
+   #:lnot))
 
 ;;;
 ;;; Source code
@@ -193,6 +227,7 @@
    #:@LE
    #:@GT
    #:@GE
+   #:@DOT
    #:@SEMICOLON
    #:@COMMA
    #:@COLON_EQUAL
@@ -200,17 +235,33 @@
    #:@MUL_EQUAL
    #:@EQUAL
    #:@EQUAL_EQUAL
+   #:@AMPERSAND_AMPERSAND
+   #:@AMPERSAND
+   #:@AMPERSAND_EQUAL
+   #:@PIPE_PIPE
+   #:@PIPE
+   #:@PIPE_EQUAL
+   #:@BANG
+   #:@BANG_EQUAL
+   #:@TILDE
+   #:@TILDE_EQUAL
+   #:@CARET
+   #:@CARET_EQUAL
+
    #:@IDENTIFIER
    #:@TRUE
    #:@FALSE
    #:@NIL
+   #:@FUNC
    #:@IF
    #:@ELSE
    #:@BREAK
    #:@CONTINUE
    #:@FALLTHROUGH
    #:@RETURN
-   #:@VAR))
+   #:@VAR
+   #:@PACKAGE
+   #:@ELLIPSIS))
 
 (defpackage :cl-braces.compiler.frontend.scanner
   (:nicknames :frontend.scanner :scanner :frontend.lexer :lexer)
@@ -271,6 +322,8 @@
    #:if-statement-condition
    #:if-statement-consequence
    #:if-statement-alternative
+   #:return-statement
+   #:return-statement-expressions
    #:expression-statement
    #:expression-statement-expression
    #:statement-list
@@ -293,12 +346,47 @@
    #:identifier-list
    #:identifier-list-identifiers
 
+   #:qualified-identifier
+   #:qualified-identifier-package-name
+   #:qualified-identifier-identifier
+
+   #:function-declaration
+   #:function-declaration-name
+   #:function-declaration-signature
+   #:function-declaration-body
+
+   #:function-signature
+   #:function-signature-parameters
+   #:function-signature-return-type
+   #:function-signature-return-parameters
+
+   #:function-call
+   #:function-call-function
+   #:function-call-arguments
+
+   #:parameter-declaration
+   #:parameter-declaration-identifiers
+   #:parameter-declaration-splat
+   #:parameter-declaration-type
+
+   #:parameter-splat
+   #:parameter-splat-token
+
+   #:parameter-list
+   #:parameter-list-parameters
+
+   #:package-declaration
+   #:package-declaration-name
+
+   #:comma
+
    #:block
    #:block-statements
 
-   #:program
-   #:program-declarations
-   #:make-program
+   #:source-file
+   #:source-file-declarations
+   #:source-file-package
+   #:make-source-file
 
    #:walk
    #:enter
@@ -313,7 +401,6 @@
   (:import-from :serapeum :->)
   (:export
    #:parse
-   #:with
    #:parse-errors))
 
 
@@ -330,11 +417,10 @@
   (:use :cl :cl-braces.support)
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
-
-  (:import-from :cl-braces.runtime.value :value)
   (:import-from :cl-braces.bytecode :addr :reg :register :address)
   (:export
-   #:generate-chunk))
+   #:generate-chunk
+   #:generate-package))
 
 (defpackage :cl-braces.compiler
   (:nicknames :compiler)
@@ -342,7 +428,8 @@
   (:local-nicknames (:a :alexandria) (:s :serapeum))
   (:import-from :serapeum :->)
   (:export
-   #:compile-this))
+   #:compile)
+  (:shadow :compile))
 
 (defpackage :cl-braces.compiler.symbols
   (:nicknames :symbols)
@@ -353,6 +440,8 @@
    #:id
    #:name
    #:location
+   #:package-name*
+   #:exportedp
    #:scope
    #:denotation
    #:symbol-table
@@ -382,4 +471,5 @@
   (:import-from :cl-braces.bytecode)
   (:export
    #:run
+   #:run-source-file
    #:execute))

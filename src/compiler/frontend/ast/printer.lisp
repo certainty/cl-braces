@@ -74,7 +74,7 @@
 (defmethod leave ((printer ast-printer) (node node))
   nil)
 
-(define-default-printer program "program")
+(define-default-printer source-file "source-file")
 (define-default-printer block "block")
 (define-default-printer if-statement "if-statement")
 (define-default-printer empty-statement "empty-statement")
@@ -94,6 +94,13 @@
 (define-default-printer type-specifier "type-specifier")
 (define-default-printer variable-specification "variable-specification")
 (define-default-printer assignment-statement "assignment-statement")
+
+(define-default-printer function-declaration "function-declaration")
+(define-default-printer function-signature "function-signature")
+(define-default-printer parameter-list "parameter-list")
+(define-default-printer parameter-declaration "parameter-declaration")
+(define-default-printer parameter-splat "parameter-splat")
+(define-default-printer package-declaration "package-declaration")
 
 (defmethod enter ((printer ast-printer) (tok token:token))
   (with-slots (indentation-level stream print-spans-p) printer

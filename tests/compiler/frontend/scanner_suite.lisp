@@ -115,6 +115,10 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as "{" token:@LBRACE)
   (assert-scans-as "}" token:@RBRACE))
 
+(define-test scan-ellipsis ()
+  "Scan the ellipsis token"
+  (assert-scans-as "..." token:@ELLIPSIS))
+
 (define-test scan-keywords ()
   "Scan various key words"
   (assert-scans-as "if" token:@IF)
@@ -128,4 +132,6 @@ where the car is the expected token class and the cadr is a keyword argument :wi
   (assert-scans-as "fallthrough" token:@FALLTHROUGH)
   (assert-scans-as "afallthroughb" token:@IDENTIFIER :with-value "afallthroughb")
   (assert-scans-as "var" token:@VAR)
-  (assert-scans-as "avara" token:@IDENTIFIER :with-value "avara"))
+  (assert-scans-as "avara" token:@IDENTIFIER :with-value "avara")
+  (assert-scans-as "func" token:@FUNC)
+  (assert-scans-as "afunction" token:@IDENTIFIER :with-value "afunction"))

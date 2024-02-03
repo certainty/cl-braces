@@ -25,6 +25,8 @@
   @FALLTHROUGH
   @RETURN
   @VAR
+  @FUNC
+  @PACKAGE
 
   ;; [Literals](https://golang.org/ref/spec#Literals)
   @INTEGER
@@ -50,6 +52,19 @@
   @LE
   @GT
   @GE
+  @ELLIPSIS
+  @AMPERSAND
+  @AMPERSAND_AMPERSAND
+  @AMPERSAND_EQUAL
+  @PIPE
+  @PIPE_PIPE
+  @PIPE_EQUAL
+  @CARET
+  @CARET_EQUAL
+  @TILDE
+  @TILDE_EQUAL
+  @BANG
+  @BANG_EQUAL
 
   ;; [Punctuation](https://golang.org/ref/spec#Operators_and_punctuation)
   @LPAREN
@@ -60,6 +75,7 @@
   @RBRACE
   @SEMICOLON
   @COMMA
+  @DOT
 
   ;; Special
   @ILLEGAL ; This is used to represent an illegal token. This is used so that we can delay the decision what to do in this case.
